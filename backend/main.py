@@ -174,7 +174,7 @@ async def trigger_optima_pipeline(
 
         def run_qualitative_branch():
             cart_matrix = create_cart_matrix(raw_df)
-            return generate_bundle_rules(cart_matrix, min_support=0.01)
+            return generate_bundle_rules(cart_matrix, min_support=0.001)
 
         forecast_df, rules_df = await asyncio.gather(
             asyncio.to_thread(run_quantitative_branch),

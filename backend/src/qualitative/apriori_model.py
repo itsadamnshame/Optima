@@ -56,14 +56,16 @@ def apply_random_forest_ranking(rules_df: pd.DataFrame) -> pd.DataFrame:
     
     return final_df
 
-def generate_bundle_rules(basket: pd.DataFrame, min_support: float = 0.01) -> pd.DataFrame:
+def generate_bundle_rules(basket: pd.DataFrame, min_support: float = 0.001) -> pd.DataFrame:
     """
-    Runs the Apriori algorithm and pipes results through the Random Forest ranker.
+    Runs Apriori and calculates bundle sizes (2, 3, 4+) before 
+    ranking with Random Forest.
     """
     print(f"Running Apriori algorithm (min_support={min_support})...")
     
     # 1. Find frequent itemsets
-    frequent_itemsets = apriori(basket, min_support=min_support, use_colnames=True, low_memory=True)
+    # Increased max_len to 4 to allow for larger bundles
+    frequent_itemsets = apriori(basket, min_support=min_support, use_colnames=True, low_memory=True, max_len=4)
     
     if frequent_itemsets.empty:
         print("Warning: No items met the support threshold.")
@@ -75,14 +77,25 @@ def generate_bundle_rules(basket: pd.DataFrame, min_support: float = 0.01) -> pd
     if rules.empty:
         return pd.DataFrame()
 
-    # 3. Clean up formatting
-    # IMPORTANT: Keep 'antecedents' and 'consequents' for Playbook.jsx compatibility
-    rules['antecedents'] = rules['antecedents'].apply(lambda x: list(x)[0])
-    rules['consequents'] = rules['consequents'].apply(lambda x: list(x)[0])
+    # 3. CALCULATE BUNDLE SIZE (The "Logic" for your new feature)
+    # Bundle Size = Number of items in Antecedents + Number of items in Consequents
+    rules['bundle_size'] = rules['antecedents'].apply(lambda x: len(x)) + \
+                           rules['consequents'].apply(lambda x: len(x))
+
+    # 4. Convert frozensets to readable strings for the UI
+    rules['antecedents_list'] = rules['antecedents'].apply(lambda x: ", ".join(list(x)))
+    rules['consequents_list'] = rules['consequents'].apply(lambda x: ", ".join(list(x)))
     
-    clean_rules = rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].copy()
+    # Select clean columns for the Ranker
+    clean_rules = rules[['antecedents_list', 'consequents_list', 'support', 'confidence', 'lift', 'bundle_size']].copy()
     
-    # 4. Apply the Random Forest Decision Layer
+    # Rename for compatibility with the existing ranker
+    clean_rules = clean_rules.rename(columns={
+        'antecedents_list': 'antecedents',
+        'consequents_list': 'consequents'
+    })
+
+    # 5. Apply the Random Forest Ranking
     ranked_rules = apply_random_forest_ranking(clean_rules)
     
     return ranked_rules
