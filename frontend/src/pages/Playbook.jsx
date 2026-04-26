@@ -102,7 +102,7 @@ export default function Playbook() {
         </div>
       )}
 
-      {/* SECTION 2: AI-RANKED PRODUCT BUNDLES (from Random Forest) */}
+      {/* SECTION 2: RANKED PRODUCT BUNDLES (from Random Forest) */}
       {bundles.length > 0 && (
         <div>
           <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -136,7 +136,7 @@ export default function Playbook() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 pt-6 border-t border-gray-100">
                   {/* Random Forest Confidence Score */}
                   <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-2">AI Success Probability</p>
+                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-2">Success Probability</p>
                     <div className="flex items-center gap-3">
                       <span className={`text-2xl font-bold ${rule.success_probability >= 70 ? 'text-emerald-600' : rule.success_probability >= 40 ? 'text-amber-500' : 'text-red-500'}`}>
                         {rule.success_probability}%

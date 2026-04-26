@@ -2,23 +2,20 @@ import asyncio
 import pandas as pd
 import io
 import traceback
-from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import json
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
+import holidays as ph_holidays_lib
 
 # ==========================================
 # CUSTOM MODULE IMPORTS
 # ==========================================
-from src.quantitative.time_preprocessor import prepare_time_series
-from src.quantitative.prophet_model import run_prophet_forecast
+from src.quantitative.hybrid_forecaster import preprocess_and_forecast_item
 from src.qualitative.apriori_model import create_cart_matrix, generate_bundle_rules
 from src.decision.rule_engine import generate_recommendations
 
-# ==========================================
-# SERVER & DATABASE INITIALIZATION
-# ==========================================
-app = FastAPI(title="OPTIMA Engine API - Final Thesis Build")
+app = FastAPI(title="OPTIMA Engine API - Unified Calendar Build")
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,133 +24,175 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# SQLite Persistence - Creates 'optima.db'
 DATABASE_URL = "sqlite:///./optima.db"
 engine = create_engine(DATABASE_URL)
 
-storage_path = Path("backend_storage")
-storage_path.mkdir(exist_ok=True)
+# --- DATABASE INITIALIZATION & SEEDING ---
+@app.on_event("startup")
+def setup_db():
+    """Ensure table exists and pre-fill with PH holidays if empty."""
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS custom_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_name TEXT NOT NULL,
+                event_date TEXT NOT NULL UNIQUE
+            )
+        """))
+        conn.commit()
+
+        # CHECK IF WE NEED TO SEED THE CALENDAR
+        res = conn.execute(text("SELECT COUNT(*) FROM custom_events")).fetchone()
+        if res[0] == 0:
+            print("OPTIMA: Seeding database with official PH Holidays...")
+            # We seed 2026 and 2027
+            ph_holidays = ph_holidays_lib.Philippines(years=[2026, 2027])
+            
+            for date, name in ph_holidays.items():
+                try:
+                    conn.execute(
+                        text("INSERT INTO custom_events (event_name, event_date) VALUES (:name, :date)"),
+                        {"name": name, "date": date.strftime('%Y-%m-%d')}
+                    )
+                except:
+                    pass # Skip any accidental duplicates
+            conn.commit()
+            print("OPTIMA: Seeding complete.")
 
 # ==========================================
-# MODULE 1: PERSISTENT DATA INGESTION
+# SPECIAL DAYS MANAGER ENDPOINTS
+# ==========================================
+@app.get("/api/get-events")
+async def get_custom_events():
+    try:
+        with engine.connect() as conn:
+            # We sort by date so the UI list is chronological
+            res = conn.execute(text("SELECT event_name, event_date FROM custom_events ORDER BY event_date ASC")).fetchall()
+            return {"events": [{"name": r[0], "date": r[1]} for r in res]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/add-event")
+async def add_custom_event(data: dict):
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text("INSERT INTO custom_events (event_name, event_date) VALUES (:name, :date)"),
+                {"name": data['name'], "date": data['date']}
+            )
+            conn.commit()
+        return {"status": "success"}
+    except Exception:
+        raise HTTPException(status_code=400, detail="An event already exists on this date.")
+
+@app.delete("/api/delete-event/{event_date}")
+async def delete_custom_event(event_date: str):
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text("DELETE FROM custom_events WHERE event_date = :date"),
+                {"date": event_date}
+            )
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# PRODUCT SELECTOR ENDPOINT
+# ==========================================
+@app.get("/api/get-items")
+async def get_all_items():
+    try:
+        inspector = inspect(engine)
+        if not inspector.has_table("sales_transactions"):
+            return {"items": []}
+        raw_df = pd.read_sql("SELECT DISTINCT item_description FROM sales_transactions", engine)
+        return {"items": sorted(raw_df['item_description'].tolist())}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# DATA INGESTION
 # ==========================================
 @app.post("/api/upload-data")
 async def process_sales_data(file: UploadFile = File(...)):
     try:
         contents = await file.read()
+        df = pd.read_excel(io.BytesIO(contents)) if file.filename.endswith('.xlsx') else pd.read_csv(io.BytesIO(contents))
         
-        if file.filename.endswith('.xlsx'):
-            excel_data = pd.read_excel(io.BytesIO(contents), sheet_name=None)
-            sales_df = pd.concat(excel_data.values(), ignore_index=True)
-        else:
-            sales_df = pd.read_csv(io.BytesIO(contents))
-
-        # Standardize Columns
-        sales_df.columns = (sales_df.columns.str.strip().str.lower()
-                            .str.replace(' ', '_').str.replace(r'\(|\)', '', regex=True))
-
-        sales_df = sales_df.rename(columns={
-            'orderdate': 'order_date', 
-            'itemdescription': 'item_description', 
-            'customerid': 'customer_id', 
-            'orderid': 'order_id'
-        })
-
-        # Standardize Types
-        sales_df['order_date'] = pd.to_datetime(sales_df['order_date'], dayfirst=True, errors='coerce')
-        sales_df['quantity'] = pd.to_numeric(sales_df['quantity'], errors='coerce')
-        sales_df['total'] = pd.to_numeric(sales_df['total'], errors='coerce')
-
-        valid_sales = sales_df[(sales_df['quantity'] > 0) & (sales_df['total'] >= 0)].dropna(
-            subset=['item_description', 'order_id', 'order_date']
-        ).copy()
-
-        # PERSISTENCE
-        valid_sales.to_csv(storage_path / "base_cleaned_sales.csv", index=False)
+        df.columns = (df.columns.str.strip().str.lower().str.replace(' ', '_').str.replace(r'\(|\)', '', regex=True))
+        df = df.rename(columns={'orderdate': 'order_date', 'itemdescription': 'item_description', 'customerid': 'customer_id', 'orderid': 'order_id'})
+        
+        df['order_date'] = pd.to_datetime(df['order_date'], dayfirst=True, errors='coerce')
+        df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce')
+        
+        valid_sales = df.dropna(subset=['item_description', 'order_id', 'order_date']).copy()
         valid_sales.to_sql("sales_transactions", engine, if_exists="replace", index=False)
-
-        return {"status": "success", "total_rows_processed": len(valid_sales)}
-
+        return {"status": "success", "total_rows": len(valid_sales)}
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Ingestion Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
-# MODULES 2-4: THE OPTIMA MASTER PIPELINE
+# OPTIMA HYBRID PIPELINE
 # ==========================================
 @app.get("/api/generate-recommendations")
-async def trigger_optima_pipeline():
+async def trigger_optima_pipeline(
+    end_date: str = Query(...),
+    mode: str = Query("top"),
+    top_n: int = Query(5),
+    selected_items: str = Query(None)
+):
     try:
-        # PULL FROM SQL
+        inspector = inspect(engine)
+        if not inspector.has_table("sales_transactions"):
+            raise HTTPException(status_code=400, detail="Please upload sales data first.")
+
         raw_df = pd.read_sql("SELECT * FROM sales_transactions", engine)
-        raw_df['order_date'] = pd.to_datetime(raw_df['order_date'])
+        
+        if mode == "manual" and selected_items:
+            items_to_forecast = [i.strip() for i in selected_items.split(',')]
+        else:
+            items_to_forecast = raw_df['item_description'].value_counts().head(top_n).index.tolist()
 
-        # --- BRANCH A: QUANTITATIVE ---
+        performance_metrics = {}
+
         def run_quantitative_branch():
-            weekly_data = prepare_time_series(raw_df, freq='W')
-            top_items = weekly_data['item_description'].value_counts().head(5).index
             all_forecasts = []
-            top_item_metrics = None 
-            
-            for index, item in enumerate(top_items):
-                item_history = weekly_data[weekly_data['item_description'] == item]
-                forecast, metrics = run_prophet_forecast(item_history, item_name=item, periods=4) 
-                all_forecasts.append(forecast)
-                if index == 0: 
-                    # Convert NumPy floats to Python floats for JSON compatibility
-                    top_item_metrics = {k: float(v) if hasattr(v, 'item') else v for k, v in metrics.items()}
+            for item in items_to_forecast:
+                item_df = raw_df[raw_df['item_description'] == item].copy()
+                forecast = preprocess_and_forecast_item(item_df, end_date)
                 
-            combined = pd.concat(all_forecasts, ignore_index=True)
-            combined['forecast_date'] = combined['forecast_date'].astype(str)
-            return combined, top_item_metrics
+                if not forecast.empty:
+                    forecast['item_description'] = item
+                    all_forecasts.append(forecast)
+                    if hasattr(forecast, 'attrs') and 'metrics' in forecast.attrs:
+                        performance_metrics[item] = forecast.attrs['metrics']
+            
+            return pd.concat(all_forecasts, ignore_index=True) if all_forecasts else pd.DataFrame()
 
-        # --- BRANCH B: QUALITATIVE (Random Forest Integrated) ---
         def run_qualitative_branch():
             cart_matrix = create_cart_matrix(raw_df)
             return generate_bundle_rules(cart_matrix, min_support=0.01)
 
-        # EXECUTE IN PARALLEL
-        print("OPTIMA: Executing parallel AI branches...")
-        (forecast_df, top_item_metrics), rules_df = await asyncio.gather(
+        forecast_df, rules_df = await asyncio.gather(
             asyncio.to_thread(run_quantitative_branch),
             asyncio.to_thread(run_qualitative_branch)
         )
 
-        # SAVE RESULTS TO SQL
-        forecast_df.to_sql("forecast_results", engine, if_exists="replace", index=False)
-        rules_df.to_sql("strategic_bundles", engine, if_exists="replace", index=False)
-
-        # SEQUENTIAL MERGE: Decision Engine
-        print("Initializing Decision Engine...")
-        
-        # SAFE CHECK: Ensure Decision Engine handles the column names 'antecedents'
-        final_advice = []
-        if not rules_df.empty:
-            final_advice = generate_recommendations(forecast_df, rules_df)
+        final_advice = generate_recommendations(forecast_df, rules_df)
 
         return {
             "status": "success",
             "recommendations": final_advice,
-            "bundles": rules_df.to_dict(orient="records"),
-            "chart_data": forecast_df.to_dict(orient="records"),
-            "model_metrics": top_item_metrics 
+            "bundles": json.loads(rules_df.to_json(orient="records")),
+            "chart_data": json.loads(forecast_df.to_json(orient="records")),
+            "performance_metrics": performance_metrics
         }
-
     except Exception as e:
-        print("!!! PIPELINE CRASHED !!!")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Pipeline Error: {str(e)}")
-
-# ==========================================
-# MODULE 5: ANALYTICAL HISTORY
-# ==========================================
-@app.get("/api/history")
-async def get_historical_analysis():
-    try:
-        bundles = pd.read_sql("SELECT * FROM strategic_bundles ORDER BY success_probability DESC", engine)
-        return {"status": "success", "history": bundles.to_dict(orient="records")}
-    except:
-        return {"status": "error", "message": "No history found."}
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
