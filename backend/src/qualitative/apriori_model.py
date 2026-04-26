@@ -1,5 +1,6 @@
 import pandas as pd
 from mlxtend.frequent_patterns import apriori, association_rules
+from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
 import warnings
 
@@ -18,50 +19,73 @@ def create_cart_matrix(df: pd.DataFrame) -> pd.DataFrame:
               .set_index('order_id'))
     
     # 2. Convert quantities to simple binary 1s and 0s
-    # Apriori doesn't care if they bought 5 units of Vitamin C, only THAT they bought it.
     basket = basket.map(lambda x: 1 if x > 0 else 0)
     
     return basket
 
+def apply_random_forest_ranking(rules_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    The Decision Layer: Uses a Random Forest Classifier to rank bundles 
+    based on the interaction of support, confidence, and lift.
+    """
+    # Ensure we have enough data to train a meaningful model
+    if rules_df.empty or len(rules_df) < 5:
+        return rules_df
+
+    print("Training Random Forest to rank bundle quality...")
+
+    # 1. Feature Selection
+    X = rules_df[['support', 'confidence', 'lift']]
+
+    # 2. Synthetic Labeling (Target Y)
+    # We define 'Success' as the top 30% of rules based on the lift-confidence product
+    rules_df['momentum_score'] = rules_df['lift'] * rules_df['confidence']
+    threshold = rules_df['momentum_score'].quantile(0.7)
+    y = (rules_df['momentum_score'] >= threshold).astype(int)
+
+    # 3. Model Training
+    rf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+    rf.fit(X, y)
+
+    # 4. Success Probability Prediction
+    probabilities = rf.predict_proba(X)[:, 1]
+    rules_df['success_probability'] = (probabilities * 100).round(2)
+
+    # Clean up and sort by probability
+    final_df = rules_df.drop(columns=['momentum_score']).sort_values('success_probability', ascending=False)
+    
+    return final_df
+
 def generate_bundle_rules(basket: pd.DataFrame, min_support: float = 0.01) -> pd.DataFrame:
     """
-    Runs the Apriori algorithm to find statistical product associations.
-    min_support = 0.01 means the items must appear together in at least 1% of all transactions.
+    Runs the Apriori algorithm and pipes results through the Random Forest ranker.
     """
     print(f"Running Apriori algorithm (min_support={min_support})...")
     
     # 1. Find frequent itemsets
-    # low_memory=True prevents the server from crashing if the matrix is huge
     frequent_itemsets = apriori(basket, min_support=min_support, use_colnames=True, low_memory=True)
     
     if frequent_itemsets.empty:
-        print("Warning: No items met the support threshold. Try lowering min_support.")
+        print("Warning: No items met the support threshold.")
         return pd.DataFrame()
 
-    # 2. Generate Association Rules (We want rules with a 'lift' greater than 1)
-    # Lift > 1 means the items are bought together MORE often than random chance.
+    # 2. Generate Association Rules
     rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
     
     if rules.empty:
         return pd.DataFrame()
 
-    # 3. Clean up the output for the Decision Engine
-    # Convert 'frozensets' to clean strings
+    # 3. Clean up formatting
+    # IMPORTANT: Keep 'antecedents' and 'consequents' for Playbook.jsx compatibility
     rules['antecedents'] = rules['antecedents'].apply(lambda x: list(x)[0])
     rules['consequents'] = rules['consequents'].apply(lambda x: list(x)[0])
     
-    # Sort by the strongest Lift score
-    rules = rules.sort_values('lift', ascending=False)
-    
-    # Keep only the columns the Decision Engine actually needs
     clean_rules = rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].copy()
     
-    clean_rules = clean_rules.rename(columns={
-        'antecedents': 'item_a',
-        'consequents': 'item_b'
-    })
+    # 4. Apply the Random Forest Decision Layer
+    ranked_rules = apply_random_forest_ranking(clean_rules)
     
-    return clean_rules
+    return ranked_rules
 
 # ==========================================
 # LOCAL TESTING BLOCK
@@ -71,19 +95,14 @@ if __name__ == "__main__":
     
     if file_path.exists():
         raw_df = pd.read_csv(file_path)
-        
-        # Build the matrix
         cart_matrix = create_cart_matrix(raw_df)
-        print(f"Matrix built! Analyzing {len(cart_matrix)} unique shopping carts...\n")
         
-        # Run Apriori
-        # Note: If it prints no rules, we will change 0.01 to 0.005 (0.5%)
         bundle_rules = generate_bundle_rules(cart_matrix, min_support=0.01)
         
         if not bundle_rules.empty:
-            print("🛒 TOP 5 MOST POWERFUL BUNDLE COMBINATIONS:")
+            print("\nTOP 5 STRATEGIC BUNDLE RECOMMENDATIONS:")
             print(bundle_rules.head(5))
         else:
-            print("No strong rules found at 1% support.")
+            print("No strong rules found.")
     else:
-        print("Data not found. Run Module 1 first.")
+        print("Data not found.")

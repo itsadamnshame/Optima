@@ -13,13 +13,15 @@ def generate_recommendations(forecast_df: pd.DataFrame, rules_df: pd.DataFrame) 
     # STRATEGY 1: The "Hero & Sidekick" Bundle (Apriori + Prophet)
     # ---------------------------------------------------------
     if not rules_df.empty:
+        # Filter for high-quality rules
         strong_rules = rules_df[(rules_df['confidence'] > 0.5) & (rules_df['lift'] > 1.0)]
 
         for index, rule in strong_rules.iterrows():
-            hero_item = rule['item_a']
-            sidekick_item = rule['item_b']
+            # UPDATED: Using 'antecedents' and 'consequents' to stay synced with apriori_model.py
+            hero_item = rule['antecedents']
+            sidekick_item = rule['consequents']
             
-            # Check if the hero item was forecasted
+            # Check if the hero item was forecasted in the quantitative branch
             hero_forecasts = forecast_df[forecast_df['item_description'] == hero_item]
             
             if not hero_forecasts.empty:
@@ -34,7 +36,7 @@ def generate_recommendations(forecast_df: pd.DataFrame, rules_df: pd.DataFrame) 
 
     # ---------------------------------------------------------
     # STRATEGY 2: High Volume Alerts (Prophet Only)
-    # Always provide the top forecasted items even if they don't bundle well.
+    # Provides the top forecasted items regardless of bundling.
     # ---------------------------------------------------------
     if not forecast_df.empty:
         # Group the forecasts by item to get total upcoming volume
@@ -56,7 +58,7 @@ def generate_recommendations(forecast_df: pd.DataFrame, rules_df: pd.DataFrame) 
 # ==========================================
 if __name__ == "__main__":
     import sys
-    sys.path.append("../../") # Quick hack to import our other modules for local testing
+    sys.path.append("../../") 
     
     try:
         from src.qualitative.apriori_model import create_cart_matrix, generate_bundle_rules
@@ -67,12 +69,11 @@ if __name__ == "__main__":
             print("Simulating full pipeline integration...")
             raw_df = pd.read_csv(file_path)
             
-            # Get the rules
+            # Get the rules (Now with Random Forest success_probability included)
             cart_matrix = create_cart_matrix(raw_df)
             bundle_rules = generate_bundle_rules(cart_matrix, min_support=0.01)
             
-            # Create a mock forecast dataframe just to test the logic connection
-            # In production, this comes straight from Prophet
+            # Mock forecast data
             mock_forecast = pd.DataFrame({
                 'item_description': ['Level Promotion', 'Fast Track Promo'],
                 'predicted_quantity': [500, 200] 
