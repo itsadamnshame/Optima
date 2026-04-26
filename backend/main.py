@@ -13,7 +13,7 @@ import holidays as ph_holidays_lib
 # ==========================================
 from src.quantitative.hybrid_forecaster import preprocess_and_forecast_item
 from src.qualitative.apriori_model import create_cart_matrix, generate_bundle_rules
-from src.decision.rule_engine import generate_recommendations
+from src.decision.rule_engine import generate_categorized_recommendations
 
 app = FastAPI(title="OPTIMA Engine API - Unified Calendar Build")
 
@@ -181,8 +181,9 @@ async def trigger_optima_pipeline(
             asyncio.to_thread(run_qualitative_branch)
         )
 
-        final_advice = generate_recommendations(forecast_df, rules_df)
-
+        final_advice = generate_categorized_recommendations(forecast_df, rules_df)
+        print("DEBUG RECS:", final_advice)
+        
         return {
             "status": "success",
             "recommendations": final_advice,
