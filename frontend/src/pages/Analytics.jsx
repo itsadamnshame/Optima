@@ -12,13 +12,20 @@ import {
 
 import SpecialDaysManager from '../components/SpecialDaysManager';
 
-export default function Analytics() {
-  const [chartData, setChartData] = useState([]);
-  const [performanceMetrics, setPerformanceMetrics] = useState({});
+export default function Analytics({ 
+  setGlobalRecommendations, 
+  setGlobalLoading, 
+  setPersistedChart, 
+  setPersistedMetrics, 
+  setLastForecastTime,
+  existingChart,
+  existingMetrics 
+}) {
+  // 1. Initialize local state with existing data from the Global Vault
+  const [chartData, setChartData] = useState(existingChart || []);
+  const [performanceMetrics, setPerformanceMetrics] = useState(existingMetrics || {});
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
-  
-  // State for the Live Monitor
   const [calendarEvents, setCalendarEvents] = useState([]);
 
   // Selection States
@@ -27,7 +34,9 @@ export default function Analytics() {
   const [availableItems, setAvailableItems] = useState([]);
   const [selectedManualItems, setSelectedManualItems] = useState([]);
   const [endDate, setEndDate] = useState('');
-  const [showFilters, setShowFilters] = useState(true);
+  
+  // If we have data already, we might want to hide filters by default
+  const [showFilters, setShowFilters] = useState(chartData.length === 0);
 
   const fetchCalendar = async () => {
     try {
@@ -60,6 +69,7 @@ export default function Analytics() {
     }
     
     setIsGenerating(true);
+    if (setGlobalLoading) setGlobalLoading(true);
     setError('');
     
     try {
@@ -72,13 +82,26 @@ export default function Analytics() {
         }
       });
       
-      setChartData(response.data.chart_data);
-      setPerformanceMetrics(response.data.performance_metrics);
+      const data = response.data.chart_data;
+      const metrics = response.data.performance_metrics;
+      const recs = response.data.recommendations;
+
+      // Update Local State
+      setChartData(data);
+      setPerformanceMetrics(metrics);
+
+      // UPDATE GLOBAL VAULT (Persists across page switches)
+      setPersistedChart(data);
+      setPersistedMetrics(metrics);
+      setGlobalRecommendations(recs);
+      setLastForecastTime(new Date().getTime()); // Start the 10-minute timer
+      
       setShowFilters(false); 
     } catch (err) {
       setError("Analysis failed. Check your connection or date range.");
     } finally {
       setIsGenerating(false);
+      if (setGlobalLoading) setGlobalLoading(false);
     }
   };
 
@@ -129,20 +152,20 @@ export default function Analytics() {
       {showFilters && (
         <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Mode */}
+            {/* Mode Selection */}
             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">1. Forecast Mode</label>
               <div className="space-y-3">
                 <button onClick={() => setSelectionMode('top')} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectionMode === 'top' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
-                  <ListOrdered size={20} /><span className="font-bold text-sm">Top Velocity Items</span>
+                  <ListOrdered size={20} /><span className="font-bold text-sm text-center">Top Velocity Items</span>
                 </button>
                 <button onClick={() => setSelectionMode('manual')} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectionMode === 'manual' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
-                  <CheckSquare size={20} /><span className="font-bold text-sm">Manual SKU Selection</span>
+                  <CheckSquare size={20} /><span className="font-bold text-sm text-center">Manual SKU Selection</span>
                 </button>
               </div>
             </div>
 
-            {/* Scope */}
+            {/* Scope & Date */}
             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">2. Scope & Horizon</label>
               {selectionMode === 'top' ? (
@@ -163,7 +186,7 @@ export default function Analytics() {
               <input type="date" className="w-full border-slate-200 rounded-xl py-2.5 px-4 text-sm font-bold text-slate-600" onChange={(e) => setEndDate(e.target.value)} />
             </div>
 
-            {/* Execute */}
+            {/* Execute Button */}
             <div className="bg-indigo-600 p-6 rounded-3xl shadow-xl shadow-indigo-100 flex flex-col justify-center items-center text-center space-y-4">
                <div className="bg-indigo-500 p-3 rounded-full text-white animate-pulse"><Sparkles size={24}/></div>
                <div>
@@ -177,12 +200,10 @@ export default function Analytics() {
             </div>
           </div>
 
-          {/* THE CALENDAR BLOCK: UNCOUPLED HEIGHTS */}
+          {/* Calendar Logic Monitor */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"> 
-            {/* Left side: The long list */}
             <SpecialDaysManager onUpdate={fetchCalendar} />
 
-            {/* Right side: The Floating Monitor */}
             <div className="sticky top-6">
               <div className="bg-slate-900 p-10 rounded-[3rem] flex flex-col justify-between border-l-[12px] border-indigo-500 shadow-2xl relative overflow-hidden group min-h-[480px]">
                 <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
@@ -211,17 +232,12 @@ export default function Analytics() {
 
                 <div className="relative z-10 mt-12">
                     <div className="p-6 bg-indigo-600/10 rounded-3xl border border-indigo-500/20 backdrop-blur-sm">
-                      <p className="text-indigo-200 text-xs font-bold italic leading-relaxed">
-                          "Prophet will treat these {calendarEvents.length} entries as structural breaks, adjusting trends to neutralize holiday variance in core calculations."
+                      <p className="text-indigo-200 text-xs font-bold italic leading-relaxed text-center">
+                        "Prophet will treat these {calendarEvents.length} entries as structural breaks, adjusting trends to neutralize holiday variance in core calculations."
                       </p>
                     </div>
                     <div className="flex justify-between items-center mt-6 px-2">
-                      <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">Protocol v1.4</p>
-                      <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-slate-700 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-slate-700 rounded-full"></div>
-                      </div>
+                      <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest italic">Protocol v1.4</p>
                     </div>
                 </div>
               </div>
@@ -232,7 +248,7 @@ export default function Analytics() {
 
       {error && <div className="bg-rose-50 border border-rose-200 text-rose-600 p-5 rounded-2xl flex items-center gap-4 text-sm font-black"><AlertTriangle size={24} />{error}</div>}
 
-      {/* 2. RESULTS SECTION */}
+      {/* 2. RESULTS SECTION (PERSISTENT) */}
       {filteredData.length > 0 && (
         <div className="space-y-8 animate-in fade-in zoom-in-95 duration-700 pt-8 border-t border-slate-100">
           <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
@@ -261,11 +277,12 @@ export default function Analytics() {
           </div>
 
           <div className="space-y-10">
+            {/* MICRO CHART */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               <div className="lg:col-span-3 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
                 <div className="flex justify-between items-start mb-8">
                   <div><h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">SARIMA Component</h3><p className="text-sm text-slate-500 font-medium italic">High-Frequency Micro-Patterns (The Seasonal Heartbeat).</p></div>
-                  <div className="px-4 py-2 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl uppercase tracking-widest">Micro-Specialist</div>
+                  <div className="px-4 py-2 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl uppercase tracking-widest text-center">Micro-Specialist</div>
                 </div>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
@@ -292,11 +309,12 @@ export default function Analytics() {
               </div>
             </div>
 
+            {/* MACRO CHART */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               <div className="lg:col-span-3 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
                 <div className="flex justify-between items-start mb-8">
                   <div><h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">Prophet Component</h3><p className="text-sm text-slate-500 font-medium italic">Low-Frequency Structural Shifts (The Yearly Trend Skeleton).</p></div>
-                  <div className="px-4 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-xl uppercase tracking-widest">Macro-Specialist</div>
+                  <div className="px-4 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-xl uppercase tracking-widest text-center">Macro-Specialist</div>
                 </div>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
@@ -321,7 +339,7 @@ export default function Analytics() {
                         <p className="text-[11px] font-black text-slate-900 uppercase leading-tight tracking-tighter">Event Detected</p>
                       </div>
                     </div>
-                  )) : <div className="text-center h-40 flex flex-col justify-center opacity-20"><Calendar size={48} /><p className="text-[10px] font-black uppercase mt-2 italic">Clear Horizon</p></div>}
+                  )) : <div className="text-center h-40 flex flex-col justify-center opacity-20 text-center"><Calendar size={48} className="mx-auto" /><p className="text-[10px] font-black uppercase mt-2 italic">Clear Horizon</p></div>}
                 </div>
               </div>
             </div>

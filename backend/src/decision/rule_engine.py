@@ -1,94 +1,47 @@
 import pandas as pd
-from pathlib import Path
-import json
 
-def generate_recommendations(forecast_df: pd.DataFrame, rules_df: pd.DataFrame) -> list:
+def generate_recommendations(forecast_df, rules_df):
     """
-    The Brain of OPTIMA. Merges forecasts with association rules to generate plain-English advice.
+    Translates Quantitative forecasts and Qualitative rules into 
+    Leader-Follower tactical plays.
     """
-    print("Initializing Decision Engine...")
+    if forecast_df.empty or rules_df.empty:
+        return []
+
+    # 1. Identify the "Leaders" (Items the user just forecasted)
+    forecasted_items = forecast_df['item_description'].unique()
+    
+    # 2. Filter rules where the Antecedent (Leader) is in our forecast list
+    # We look for rules where the 'antecedents' contain our forecasted items
+    tactical_rules = rules_df[rules_df['antecedents'].apply(
+        lambda x: any(item in x for item in forecasted_items)
+    )].copy()
+
+    # 3. Calculate "Strategic Lift"
+    # We want to prioritize rules with Lift > 1 and high Confidence
+    tactical_rules = tactical_rules.sort_values(by=['lift', 'confidence'], ascending=False)
+
     recommendations = []
 
-    # ---------------------------------------------------------
-    # STRATEGY 1: The "Hero & Sidekick" Bundle (Apriori + Prophet)
-    # ---------------------------------------------------------
-    if not rules_df.empty:
-        # Filter for high-quality rules
-        strong_rules = rules_df[(rules_df['confidence'] > 0.5) & (rules_df['lift'] > 1.0)]
-
-        for index, rule in strong_rules.iterrows():
-            # UPDATED: Using 'antecedents' and 'consequents' to stay synced with apriori_model.py
-            hero_item = rule['antecedents']
-            sidekick_item = rule['consequents']
-            
-            # Check if the hero item was forecasted in the quantitative branch
-            hero_forecasts = forecast_df[forecast_df['item_description'] == hero_item]
-            
-            if not hero_forecasts.empty:
-                total_projected = int(hero_forecasts['predicted_quantity'].sum())
-                if total_projected > 0:
-                    recommendations.append({
-                        "type": "Bundle Strategy",
-                        "target_item": hero_item,
-                        "action": f"Bundle with '{sidekick_item}'",
-                        "justification": f"'{hero_item}' is projected to sell {total_projected} units soon. Apriori math shows bundling it with '{sidekick_item}' increases conversion by {round(rule['lift'], 2)}x."
-                    })
-
-    # ---------------------------------------------------------
-    # STRATEGY 2: High Volume Alerts (Prophet Only)
-    # Provides the top forecasted items regardless of bundling.
-    # ---------------------------------------------------------
-    if not forecast_df.empty:
-        # Group the forecasts by item to get total upcoming volume
-        upcoming_totals = forecast_df.groupby('item_description')['predicted_quantity'].sum().sort_values(ascending=False)
+    for _, rule in tactical_rules.iterrows():
+        leader = list(rule['antecedents'])[0]
+        follower = list(rule['consequents'])[0]
         
-        for item, volume in upcoming_totals.head(3).items(): # Grab the top 3
-            if volume > 0:
-                recommendations.append({
-                    "type": "Stock & Promotion Alert",
-                    "target_item": item,
-                    "action": "Ensure high stock levels and run standard top-of-funnel ads.",
-                    "justification": f"Time-series AI projects a high movement of {int(volume)} units over the next 4 weeks based on historical seasonality."
-                })
+        # Find the specific forecast for this leader to provide context
+        leader_forecast = forecast_df[forecast_df['item_description'] == leader]
+        avg_predicted = leader_forecast['predicted_quantity'].mean() if not leader_forecast.empty else 0
 
-    return recommendations
+        # Create the "Play"
+        play = {
+            "strategy_name": f"The {leader.split()[-1]} Velocity Multiplier",
+            "leader": leader,
+            "follower": follower,
+            "logic": f"When {leader} sells, there is a {round(rule['confidence']*100, 1)}% chance the customer wants {follower}.",
+            "lift_score": round(rule['lift'], 2),
+            "support": round(rule['support'], 4),
+            "predicted_leader_volume": round(avg_predicted, 0),
+            "action_plan": f"Bundle {follower} as a 'Suggested Add-on' for {leader} during peak forecast windows."
+        }
+        recommendations.append(play)
 
-# ==========================================
-# LOCAL TESTING BLOCK
-# ==========================================
-if __name__ == "__main__":
-    import sys
-    sys.path.append("../../") 
-    
-    try:
-        from src.qualitative.apriori_model import create_cart_matrix, generate_bundle_rules
-        
-        file_path = Path("../../backend_storage/base_cleaned_sales.csv")
-        
-        if file_path.exists():
-            print("Simulating full pipeline integration...")
-            raw_df = pd.read_csv(file_path)
-            
-            # Get the rules (Now with Random Forest success_probability included)
-            cart_matrix = create_cart_matrix(raw_df)
-            bundle_rules = generate_bundle_rules(cart_matrix, min_support=0.01)
-            
-            # Mock forecast data
-            mock_forecast = pd.DataFrame({
-                'item_description': ['Level Promotion', 'Fast Track Promo'],
-                'predicted_quantity': [500, 200] 
-            })
-            
-            # Generate the final output
-            final_advice = generate_recommendations(mock_forecast, bundle_rules)
-            
-            print("\n==============================================")
-            print("🧠 OPTIMA DECISION ENGINE OUTPUT:")
-            print("==============================================")
-            print(json.dumps(final_advice, indent=4))
-            
-        else:
-            print("Data not found.")
-            
-    except ImportError as e:
-        print(f"Import error during local test: {e}")
+    return recommendations[:15] # Return top 15 tactical plays

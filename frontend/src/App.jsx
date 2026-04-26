@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Database, BarChart2, Lightbulb, Zap } from 'lucide-react';
 
-// We will build these three components next!
 import DataIngestion from './pages/DataIngestion';
 import Analytics from './pages/Analytics';
 import Playbook from './pages/Playbook';
 
-// A helper component to make our navigation links look clickable and active
+// Helper component for navigation styling
 function NavLink({ to, icon: Icon, children }) {
   const location = useLocation();
   const isActive = location.pathname === to;
@@ -28,6 +27,27 @@ function NavLink({ to, icon: Icon, children }) {
 }
 
 function App() {
+  // --- GLOBAL PERSISTENCE STATES ---
+  const [recommendations, setRecommendations] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Forecast Persistence (Module 2)
+  const [persistedChart, setPersistedChart] = useState([]);
+  const [persistedMetrics, setPersistedMetrics] = useState({});
+  const [lastForecastTime, setLastForecastTime] = useState(null);
+
+  // Helper to check if data is still valid (10-minute rule)
+  const getValidData = (data, fallback) => {
+    if (!lastForecastTime) return fallback;
+    const now = new Date().getTime();
+    const tenMinutes = 10 * 60 * 1000;
+    
+    if (now - lastForecastTime > tenMinutes) {
+      return fallback; // Data expired
+    }
+    return data;
+  };
+
   return (
     <Router>
       <div className="flex h-screen bg-gray-50 font-sans text-gray-800">
@@ -57,8 +77,34 @@ function App() {
         <main className="flex-1 overflow-y-auto p-8">
           <Routes>
             <Route path="/" element={<DataIngestion />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/playbook" element={<Playbook />} />
+            
+            <Route 
+              path="/analytics" 
+              element={
+                <Analytics 
+                  // Setters to save data to global state
+                  setGlobalRecommendations={setRecommendations} 
+                  setGlobalLoading={setIsGenerating}
+                  setPersistedChart={setPersistedChart}
+                  setPersistedMetrics={setPersistedMetrics}
+                  setLastForecastTime={setLastForecastTime}
+                  
+                  // Getters to retrieve existing data
+                  existingChart={getValidData(persistedChart, [])}
+                  existingMetrics={getValidData(persistedMetrics, {})}
+                />
+              } 
+            />
+            
+            <Route 
+              path="/playbook" 
+              element={
+                <Playbook 
+                  recommendations={getValidData(recommendations, [])} 
+                  isGenerating={isGenerating} 
+                />
+              } 
+            />
           </Routes>
         </main>
 
