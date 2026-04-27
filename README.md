@@ -1,10 +1,10 @@
-# 🚀 Optima AI - Smart Merchandising Platform
+# 🚀 Optima - Smart Merchandising Platform
 
-A state-of-the-art AI-powered merchandising platform that bridges the gap between raw sales data and strategic retail execution. Optima AI automates complex data analysis, forecast modeling, and promotional planning, enabling retailers to maximize sales and minimize waste.
+A state-of-the-art merchandising platform that bridges the gap between raw sales data and strategic retail execution. Optima automates complex data analysis, forecast modeling, and promotional planning, enabling retailers to maximize sales and minimize waste.
 
 ## ✨ Key Features
 
-### 1. 🔮 AI Sales Forecasting
+### 1. 🔮 Sales Forecasting
 - **Advanced Modeling**: Utilizes DeepAR (Deep Autoregressive Forecasting) for highly accurate time-series predictions.
 - **Contextual Awareness**: Incorporates external factors like holidays, promotions, and local events into forecasts.
 - **Leaderboard System**: Identifies top-performing and underperforming products to guide stocking decisions.
@@ -48,7 +48,7 @@ A state-of-the-art AI-powered merchandising platform that bridges the gap betwee
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd OptimaAI
+   cd Optima
    ```
 
 2. **Backend Setup**
