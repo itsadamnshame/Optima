@@ -8,6 +8,10 @@ backend_storage/
 *.xlsx
 *.xls
 *.json
+!package.json
+!package-lock.json
+!frontend/package.json
+!frontend/package-lock.json
 # If you need to keep the folder structures but ignore the files inside them, 
 # you can use these two lines instead of the folder names above:
 # raw_sales_data/*
