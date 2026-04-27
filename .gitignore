@@ -32,6 +32,7 @@ venv/
 .venv/
 env/
 .env_python/
+temp_venv/
 
 # Jupyter Notebooks (Experiments folder)
 .ipynb_checkpoints/
