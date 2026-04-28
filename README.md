@@ -1,15 +1,15 @@
-# 🚀 Optima - Smart Merchandising Platform
+# Optima - Smart Merchandising Platform
 
 A state-of-the-art merchandising platform that bridges the gap between raw sales data and strategic retail execution. Optima automates complex data analysis, forecast modeling, and promotional planning, enabling retailers to maximize sales and minimize waste.
 
-## ✨ Key Features
+## Key Features
 
-### 1. 🔮 Sales Forecasting
+### 1. Sales Forecasting
 - **Advanced Modeling**: Utilizes DeepAR (Deep Autoregressive Forecasting) for highly accurate time-series predictions.
 - **Contextual Awareness**: Incorporates external factors like holidays, promotions, and local events into forecasts.
 - **Leaderboard System**: Identifies top-performing and underperforming products to guide stocking decisions.
 
-### 2. 🛒 Product Recommendation Engine
+### 2. Product Recommendation Engine
 - **Association Rule Mining**: Leverages the Apriori algorithm to discover hidden relationships between products.
 - **Strategic Bundling**: Suggests optimal product pairings for cross-selling and promotions.
 - **Performance Categorization**:
@@ -17,12 +17,12 @@ A state-of-the-art merchandising platform that bridges the gap between raw sales
     - **High-Affinity Pair**: Capitalizes on strong customer behavior patterns.
     - **Stock Clearout**: Helps move slow-moving inventory.
 
-### 3. 📊 Interactive Analytics Dashboard
+### 3. Interactive Analytics Dashboard
 - **Visual Leaderboard**: Interactive charts for product performance tracking.
 - **Playlist Management**: A dynamic "What-If" scenario planner to test promotional strategies before execution.
 - **Detailed Analytics View**: Deep dive into specific products with historical trends and confidence intervals.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 - **Python 3.10+**
@@ -37,7 +37,7 @@ A state-of-the-art merchandising platform that bridges the gap between raw sales
 - **Recharts**: Charting and visualization.
 - **Vite**: Build tool.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v18 or higher)
