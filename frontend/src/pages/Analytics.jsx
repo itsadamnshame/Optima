@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 
 import SpecialDaysManager from '../components/SpecialDaysManager';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Analytics({ 
   setGlobalRecommendations, 
@@ -21,6 +22,7 @@ export default function Analytics({
   existingChart,
   existingMetrics 
 }) {
+  const { token } = useAuth();
   // 1. Initialize local state with existing data from the Global Vault
   const [chartData, setChartData] = useState(existingChart || []);
   const [performanceMetrics, setPerformanceMetrics] = useState(existingMetrics || {});
@@ -79,7 +81,8 @@ export default function Analytics({
           mode: selectionMode,
           top_n: topN,
           selected_items: selectedManualItems.join(',')
-        }
+        },
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
       const data = response.data.chart_data;

@@ -8,6 +8,9 @@ backend_storage/
 *.xlsx
 *.xls
 *.json
+*.db
+*.sqlite
+*.sqlite3
 !package.json
 !package-lock.json
 !frontend/package.json

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Calendar, Plus, Trash2, Info, Loader2, 
-  Search, FilterX, CalendarDays 
+  Search, FilterX, CalendarDays, Lock
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function SpecialDaysManager({ onUpdate }) {
+  const { token, role } = useAuth();
   const [events, setEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [newName, setNewName] = useState('');
@@ -33,7 +35,10 @@ export default function SpecialDaysManager({ onUpdate }) {
     if (!newName || !newDate) return;
     setLoading(true);
     try {
-      await axios.post('http://localhost:8000/api/add-event', { name: newName, date: newDate });
+      await axios.post('http://localhost:8000/api/add-event', 
+        { name: newName, date: newDate },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
       setMsg({ type: 'success', text: 'Day added to Specialist Engine!' });
       setNewName('');
       setNewDate('');
@@ -48,7 +53,9 @@ export default function SpecialDaysManager({ onUpdate }) {
 
   const handleDelete = async (date) => {
     try {
-      await axios.delete(`http://localhost:8000/api/delete-event/${date}`);
+      await axios.delete(`http://localhost:8000/api/delete-event/${date}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       await fetchEvents();
     } catch (err) {
       console.error("Delete failed");
@@ -78,36 +85,42 @@ export default function SpecialDaysManager({ onUpdate }) {
       </div>
 
       <div className="p-8 space-y-6 flex-1 flex flex-col bg-white">
-        {/* INPUT FORM */}
-        <form onSubmit={handleAdd} className="grid grid-cols-1 gap-3 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
-          <input 
-            type="text" 
-            placeholder="Event Name (e.g. Founder's Day)" 
-            className="w-full border-transparent bg-white rounded-xl py-3 px-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <div className="flex gap-2">
+        {/* INPUT FORM OR LOCK BANNER */}
+        {role === 'ADMIN' ? (
+          <form onSubmit={handleAdd} className="grid grid-cols-1 gap-3 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
             <input 
-              type="date" 
-              className="flex-1 border-transparent bg-white rounded-xl py-3 px-4 text-sm font-bold shadow-sm"
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
+              type="text" 
+              placeholder="Event Name (e.g. Founder's Day)" 
+              className="w-full border-transparent bg-white rounded-xl py-3 px-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
             />
-            <button 
-              type="submit"
-              disabled={loading}
-              className="bg-indigo-600 text-white px-6 rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <Plus size={20} className="stroke-[3px]" />}
-            </button>
+            <div className="flex gap-2">
+              <input 
+                type="date" 
+                className="flex-1 border-transparent bg-white rounded-xl py-3 px-4 text-sm font-bold shadow-sm"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+              />
+              <button 
+                type="submit"
+                disabled={loading}
+                className="bg-indigo-600 text-white px-6 rounded-xl hover:bg-indigo-700 disabled:bg-slate-200 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center"
+              >
+                {loading ? <Loader2 className="animate-spin" size={20} /> : <Plus size={20} className="stroke-[3px]" />}
+              </button>
+            </div>
+            {msg.text && (
+              <p className={`text-[10px] font-black uppercase text-center mt-1 italic ${msg.type === 'error' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                {msg.text}
+              </p>
+            )}
+          </form>
+        ) : (
+          <div className="flex items-center justify-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-slate-500 text-xs font-bold uppercase tracking-widest text-center">
+            <Lock size={16} /> Edit Access Restricted to Admins
           </div>
-          {msg.text && (
-            <p className={`text-[10px] font-black uppercase text-center mt-1 italic ${msg.type === 'error' ? 'text-rose-500' : 'text-emerald-500'}`}>
-              {msg.text}
-            </p>
-          )}
-        </form>
+        )}
 
         {/* SEARCH BAR */}
         <div className="relative group">
@@ -134,13 +147,15 @@ export default function SpecialDaysManager({ onUpdate }) {
                   <p className="text-xs font-black text-slate-700 group-hover:text-indigo-700 transition-colors uppercase italic">{ev.name}</p>
                 </div>
               </div>
-              <button 
-                onClick={() => handleDelete(ev.date)}
-                className="p-2 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                title="Remove from Engine"
-              >
-                <Trash2 size={20} />
-              </button>
+              {role === 'ADMIN' && (
+                <button 
+                  onClick={() => handleDelete(ev.date)}
+                  className="p-2 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                  title="Remove from Engine"
+                >
+                  <Trash2 size={20} />
+                </button>
+              )}
             </div>
           )) : (
             <div className="flex flex-col items-center justify-center py-16 text-slate-300">
