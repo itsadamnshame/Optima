@@ -32,37 +32,82 @@ def preprocess_and_forecast_item(item_df, forecast_end):
 
 def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
     """
-    The Pure-Database Hybrid Specialist:
-    Only acknowledges special days (Holidays/Promos) that exist in the
-    local optima.db 'custom_events' table.
+    The Pure-Database Hybrid Specialist with Two-Pass Holdout Validation.
+    Pass 1 measures true out-of-sample accuracy on a dynamic holdout set.
+    Pass 2 trains on 100% of data to maximize future prediction accuracy.
     """
     
     # --- STAGE 1: UNIFIED CALENDAR RETRIEVAL ---
-    # We fetch ALL events (Seeded PH Holidays + User Custom Promos)
     db_engine = create_engine("sqlite:///./optima.db")
     unified_holidays_df = pd.DataFrame()
     
     try:
         with db_engine.connect() as conn:
-            # Query the unified table
             res = conn.execute(text("SELECT event_name as holiday, event_date as ds FROM custom_events")).fetchall()
             if res:
                 unified_holidays_df = pd.DataFrame(res, columns=['holiday', 'ds'])
                 unified_holidays_df['ds'] = pd.to_datetime(unified_holidays_df['ds'])
-                # lower_window=0 (day of), upper_window=1 (next day spillover)
                 unified_holidays_df['lower_window'] = 0
                 unified_holidays_df['upper_window'] = 1 
     except Exception as e:
         print(f"Calendar Fetch Warning: {e}")
 
-    # --- STAGE 2: PROPHET (Macro Specialist) ---
-    # The model now only reacts to the database-driven holiday dataframe
-    model_p = Prophet(
-        daily_seasonality=True, 
-        yearly_seasonality=True,
-        holidays=unified_holidays_df if not unified_holidays_df.empty else None
-    )
-    # We NO LONGER call add_country_holidays('PH') here because the DB handles it.
+    prophet_kwargs = {
+        'daily_seasonality': True,
+        'yearly_seasonality': True,
+        'holidays': unified_holidays_df if not unified_holidays_df.empty else None
+    }
+
+    # --- STAGE 2: PASS 1 - HOLDOUT VALIDATION (Dynamic Bounded Split) ---
+    if len(df) > 30:
+        # Dynamic holdout: match user's requested forecast horizon, but clamp it between 30 and 90 days.
+        target_test_size = forecast_days
+        test_size = max(30, min(target_test_size, 90))
+        
+        # Absolute safety net: never hold out more than 20% of the dataset
+        max_allowed_by_data = int(len(df) * 0.2)
+        test_size = min(test_size, max_allowed_by_data)
+        
+        # Ensure test_size is at least 1 (in edge case where dataset is exactly 30 days)
+        test_size = max(1, test_size)
+
+        train_df = df.iloc[:-test_size].copy()
+        test_df = df.iloc[-test_size:].copy()
+
+        # Validation Prophet
+        val_model_p = Prophet(**prophet_kwargs)
+        val_model_p.fit(train_df)
+        
+        val_future = val_model_p.make_future_dataframe(periods=test_size)
+        val_forecast_p = val_model_p.predict(val_future)
+        
+        val_prophet_train_fit = val_forecast_p.iloc[:len(train_df)]['yhat'].values
+        val_residuals = train_df['y'].values - val_prophet_train_fit
+
+        # Validation SARIMA
+        try:
+            val_model_s = SARIMAX(val_residuals, order=(1, 1, 1), seasonal_order=(1, 1, 1, 7))
+            val_res_s = val_model_s.fit(disp=False)
+            val_sarima_test_correction = val_res_s.get_forecast(steps=test_size).predicted_mean
+        except Exception:
+            val_sarima_test_correction = np.zeros(test_size)
+
+        # Out-Of-Sample Metrics
+        val_prophet_test_fit = val_forecast_p.iloc[-test_size:]['yhat'].values
+        val_combined_test_pred = val_prophet_test_fit + val_sarima_test_correction
+        
+        y_true_test = test_df['y'].values
+        y_pred_test = np.maximum(0, val_combined_test_pred)
+        
+        mae = mean_absolute_error(y_true_test, y_pred_test)
+        rmse = np.sqrt(mean_squared_error(y_true_test, y_pred_test))
+        mape = mean_absolute_percentage_error(y_true_test + 1, y_pred_test + 1)
+        accuracy_score = max(0, (1 - mape) * 100)
+    else:
+        mae, rmse, mape, accuracy_score = 0.0, 0.0, 0.0, 0.0
+
+    # --- STAGE 3: PASS 2 - FULL FORECAST (100% Data) ---
+    model_p = Prophet(**prophet_kwargs)
     model_p.fit(df)
     
     future = model_p.make_future_dataframe(periods=forecast_days)
@@ -71,44 +116,22 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
     prophet_historical_fit = forecast_p.iloc[:len(df)]['yhat'].values
     residuals = df['y'].values - prophet_historical_fit
 
-    # --- STAGE 3: SARIMA (Pattern Specialist) ---
     try:
         model_s = SARIMAX(residuals, order=(1, 1, 1), seasonal_order=(1, 1, 1, 7))
         res_s = model_s.fit(disp=False)
         sarima_correction = res_s.get_forecast(steps=forecast_days).predicted_mean
-        sarima_historical_fit = res_s.fittedvalues
     except Exception:
         sarima_correction = np.zeros(forecast_days)
-        sarima_historical_fit = np.zeros(len(df))
 
-    # --- STAGE 4: ACCURACY AUDIT ---
-    combined_historical_fit = prophet_historical_fit + sarima_historical_fit
-    y_true = df['y'].values
-    y_pred = combined_historical_fit
-    
-    mae = mean_absolute_error(y_true, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    mape = mean_absolute_percentage_error(y_true + 1, y_pred + 1) 
-    accuracy_score = max(0, (1 - mape) * 100)
-
-    # --- STAGE 5: UI AUDIT MASKING ---
+    # --- STAGE 4: UI AUDIT MASKING ---
     future_slice = forecast_p.tail(forecast_days).copy()
     prophet_future = future_slice['yhat'].values
     final_combined = prophet_future + sarima_correction
 
-    # Create a quick set for fast lookup in the UI list
     db_event_dates = set(unified_holidays_df['ds'].dt.strftime('%Y-%m-%d')) if not unified_holidays_df.empty else set()
+    special_days_mask = [1 if d.strftime('%Y-%m-%d') in db_event_dates else 0 for d in future_slice['ds']]
 
-    special_days_mask = []
-    for d in future_slice['ds']:
-        date_str = d.strftime('%Y-%m-%d')
-        # If it's in our DB, mark it as 1 for the UI Specialist Audit
-        if date_str in db_event_dates:
-            special_days_mask.append(1)
-        else:
-            special_days_mask.append(0)
-
-    # --- STAGE 6: DATA SYNTHESIS ---
+    # --- STAGE 5: DATA SYNTHESIS ---
     forecast_dates = future_slice['ds'].dt.strftime('%Y-%m-%d').values
     
     result_df = pd.DataFrame({
