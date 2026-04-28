@@ -35,7 +35,8 @@ def apply_random_forest_ranking(rules_df: pd.DataFrame) -> pd.DataFrame:
     print("Training Random Forest to rank bundle quality...")
 
     # 1. Feature Selection
-    X = rules_df[['support', 'confidence', 'lift']]
+    # Using physical (size) and financial (cost) features to break mathematical redundancy
+    X = rules_df[['support', 'confidence', 'lift', 'bundle_size', 'bundle_total_cost']]
 
     # 2. Synthetic Labeling (Target Y)
     # We define 'Success' as the top 30% of rules based on the lift-confidence product
@@ -56,10 +57,10 @@ def apply_random_forest_ranking(rules_df: pd.DataFrame) -> pd.DataFrame:
     
     return final_df
 
-def generate_bundle_rules(basket: pd.DataFrame, min_support: float = 0.001) -> pd.DataFrame:
+def generate_bundle_rules(basket: pd.DataFrame, raw_df: pd.DataFrame, min_support: float = 0.001) -> pd.DataFrame:
     """
-    Runs Apriori and calculates bundle sizes (2, 3, 4+) before 
-    ranking with Random Forest.
+    Runs Apriori and calculates physical (bundle sizes) and financial (bundle costs) 
+    features before ranking with Random Forest.
     """
     print(f"Running Apriori algorithm (min_support={min_support})...")
     
@@ -77,17 +78,25 @@ def generate_bundle_rules(basket: pd.DataFrame, min_support: float = 0.001) -> p
     if rules.empty:
         return pd.DataFrame()
 
-    # 3. CALCULATE BUNDLE SIZE (The "Logic" for your new feature)
-    # Bundle Size = Number of items in Antecedents + Number of items in Consequents
+    # 3. CALCULATE BUNDLE SIZE
     rules['bundle_size'] = rules['antecedents'].apply(lambda x: len(x)) + \
                            rules['consequents'].apply(lambda x: len(x))
 
-    # 4. Convert frozensets to readable strings for the UI
+    # 4. CALCULATE FINANCIAL COST
+    item_price_map = raw_df.groupby('item_description')['unit_cost'].mean().to_dict()
+    
+    def get_bundle_cost(item_set):
+        return sum([item_price_map.get(item, 0.0) for item in item_set])
+        
+    rules['bundle_total_cost'] = rules['antecedents'].apply(get_bundle_cost) + \
+                                 rules['consequents'].apply(get_bundle_cost)
+
+    # 5. Convert frozensets to readable strings for the UI
     rules['antecedents_list'] = rules['antecedents'].apply(lambda x: ", ".join(list(x)))
     rules['consequents_list'] = rules['consequents'].apply(lambda x: ", ".join(list(x)))
     
     # Select clean columns for the Ranker
-    clean_rules = rules[['antecedents_list', 'consequents_list', 'support', 'confidence', 'lift', 'bundle_size']].copy()
+    clean_rules = rules[['antecedents_list', 'consequents_list', 'support', 'confidence', 'lift', 'bundle_size', 'bundle_total_cost']].copy()
     
     # Rename for compatibility with the existing ranker
     clean_rules = clean_rules.rename(columns={
@@ -110,7 +119,7 @@ if __name__ == "__main__":
         raw_df = pd.read_csv(file_path)
         cart_matrix = create_cart_matrix(raw_df)
         
-        bundle_rules = generate_bundle_rules(cart_matrix, min_support=0.01)
+        bundle_rules = generate_bundle_rules(cart_matrix, raw_df, min_support=0.01)
         
         if not bundle_rules.empty:
             print("\nTOP 5 STRATEGIC BUNDLE RECOMMENDATIONS:")

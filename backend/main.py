@@ -12,7 +12,7 @@ import holidays as ph_holidays_lib
 # CUSTOM MODULE IMPORTS
 # ==========================================
 from src.quantitative.hybrid_forecaster import preprocess_and_forecast_item
-from src.qualitative.apriori_model import create_cart_matrix, generate_bundle_rules
+from src.qualitative.bundle_analyzer import create_cart_matrix, generate_bundle_rules
 from src.decision.rule_engine import generate_categorized_recommendations
 
 app = FastAPI(title="OPTIMA Engine API - Unified Calendar Build")
@@ -174,7 +174,7 @@ async def trigger_optima_pipeline(
 
         def run_qualitative_branch():
             cart_matrix = create_cart_matrix(raw_df)
-            return generate_bundle_rules(cart_matrix, min_support=0.001)
+            return generate_bundle_rules(cart_matrix, raw_df, min_support=0.001)
 
         forecast_df, rules_df = await asyncio.gather(
             asyncio.to_thread(run_quantitative_branch),
