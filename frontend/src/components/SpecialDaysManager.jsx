@@ -68,9 +68,24 @@ export default function SpecialDaysManager({ onUpdate }) {
   );
 
   return (
-    <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden flex flex-col h-full min-h-[550px]">
+    <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden flex flex-col h-[550px]">
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #6366f1;
+        }
+      `}</style>
       {/* HEADER */}
-      <div className="bg-indigo-600 p-8 text-white relative overflow-hidden">
+      <div className="bg-indigo-600 p-6 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 opacity-10">
             <CalendarDays size={120} />
         </div>
@@ -84,7 +99,7 @@ export default function SpecialDaysManager({ onUpdate }) {
         </div>
       </div>
 
-      <div className="p-8 space-y-6 flex-1 flex flex-col bg-white">
+      <div className="p-6 space-y-4 flex-1 flex flex-col bg-white overflow-hidden">
         {/* INPUT FORM OR LOCK BANNER */}
         {role === 'ADMIN' ? (
           <form onSubmit={handleAdd} className="grid grid-cols-1 gap-3 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">

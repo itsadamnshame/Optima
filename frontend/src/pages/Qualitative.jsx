@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Trophy, Target, Zap, Activity, Package, TrendingUp, HelpCircle } from 'lucide-react';
+import { Trophy, Target, Zap, Activity, Package, TrendingUp, HelpCircle, Calculator } from 'lucide-react';
+import BundleCalculator from '../components/BundleCalculator';
 
 export default function Playbook({ recommendations = {}, isGenerating }) {
   // Complexity Toggle: Defaulting to 2-item bundles
   const [activeSize, setActiveSize] = useState(2);
+  const [view, setView] = useState('recs'); // 'recs' or 'simulator'
 
   // Filters the raw data pool by the selected bundle size
   const filterBySize = (data) => {
@@ -100,33 +102,50 @@ export default function Playbook({ recommendations = {}, isGenerating }) {
             <Trophy className="text-amber-500" size={40} />
             Strategic Playbook
           </h2>
-          <p className="text-slate-500 font-medium ml-12 italic text-sm">
-            AI-Generated Tactical Bundles based on Leader-Follower Affinity.
-          </p>
-        </div>
-
-        {/* BUNDLE SIZE SELECTOR */}
-        <div className="flex flex-col items-end gap-2">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Bundle Complexity Level</span>
-          <div className="bg-white p-1.5 rounded-2xl border border-slate-200 flex gap-1 shadow-sm">
-            {[2, 3, 4].map((size) => (
-              <button
-                key={size}
-                onClick={() => setActiveSize(size)}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSize === size
-                    ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                    : 'text-slate-400 hover:bg-slate-50'
-                  }`}
-              >
-                {size}-Item
-              </button>
-            ))}
+          <div className="flex gap-4 ml-12 mt-4">
+            <button 
+              onClick={() => setView('recs')}
+              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'recs' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'}`}
+            >
+              <Trophy size={14} /> AI Recommendations
+            </button>
+            <button 
+              onClick={() => setView('simulator')}
+              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'simulator' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'}`}
+            >
+              <Calculator size={14} /> Bundle Simulator
+            </button>
           </div>
         </div>
+
+        {/* BUNDLE SIZE SELECTOR (Only show for recs) */}
+        {view === 'recs' && (
+          <div className="flex flex-col items-end gap-2">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Bundle Complexity Level</span>
+            <div className="bg-white p-1.5 rounded-2xl border border-slate-200 flex gap-1 shadow-sm">
+              {[2, 3, 4].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => setActiveSize(size)}
+                  className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSize === size
+                      ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                      : 'text-slate-400 hover:bg-slate-50'
+                    }`}
+                >
+                  {size}-Item
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="max-w-5xl mx-auto">
-        {isGenerating ? (
+        {view === 'simulator' ? (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <BundleCalculator />
+          </div>
+        ) : isGenerating ? (
           <div className="bg-white rounded-[3rem] p-24 border border-slate-100 flex flex-col items-center justify-center space-y-6 shadow-sm">
             <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
             <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-[11px]">Identifying High-Dimensional Patterns...</p>

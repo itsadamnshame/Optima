@@ -204,11 +204,11 @@ export default function Analytics({
           </div>
 
           {/* Calendar Logic Monitor */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"> 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> 
             <SpecialDaysManager onUpdate={fetchCalendar} />
 
             <div className="sticky top-6">
-              <div className="bg-slate-900 p-10 rounded-[3rem] flex flex-col justify-between border-l-[12px] border-indigo-500 shadow-2xl relative overflow-hidden group min-h-[480px]">
+              <div className="bg-slate-900 p-10 rounded-[3rem] flex flex-col justify-between border-l-[12px] border-indigo-500 shadow-2xl relative overflow-hidden group h-[550px]">
                 <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
 
                 <div className="relative z-10">
