@@ -16,7 +16,7 @@ import holidays as ph_holidays_lib
 # CUSTOM MODULE IMPORTS
 # ==========================================
 from src.quantitative.hybrid_forecaster import preprocess_and_forecast_item
-from src.qualitative.bundle_analyzer import create_cart_matrix, generate_bundle_rules
+from src.qualitative.bundle_analyzer import create_cart_matrix, generate_bundle_rules, analyze_custom_bundle
 from src.decision.rule_engine import generate_categorized_recommendations
 
 app = FastAPI(title="OPTIMA Engine API - Unified Calendar Build")
@@ -490,8 +490,45 @@ async def process_sales_data(file: UploadFile = File(...), user=Depends(get_curr
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
-# OPTIMA HYBRID PIPELINE
+# CUSTOM BUNDLE ANALYSIS
 # ==========================================
+class BundleAnalysisRequest(BaseModel):
+    items: list
+
+@app.get("/api/get-items")
+async def get_all_items(user=Depends(get_current_user)):
+    try:
+        inspector = inspect(engine)
+        if not inspector.has_table("sales_transactions"):
+            return {"items": []}
+        
+        raw_df = pd.read_sql("SELECT DISTINCT item_description FROM sales_transactions ORDER BY item_description", engine)
+        return {"items": raw_df['item_description'].tolist()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/analyze-bundle")
+async def handle_custom_bundle_analysis(data: BundleAnalysisRequest, user=Depends(get_current_user)):
+    try:
+        inspector = inspect(engine)
+        if not inspector.has_table("sales_transactions"):
+            raise HTTPException(status_code=400, detail="Please upload sales data first.")
+
+        raw_df = pd.read_sql("SELECT * FROM sales_transactions", engine)
+        cart_matrix = create_cart_matrix(raw_df)
+        
+        results = analyze_custom_bundle(cart_matrix, data.items, raw_df)
+        
+        if "error" in results:
+            raise HTTPException(status_code=400, detail=results["error"])
+            
+        return {"status": "success", "results": results}
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/generate-recommendations")
 async def trigger_optima_pipeline(
     end_date: str = Query(...),

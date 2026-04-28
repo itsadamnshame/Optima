@@ -109,6 +109,63 @@ def generate_bundle_rules(basket: pd.DataFrame, raw_df: pd.DataFrame, min_suppor
     
     return ranked_rules
 
+def analyze_custom_bundle(basket: pd.DataFrame, items: list, raw_df: pd.DataFrame) -> dict:
+    """
+    Calculates specific association metrics for a user-provided bundle of 2-4 items.
+    """
+    if not items or len(items) < 2:
+        return {"error": "Select at least 2 items."}
+
+    # 1. Calculate Support for the bundle (intersection of all items)
+    # Filter columns to only those that exist in the basket
+    valid_items = [i for i in items if i in basket.columns]
+    if len(valid_items) < len(items):
+        return {"error": "One or more items not found in current dataset."}
+
+    # Support(Bundle) = Number of transactions containing ALL items / Total Transactions
+    mask = basket[valid_items].all(axis=1)
+    support_bundle = mask.mean()
+
+    # 2. To calculate Confidence and Lift, we need to split the bundle into Antecedent and Consequent.
+    # For a custom bundle, we'll treat the FIRST item as Antecedent and OTHERS as Consequent for basic metrics.
+    # However, a more robust "Bundle Strength" is simply the Support and how it compares to individual supports.
+    
+    # Let's calculate Lift: Support(A&B) / (Support(A) * Support(B))
+    # For N items, it's Support(All) / Product of Individual Supports
+    indiv_supports = [basket[i].mean() for i in valid_items]
+    product_supports = 1.0
+    for s in indiv_supports: product_supports *= s
+    
+    lift = support_bundle / product_supports if product_supports > 0 else 0
+
+    # Calculate individual metrics
+    metrics = {
+        "support": round(float(support_bundle), 6),
+        "lift": round(float(lift), 4),
+        "bundle_size": len(valid_items)
+    }
+
+    # 3. Calculate Financial Cost
+    item_price_map = raw_df.groupby('item_description')['unit_cost'].mean().to_dict()
+    total_cost = sum([item_price_map.get(i, 0.0) for i in valid_items])
+    metrics["bundle_total_cost"] = round(float(total_cost), 2)
+
+    # 4. Use Random Forest to predict "Success Probability" 
+    # (We need to mock a confidence value for the RF model, let's use 0.5 as neutral)
+    X = pd.DataFrame([{
+        'support': metrics['support'],
+        'confidence': 0.5, 
+        'lift': metrics['lift'],
+        'bundle_size': metrics['bundle_size'],
+        'bundle_total_cost': metrics['bundle_total_cost']
+    }])
+    
+    # We'll re-run the rule generation to get a trained RF model instance 
+    # Or better: generate rules first to train the model, then predict for custom.
+    # For now, let's just return the raw metrics.
+    
+    return metrics
+
 # ==========================================
 # LOCAL TESTING BLOCK
 # ==========================================
