@@ -1,6 +1,7 @@
 import pandas as pd
 from mlxtend.frequent_patterns import apriori, association_rules
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
 from pathlib import Path
 import warnings
 
@@ -11,7 +12,7 @@ def create_cart_matrix(df: pd.DataFrame) -> pd.DataFrame:
     Strips away dates/prices and turns the data into a binary shopping cart matrix.
     Rows = Order IDs, Columns = Items, Values = 1 (Bought) or 0 (Not Bought).
     """
-    print("Pivoting transaction logs into shopping carts...")
+    # Removed naked print for cleaner logs
     
     # 1. Group by Order ID and Item, then pivot items to columns
     basket = (df.groupby(['order_id', 'item_description'])['quantity']
@@ -32,7 +33,7 @@ def apply_random_forest_ranking(rules_df: pd.DataFrame) -> pd.DataFrame:
     if rules_df.empty or len(rules_df) < 5:
         return rules_df
 
-    print("Training Random Forest to rank bundle quality...")
+    print("OPTIMA: Training Random Forest to rank bundle quality...")
 
     # 1. Feature Selection
     # Using physical (size) and financial (cost) features to break mathematical redundancy
@@ -44,12 +45,22 @@ def apply_random_forest_ranking(rules_df: pd.DataFrame) -> pd.DataFrame:
     threshold = rules_df['momentum_score'].quantile(0.7)
     y = (rules_df['momentum_score'] >= threshold).astype(int)
 
-    # 3. Model Training
-    rf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
-    rf.fit(X, y)
+    # 3. Model Training with GridSearchCV
+    param_grid = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [3, 5, 8],
+        'min_samples_split': [2, 5]
+    }
+    
+    rf_base = RandomForestClassifier(random_state=42)
+    grid_search = GridSearchCV(estimator=rf_base, param_grid=param_grid, cv=3, scoring='accuracy', n_jobs=-1)
+    grid_search.fit(X, y)
+    
+    best_rf = grid_search.best_estimator_
+    print(f"OPTIMA: Best RF params: {grid_search.best_params_}")
 
     # 4. Success Probability Prediction
-    probabilities = rf.predict_proba(X)[:, 1]
+    probabilities = best_rf.predict_proba(X)[:, 1]
     rules_df['success_probability'] = (probabilities * 100).round(2)
 
     # Clean up and sort by probability
@@ -59,24 +70,46 @@ def apply_random_forest_ranking(rules_df: pd.DataFrame) -> pd.DataFrame:
 
 def generate_bundle_rules(basket: pd.DataFrame, raw_df: pd.DataFrame, min_support: float = 0.001) -> pd.DataFrame:
     """
-    Runs Apriori and calculates physical (bundle sizes) and financial (bundle costs) 
-    features before ranking with Random Forest.
+    Runs Apriori with a dynamic grid search for the optimal support threshold, 
+    then ranks results with a tuned Random Forest.
     """
-    print(f"Running Apriori algorithm (min_support={min_support})...")
+    print("OPTIMA: Searching for optimal support threshold...")
     
-    # 1. Find frequent itemsets
-    # Increased max_len to 4 to allow for larger bundles
-    frequent_itemsets = apriori(basket, min_support=min_support, use_colnames=True, low_memory=True, max_len=4)
-    
-    if frequent_itemsets.empty:
-        print("Warning: No items met the support threshold.")
-        return pd.DataFrame()
+    # Grid search for min_support
+    # We want a threshold that yields between 30 and 300 rules for quality/diversity
+    possible_supports = [0.05, 0.02, 0.01, 0.005, 0.002, 0.001, 0.0005]
+    best_support = min_support
+    frequent_itemsets = pd.DataFrame()
+    rules = pd.DataFrame()
 
-    # 2. Generate Association Rules
-    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
-    
+    for s in possible_supports:
+        try:
+            frequent_itemsets = apriori(basket, min_support=s, use_colnames=True, low_memory=True, max_len=4)
+            if frequent_itemsets.empty: continue
+            
+            rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.1)
+            if 30 <= len(rules) <= 300:
+                best_support = s
+                print(f"OPTIMA: Found optimal support threshold: {best_support} ({len(rules)} rules)")
+                break
+            elif len(rules) > 300:
+                # If we have too many rules, the current support is the best we can do before it gets too sparse
+                best_support = s
+                rules = rules.sort_values('lift', ascending=False).head(300)
+                print(f"OPTIMA: Support {s} too broad ({len(rules)} rules), capping at 300.")
+                break
+        except Exception as e:
+            print(f"Support search error at {s}: {e}")
+            continue
+
     if rules.empty:
-        return pd.DataFrame()
+        print("Warning: No items met the dynamic support threshold. Falling back to default.")
+        # Final fallback attempt
+        frequent_itemsets = apriori(basket, min_support=0.001, use_colnames=True, low_memory=True, max_len=4)
+        if frequent_itemsets.empty: return pd.DataFrame()
+        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
+    
+    if rules.empty: return pd.DataFrame()
 
     # 3. CALCULATE BUNDLE SIZE
     rules['bundle_size'] = rules['antecedents'].apply(lambda x: len(x)) + \

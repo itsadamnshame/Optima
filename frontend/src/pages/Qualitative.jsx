@@ -103,13 +103,13 @@ export default function Playbook({ recommendations = {}, isGenerating }) {
             Strategic Playbook
           </h2>
           <div className="flex gap-4 ml-12 mt-4">
-            <button 
+            <button
               onClick={() => setView('recs')}
               className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'recs' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'}`}
             >
-              <Trophy size={14} /> AI Recommendations
+              <Trophy size={14} /> Recommendations
             </button>
-            <button 
+            <button
               onClick={() => setView('simulator')}
               className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'simulator' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'}`}
             >
@@ -128,8 +128,8 @@ export default function Playbook({ recommendations = {}, isGenerating }) {
                   key={size}
                   onClick={() => setActiveSize(size)}
                   className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSize === size
-                      ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                      : 'text-slate-400 hover:bg-slate-50'
+                    ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                    : 'text-slate-400 hover:bg-slate-50'
                     }`}
                 >
                   {size}-Item

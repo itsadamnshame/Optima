@@ -42,7 +42,9 @@ export default function Analytics({
 
   const fetchCalendar = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/get-events');
+      const res = await axios.get('http://localhost:8000/api/get-events', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setCalendarEvents(res.data.events || []);
     } catch (err) {
       console.error("Calendar sync failed");
@@ -52,7 +54,9 @@ export default function Analytics({
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/get-items');
+        const res = await axios.get('http://localhost:8000/api/get-items', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         setAvailableItems(res.data.items || []);
       } catch (err) { console.error(err); }
     };
@@ -101,7 +105,11 @@ export default function Analytics({
       
       setShowFilters(false); 
     } catch (err) {
-      setError("Analysis failed. Check your connection or date range.");
+      if (err.response && err.response.status === 401) {
+        setError("Session Expired. Please logout and login again to refresh your access.");
+      } else {
+        setError("Analysis failed. Check your connection or date range.");
+      }
     } finally {
       setIsGenerating(false);
       if (setGlobalLoading) setGlobalLoading(false);
@@ -280,38 +288,6 @@ export default function Analytics({
           </div>
 
           <div className="space-y-10">
-            {/* MICRO CHART */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              <div className="lg:col-span-3 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-start mb-8">
-                  <div><h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">SARIMA Component</h3><p className="text-sm text-slate-500 font-medium italic">High-Frequency Micro-Patterns (The Seasonal Heartbeat).</p></div>
-                  <div className="px-4 py-2 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl uppercase tracking-widest text-center">Micro-Specialist</div>
-                </div>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={filteredData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="forecast_date" hide />
-                      <YAxis stroke="#cbd5e1" fontSize={11} fontWeight="bold" />
-                      <Tooltip cursor={{stroke: '#e2e8f0'}} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)' }} />
-                      <Area type="monotone" dataKey="sarima_pattern_correction" name="Seasonal Offset" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth={4} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col shadow-xl">
-                <h4 className="font-black text-indigo-400 text-[10px] uppercase mb-8 tracking-[0.2em] flex items-center gap-2 italic"><Activity size={16} /> Pattern Peaks</h4>
-                <div className="space-y-8 flex-1">
-                  {peaks.map((day, i) => (
-                    <div key={i} className="border-l-2 border-slate-800 pl-4">
-                        <p className="text-[10px] text-slate-500 font-mono mb-1">{day.forecast_date}</p>
-                        <p className="text-3xl font-black text-white italic">{day.predicted_quantity} <span className="text-[11px] font-normal text-slate-500 tracking-widest uppercase">Units</span></p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             {/* MACRO CHART */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               <div className="lg:col-span-3 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
@@ -343,6 +319,38 @@ export default function Analytics({
                       </div>
                     </div>
                   )) : <div className="text-center h-40 flex flex-col justify-center opacity-20 text-center"><Calendar size={48} className="mx-auto" /><p className="text-[10px] font-black uppercase mt-2 italic">Clear Horizon</p></div>}
+                </div>
+              </div>
+            </div>
+
+            {/* MICRO CHART */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              <div className="lg:col-span-3 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-start mb-8">
+                  <div><h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">SARIMA Component</h3><p className="text-sm text-slate-500 font-medium italic">High-Frequency Micro-Patterns (The Seasonal Heartbeat).</p></div>
+                  <div className="px-4 py-2 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl uppercase tracking-widest text-center">Micro-Specialist</div>
+                </div>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={filteredData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="forecast_date" hide />
+                      <YAxis stroke="#cbd5e1" fontSize={11} fontWeight="bold" />
+                      <Tooltip cursor={{stroke: '#e2e8f0'}} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)' }} />
+                      <Area type="monotone" dataKey="sarima_pattern_correction" name="Seasonal Offset" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth={4} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col shadow-xl">
+                <h4 className="font-black text-indigo-400 text-[10px] uppercase mb-8 tracking-[0.2em] flex items-center gap-2 italic"><Activity size={16} /> Pattern Peaks</h4>
+                <div className="space-y-8 flex-1">
+                  {peaks.map((day, i) => (
+                    <div key={i} className="border-l-2 border-slate-800 pl-4">
+                        <p className="text-[10px] text-slate-500 font-mono mb-1">{day.forecast_date}</p>
+                        <p className="text-3xl font-black text-white italic">{day.predicted_quantity} <span className="text-[11px] font-normal text-slate-500 tracking-widest uppercase">Units</span></p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
