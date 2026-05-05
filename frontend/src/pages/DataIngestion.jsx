@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   UploadCloud, CheckCircle, AlertCircle, Loader2, Database, Lock, 
-  Trash2, Globe, EyeOff, Edit3, Save, X, FileSpreadsheet, Calendar, Check
+  Trash2, Globe, EyeOff, Edit3, Save, X, FileSpreadsheet, Calendar, Check,
+  Ban, Search, User, ShieldOff, BarChart2, Brain
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,8 +19,16 @@ export default function DataIngestion({ onDatasetChange }) {
   const [editTitle, setEditTitle] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
+  // Blocked Items State
+  const [blockedItems, setBlockedItems] = useState([]);
+  const [allItems, setAllItems] = useState([]);
+  const [blockSearch, setBlockSearch] = useState('');
+  const [loadingBlocked, setLoadingBlocked] = useState(false);
+
   useEffect(() => {
     fetchDatasets();
+    fetchBlockedItems();
+    fetchAllItems();
   }, []);
 
   const fetchDatasets = async () => {
@@ -33,6 +42,57 @@ export default function DataIngestion({ onDatasetChange }) {
       console.error("Failed to fetch datasets", error);
     } finally {
       setLoadingDatasets(false);
+    }
+  };
+
+  const fetchBlockedItems = async () => {
+    setLoadingBlocked(true);
+    try {
+      const response = await axios.get('http://localhost:8000/api/blocked-items', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setBlockedItems(response.data.blocked_items);
+    } catch (error) {
+      console.error("Failed to fetch blocked items", error);
+    } finally {
+      setLoadingBlocked(false);
+    }
+  };
+
+  const fetchAllItems = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/get-items', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setAllItems(response.data.items || []);
+    } catch (error) {
+      console.error("Failed to fetch items", error);
+    }
+  };
+
+  const handleBlockItem = async (itemDesc, blockBundling = true, blockForecasting = false) => {
+    try {
+      await axios.post('http://localhost:8000/api/blocked-items', {
+        item_description: itemDesc,
+        block_bundling: blockBundling,
+        block_forecasting: blockForecasting
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchBlockedItems();
+    } catch (error) {
+      alert("Failed to block item");
+    }
+  };
+
+  const handleUnblockItem = async (itemDesc) => {
+    try {
+      await axios.delete(`http://localhost:8000/api/blocked-items/${encodeURIComponent(itemDesc)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchBlockedItems();
+    } catch (error) {
+      alert("Failed to unblock item");
     }
   };
 
@@ -274,6 +334,7 @@ export default function DataIngestion({ onDatasetChange }) {
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-1 text-sm text-gray-500 font-medium">
                       <span className="flex items-center gap-1"><Database size={14} /> {ds.row_count.toLocaleString()} rows</span>
                       <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(ds.upload_date).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1"><User size={14} /> {ds.uploader}</span>
                       <span className="flex items-center gap-1 text-gray-400 text-xs italic">({ds.filename})</span>
                     </div>
                   </>
@@ -332,6 +393,110 @@ export default function DataIngestion({ onDatasetChange }) {
             <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
               <Database className="mx-auto text-gray-300 mb-4" size={48} />
               <p className="text-gray-500 font-bold">No datasets uploaded yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* BLOCKED ITEMS SECTION */}
+      <div className="space-y-6 mt-12">
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Ban className="text-red-500" size={24} />
+            Item Blocklist
+            {loadingBlocked && <Loader2 className="animate-spin text-gray-400" size={20} />}
+          </h3>
+          <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">{blockedItems.length} Blocked</span>
+        </div>
+        <p className="text-sm text-gray-500 -mt-4">
+          Block items from appearing in bundling analysis (e.g., promo bundles) or forecasting. Blocked items are excluded from the Optima pipeline.
+        </p>
+
+        {/* Add to blocklist */}
+        {role === 'ADMIN' && (
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Add Item to Blocklist</p>
+            <div className="relative mb-4">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={blockSearch}
+                onChange={(e) => setBlockSearch(e.target.value)}
+                placeholder="Search items to block..."
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-medium"
+              />
+            </div>
+            {blockSearch.length > 1 && (
+              <div className="max-h-48 overflow-y-auto space-y-1 border border-gray-100 rounded-xl p-2 bg-gray-50">
+                {allItems
+                  .filter(item => item.toLowerCase().includes(blockSearch.toLowerCase()))
+                  .filter(item => !blockedItems.find(b => b.item_description === item))
+                  .slice(0, 20)
+                  .map(item => (
+                    <button
+                      key={item}
+                      onClick={() => { handleBlockItem(item, true, false); setBlockSearch(''); }}
+                      className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all flex items-center justify-between"
+                    >
+                      {item}
+                      <span className="text-[10px] font-black text-red-400 uppercase">Block</span>
+                    </button>
+                  ))
+                }
+                {allItems.filter(item => item.toLowerCase().includes(blockSearch.toLowerCase())).filter(item => !blockedItems.find(b => b.item_description === item)).length === 0 && (
+                  <p className="text-center text-sm text-gray-400 py-4">No matching items found</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Blocked items list */}
+        <div className="grid grid-cols-1 gap-3">
+          {blockedItems.map((item) => (
+            <div key={item.id} className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4">
+              <div className="p-3 bg-red-50 rounded-xl text-red-400">
+                <ShieldOff size={20} />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900">{item.item_description}</h4>
+                <div className="flex items-center gap-3 mt-1">
+                  {item.block_bundling && (
+                    <span className="flex items-center gap-1 text-[10px] font-black bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase">
+                      <Brain size={10} /> Bundling
+                    </span>
+                  )}
+                  {item.block_forecasting && (
+                    <span className="flex items-center gap-1 text-[10px] font-black bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full uppercase">
+                      <BarChart2 size={10} /> Forecasting
+                    </span>
+                  )}
+                </div>
+              </div>
+              {role === 'ADMIN' && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleBlockItem(item.item_description, item.block_bundling, !item.block_forecasting)}
+                    className={`p-2 rounded-lg transition-all text-xs font-bold ${item.block_forecasting ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400 hover:text-orange-600 hover:bg-orange-50'}`}
+                    title={item.block_forecasting ? "Unblock from Forecasting" : "Also block from Forecasting"}
+                  >
+                    <BarChart2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleUnblockItem(item.item_description)}
+                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                    title="Unblock Item"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          {blockedItems.length === 0 && !loadingBlocked && (
+            <div className="text-center py-12 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+              <Ban className="mx-auto text-gray-300 mb-4" size={48} />
+              <p className="text-gray-500 font-bold">No items blocked. All items are included in analysis.</p>
             </div>
           )}
         </div>

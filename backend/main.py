@@ -36,7 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = "sqlite:///./optima.db"
+DATABASE_URL = "apt install postgresql postgresql-contrib -y"
 engine = create_engine(DATABASE_URL)
 
 # ==========================================
@@ -67,35 +67,38 @@ def _get_active_dataset_df():
 @app.on_event("startup")
 def setup_db():
     """Ensure table exists and pre-fill with PH holidays if empty."""
+    is_postgres = "postgres" in DATABASE_URL.lower()
+    pk_syntax = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    
     with engine.connect() as conn:
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS custom_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {pk_syntax},
                 event_name TEXT NOT NULL,
                 event_date TEXT NOT NULL UNIQUE
             )
         """))
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {pk_syntax},
                 username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL,
                 status TEXT NOT NULL
             )
         """))
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS audit_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {pk_syntax},
                 timestamp TEXT NOT NULL,
                 username TEXT NOT NULL,
                 action TEXT NOT NULL,
                 details TEXT NOT NULL
             )
         """))
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS session_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {pk_syntax},
                 session_id TEXT NOT NULL UNIQUE,
                 username TEXT NOT NULL,
                 role TEXT NOT NULL,
@@ -104,9 +107,9 @@ def setup_db():
                 force_end_at TEXT
             )
         """))
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS datasets (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {pk_syntax},
                 title TEXT NOT NULL,
                 filename TEXT NOT NULL,
                 upload_date TEXT NOT NULL,
@@ -156,6 +159,18 @@ def setup_db():
         except Exception:
             pass
         
+        # CREATE blocked_items TABLE
+        is_postgres = "postgres" in DATABASE_URL.lower()
+        pk_syntax = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS blocked_items (
+                id {pk_syntax},
+                item_description TEXT NOT NULL UNIQUE,
+                block_bundling INTEGER DEFAULT 1,
+                block_forecasting INTEGER DEFAULT 0
+            )
+        """))
+        conn.commit()
         
         # CHECK IF ADMIN EXISTS
         admin_exists = conn.execute(text("SELECT COUNT(*) FROM users WHERE username='admin'")).fetchone()[0]
@@ -667,11 +682,75 @@ async def patch_dataset(dataset_id: int, data: DatasetPatchModel, user=Depends(g
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
+# BLOCKED ITEMS MANAGEMENT
+# ==========================================
+class BlockedItemModel(BaseModel):
+    item_description: str
+    block_bundling: bool = True
+    block_forecasting: bool = False
+
+def _get_blocked_items():
+    """Returns two sets: items blocked from bundling and items blocked from forecasting."""
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text("SELECT item_description, block_bundling, block_forecasting FROM blocked_items")).fetchall()
+            bundling_blocked = {r[0] for r in rows if r[1]}
+            forecasting_blocked = {r[0] for r in rows if r[2]}
+            return bundling_blocked, forecasting_blocked
+    except:
+        return set(), set()
+
+@app.get("/api/blocked-items")
+async def get_blocked_items(user=Depends(get_current_user)):
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text("SELECT id, item_description, block_bundling, block_forecasting FROM blocked_items ORDER BY item_description")).fetchall()
+            items = [{
+                "id": r[0],
+                "item_description": r[1],
+                "block_bundling": bool(r[2]),
+                "block_forecasting": bool(r[3])
+            } for r in rows]
+            return {"blocked_items": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/blocked-items")
+async def add_blocked_item(data: BlockedItemModel, user=Depends(get_current_user)):
+    global _qualitative_cache
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "INSERT OR REPLACE INTO blocked_items (item_description, block_bundling, block_forecasting) VALUES (:item, :bb, :bf)"
+            ), {"item": data.item_description, "bb": 1 if data.block_bundling else 0, "bf": 1 if data.block_forecasting else 0})
+            conn.commit()
+            log_audit(conn, user['username'], "BLOCK_ITEM", f"Blocked '{data.item_description}' (bundling={data.block_bundling}, forecasting={data.block_forecasting})")
+            conn.commit()
+        # Invalidate qualitative cache since blocked items changed
+        _qualitative_cache = {"dataset_id": None, "rules_df": None}
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/blocked-items/{item_description}")
+async def remove_blocked_item(item_description: str, user=Depends(get_current_user)):
+    global _qualitative_cache
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM blocked_items WHERE item_description = :item"), {"item": item_description})
+            conn.commit()
+            log_audit(conn, user['username'], "UNBLOCK_ITEM", f"Unblocked '{item_description}'")
+            conn.commit()
+        _qualitative_cache = {"dataset_id": None, "rules_df": None}
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
 # CUSTOM BUNDLE ANALYSIS
 # ==========================================
 class BundleAnalysisRequest(BaseModel):
     items: list
-
 @app.get("/api/get-items")
 async def get_all_items(user=Depends(get_current_user)):
     try:
@@ -714,10 +793,17 @@ async def trigger_optima_pipeline(
     try:
         raw_df, active_id = _get_active_dataset_df()
         
+        # Fetch blocked items
+        bundling_blocked, forecasting_blocked = _get_blocked_items()
+        
         if mode == "manual" and selected_items:
-            items_to_forecast = [i.strip() for i in selected_items.split(',')]
+            items_to_forecast = [i.strip() for i in selected_items.split(',') if i.strip() not in forecasting_blocked]
         else:
-            items_to_forecast = raw_df['item_description'].value_counts().head(top_n).index.tolist()
+            candidates = raw_df[~raw_df['item_description'].isin(forecasting_blocked)]['item_description'].value_counts().head(top_n).index.tolist()
+            items_to_forecast = candidates
+        
+        # Filter raw_df for bundling (remove bundling-blocked items)
+        bundling_df = raw_df[~raw_df['item_description'].isin(bundling_blocked)].copy()
 
         performance_metrics = {}
 
@@ -743,8 +829,8 @@ async def trigger_optima_pipeline(
         else:
             print("OPTIMA: Running full qualitative pipeline (cache miss).")
             def run_qualitative_branch():
-                cart_matrix = create_cart_matrix(raw_df)
-                return generate_bundle_rules(cart_matrix, raw_df, min_support=0.001)
+                cart_matrix = create_cart_matrix(bundling_df)
+                return generate_bundle_rules(cart_matrix, bundling_df, min_support=0.001)
 
             forecast_df, rules_df = await asyncio.gather(
                 asyncio.to_thread(run_quantitative_branch),
