@@ -17,7 +17,7 @@ export default function SpecialDaysManager({ onUpdate }) {
 
   const fetchEvents = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/get-events');
+      const res = await axios.get('/api/get-events');
       setEvents(res.data.events || []);
       // Trigger the parent sync (for the Live Status Monitor)
       if (onUpdate) onUpdate();
@@ -35,7 +35,7 @@ export default function SpecialDaysManager({ onUpdate }) {
     if (!newName || !newDate) return;
     setLoading(true);
     try {
-      await axios.post('http://localhost:8000/api/add-event', 
+      await axios.post('/api/add-event', 
         { name: newName, date: newDate },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -53,7 +53,7 @@ export default function SpecialDaysManager({ onUpdate }) {
 
   const handleDelete = async (date) => {
     try {
-      await axios.delete(`http://localhost:8000/api/delete-event/${date}`, {
+      await axios.delete(`/api/delete-event/${date}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       await fetchEvents();

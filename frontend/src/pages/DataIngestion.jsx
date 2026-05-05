@@ -34,7 +34,7 @@ export default function DataIngestion({ onDatasetChange }) {
   const fetchDatasets = async () => {
     setLoadingDatasets(true);
     try {
-      const response = await axios.get('http://localhost:8000/api/datasets', {
+      const response = await axios.get('/api/datasets', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setDatasets(response.data.datasets);
@@ -48,7 +48,7 @@ export default function DataIngestion({ onDatasetChange }) {
   const fetchBlockedItems = async () => {
     setLoadingBlocked(true);
     try {
-      const response = await axios.get('http://localhost:8000/api/blocked-items', {
+      const response = await axios.get('/api/blocked-items', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setBlockedItems(response.data.blocked_items);
@@ -61,7 +61,7 @@ export default function DataIngestion({ onDatasetChange }) {
 
   const fetchAllItems = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/get-items', {
+      const response = await axios.get('/api/get-items', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setAllItems(response.data.items || []);
@@ -72,7 +72,7 @@ export default function DataIngestion({ onDatasetChange }) {
 
   const handleBlockItem = async (itemDesc, blockBundling = true, blockForecasting = false) => {
     try {
-      await axios.post('http://localhost:8000/api/blocked-items', {
+      await axios.post('/api/blocked-items', {
         item_description: itemDesc,
         block_bundling: blockBundling,
         block_forecasting: blockForecasting
@@ -87,7 +87,7 @@ export default function DataIngestion({ onDatasetChange }) {
 
   const handleUnblockItem = async (itemDesc) => {
     try {
-      await axios.delete(`http://localhost:8000/api/blocked-items/${encodeURIComponent(itemDesc)}`, {
+      await axios.delete(`/api/blocked-items/${encodeURIComponent(itemDesc)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       fetchBlockedItems();
@@ -116,7 +116,7 @@ export default function DataIngestion({ onDatasetChange }) {
     formData.append('title', title);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/upload-data', formData, {
+      const response = await axios.post('/api/upload-data', formData, {
         headers: { 
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
@@ -137,7 +137,7 @@ export default function DataIngestion({ onDatasetChange }) {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:8000/api/datasets/${id}`, {
+      await axios.delete(`/api/datasets/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       fetchDatasets();
@@ -150,7 +150,7 @@ export default function DataIngestion({ onDatasetChange }) {
 
   const handleTogglePrivacy = async (id, currentPrivate) => {
     try {
-      await axios.patch(`http://localhost:8000/api/datasets/${id}`, {
+      await axios.patch(`/api/datasets/${id}`, {
         is_private: !currentPrivate
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -168,7 +168,7 @@ export default function DataIngestion({ onDatasetChange }) {
 
   const saveTitle = async (id) => {
     try {
-      await axios.patch(`http://localhost:8000/api/datasets/${id}`, {
+      await axios.patch(`/api/datasets/${id}`, {
         title: editTitle
       }, {
         headers: { 'Authorization': `Bearer ${token}` }

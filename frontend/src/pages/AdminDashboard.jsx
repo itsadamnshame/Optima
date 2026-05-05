@@ -12,7 +12,7 @@ const AdminDashboard = () => {
 
   const fetchPendingUsers = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/admin/pending-users', {
+      const res = await fetch('/api/admin/pending-users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -28,7 +28,7 @@ const AdminDashboard = () => {
 
   const fetchAuditLogs = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/admin/audit-logs', {
+      const res = await fetch('/api/admin/audit-logs', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
 
   const fetchSessionLogs = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/admin/session-logs', {
+      const res = await fetch('/api/admin/session-logs', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -55,7 +55,7 @@ const AdminDashboard = () => {
   const handleForceEnd = async (session_id) => {
     if (!window.confirm('Force-end this session? The user will be immediately logged out and cannot log in again for 10 minutes.')) return;
     try {
-      const res = await fetch('http://localhost:8000/api/admin/force-end-session', {
+      const res = await fetch('/api/admin/force-end-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ session_id })
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
 
   const handleAction = async (actionUsername, action) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/${action}`, {
+      const res = await fetch(`/api/admin/${action}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

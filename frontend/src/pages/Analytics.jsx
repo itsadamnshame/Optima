@@ -42,7 +42,7 @@ export default function Analytics({
 
   const fetchCalendar = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/get-events', {
+      const res = await axios.get('/api/get-events', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setCalendarEvents(res.data.events || []);
@@ -54,7 +54,7 @@ export default function Analytics({
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/get-items', {
+        const res = await axios.get('/api/get-items', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         setAvailableItems(res.data.items || []);
@@ -79,7 +79,7 @@ export default function Analytics({
     setError('');
     
     try {
-      const response = await axios.get('http://localhost:8000/api/generate-recommendations', {
+      const response = await axios.get('/api/generate-recommendations', {
         params: { 
           end_date: endDate,
           mode: selectionMode,

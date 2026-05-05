@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
     const currentToken = localStorage.getItem('token');
     if (currentToken) {
       try {
-        await fetch('http://localhost:8000/api/auth/logout', {
+        await fetch('/api/auth/logout', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${currentToken}` }
         });
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
 
     const checkStatus = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/auth/session-status', {
+        const res = await fetch('/api/auth/session-status', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) return;

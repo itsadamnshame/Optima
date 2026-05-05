@@ -71,8 +71,8 @@ function AppContent() {
     const fetchSidebarData = async () => {
       try {
         const [dsRes, activeRes] = await Promise.all([
-          fetch('http://localhost:8000/api/datasets', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('http://localhost:8000/api/active-dataset', { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch('/api/datasets', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/active-dataset', { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
         const dsData = await dsRes.json();
         const activeData = await activeRes.json();
@@ -86,7 +86,7 @@ function AppContent() {
   const handleActivateDataset = async (datasetId) => {
     setActivatingDataset(true);
     try {
-      await fetch(`http://localhost:8000/api/datasets/${datasetId}/activate`, {
+      await fetch(`/api/datasets/${datasetId}/activate`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -103,7 +103,7 @@ function AppContent() {
   // Refresh sidebar datasets when navigating back to data ingestion
   const refreshSidebarDatasets = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/datasets', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch('/api/datasets', { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       setSidebarDatasets(data.datasets || []);
     } catch (e) { console.error(e); }

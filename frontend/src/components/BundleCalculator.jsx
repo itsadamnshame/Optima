@@ -17,7 +17,7 @@ export default function BundleCalculator() {
 
     const fetchItems = async () => {
         try {
-            const res = await fetch('http://localhost:8000/api/get-items', {
+            const res = await fetch('/api/get-items', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -49,7 +49,7 @@ export default function BundleCalculator() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('http://localhost:8000/api/analyze-bundle', {
+            const res = await fetch('/api/analyze-bundle', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -36,7 +36,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = "apt install postgresql postgresql-contrib -y"
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optima.db")
 engine = create_engine(DATABASE_URL)
 
 # ==========================================
