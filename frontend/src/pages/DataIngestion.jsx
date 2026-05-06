@@ -1,268 +1,236 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  UploadCloud, CheckCircle, AlertCircle, Loader2, Database, Lock, 
+import {
+  UploadCloud, CheckCircle, AlertCircle, Loader2, Database, Lock,
   Trash2, Globe, EyeOff, Edit3, Save, X, FileSpreadsheet, Calendar, Check,
-  Ban, Search, User, ShieldOff, BarChart2, Brain
+  Ban, Search, User, ShieldOff, BarChart2, Brain,
+  Eye, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+const glass = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' };
+const glassHover = 'hover:bg-white/[0.04] transition-all';
+
 export default function DataIngestion({ onDatasetChange }) {
   const { token, role } = useAuth();
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [title, setTitle] = useState('');
+  const [datasetType, setDatasetType] = useState('MASTER');
   const [datasets, setDatasets] = useState([]);
-  const [uploadStatus, setUploadStatus] = useState('idle'); 
+  const [uploadStatus, setUploadStatus] = useState('idle');
   const [uploadMessage, setUploadMessage] = useState('');
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-
-  // Blocked Items State
   const [blockedItems, setBlockedItems] = useState([]);
   const [allItems, setAllItems] = useState([]);
   const [blockSearch, setBlockSearch] = useState('');
   const [loadingBlocked, setLoadingBlocked] = useState(false);
 
-  useEffect(() => {
-    fetchDatasets();
-    fetchBlockedItems();
-    fetchAllItems();
-  }, []);
+  // Viewer State
+  const [viewerData, setViewerData] = useState([]);
+  const [viewerDatasetId, setViewerDatasetId] = useState(null);
+  const [viewerPage, setViewerPage] = useState(1);
+  const [viewerTotalRows, setViewerTotalRows] = useState(0);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [showViewer, setShowViewer] = useState(false);
+
+  const openViewer = async (datasetId, page = 1) => {
+    setViewerDatasetId(datasetId);
+    setViewerPage(page);
+    setShowViewer(true);
+    setViewerLoading(true);
+    try {
+      const res = await axios.get(`/api/datasets/${datasetId}/data?page=${page}&limit=50`, { headers: { Authorization: `Bearer ${token}` } });
+      setViewerData(res.data.data);
+      setViewerTotalRows(res.data.total_rows);
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setViewerLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDatasets(); fetchBlockedItems(); fetchAllItems(); }, []);
 
   const fetchDatasets = async () => {
     setLoadingDatasets(true);
     try {
-      const response = await axios.get('/api/datasets', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setDatasets(response.data.datasets);
-    } catch (error) {
-      console.error("Failed to fetch datasets", error);
-    } finally {
-      setLoadingDatasets(false);
-    }
+      const r = await axios.get('/api/datasets', { headers: { Authorization: `Bearer ${token}` } });
+      setDatasets(r.data.datasets);
+    } catch (e) { console.error(e); } finally { setLoadingDatasets(false); }
   };
 
   const fetchBlockedItems = async () => {
     setLoadingBlocked(true);
     try {
-      const response = await axios.get('/api/blocked-items', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setBlockedItems(response.data.blocked_items);
-    } catch (error) {
-      console.error("Failed to fetch blocked items", error);
-    } finally {
-      setLoadingBlocked(false);
-    }
+      const r = await axios.get('/api/blocked-items', { headers: { Authorization: `Bearer ${token}` } });
+      setBlockedItems(r.data.blocked_items);
+    } catch (e) { console.error(e); } finally { setLoadingBlocked(false); }
   };
 
   const fetchAllItems = async () => {
     try {
-      const response = await axios.get('/api/get-items', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setAllItems(response.data.items || []);
-    } catch (error) {
-      console.error("Failed to fetch items", error);
-    }
+      const r = await axios.get('/api/get-items', { headers: { Authorization: `Bearer ${token}` } });
+      setAllItems(r.data.items || []);
+    } catch (e) { console.error(e); }
   };
 
   const handleBlockItem = async (itemDesc, blockBundling = true, blockForecasting = false) => {
     try {
-      await axios.post('/api/blocked-items', {
-        item_description: itemDesc,
-        block_bundling: blockBundling,
-        block_forecasting: blockForecasting
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await axios.post('/api/blocked-items', { item_description: itemDesc, block_bundling: blockBundling, block_forecasting: blockForecasting }, { headers: { Authorization: `Bearer ${token}` } });
       fetchBlockedItems();
-    } catch (error) {
-      alert("Failed to block item");
-    }
+    } catch { alert('Failed to block item'); }
   };
 
   const handleUnblockItem = async (itemDesc) => {
     try {
-      await axios.delete(`/api/blocked-items/${encodeURIComponent(itemDesc)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await axios.delete(`/api/blocked-items/${encodeURIComponent(itemDesc)}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchBlockedItems();
-    } catch (error) {
-      alert("Failed to unblock item");
-    }
+    } catch { alert('Failed to unblock item'); }
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      // Auto-set title from filename if empty
-      if (!title) {
-        setTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ""));
-      }
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
+      setFiles(selectedFiles);
+      if (!title) setTitle(selectedFiles[0].name.replace(/\.[^/.]+$/, ''));
       setUploadStatus('idle');
     }
   };
 
   const handleUpload = async () => {
-    if (!file || !title) return;
+    if (files.length === 0 || !title) return;
     setUploadStatus('loading');
-    
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(f => formData.append('files', f));
     formData.append('title', title);
-
+    formData.append('dataset_type', datasetType);
     try {
-      const response = await axios.post('/api/upload-data', formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const r = await axios.post('/api/upload-data', formData, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } });
       setUploadStatus('success');
-      setUploadMessage(`Success! Uploaded "${title}" with ${response.data.total_rows} rows.`);
-      setFile(null);
-      setTitle('');
+      setUploadMessage(`Uploaded "${title}" — ${r.data.total_rows} rows ingested from ${r.data.files_processed} file(s).`);
+      setFiles([]); setTitle('');
       fetchDatasets();
       if (onDatasetChange) onDatasetChange();
-    } catch (error) {
-      console.error(error);
+    } catch {
       setUploadStatus('error');
-      setUploadMessage('Failed to upload data. Is the FastAPI server running?');
+      setUploadMessage('Upload failed. Is the backend running?');
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`/api/datasets/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      fetchDatasets();
-      if (onDatasetChange) onDatasetChange();
-      setDeleteConfirmId(null);
-    } catch (error) {
-      alert("Failed to delete dataset");
-    }
+      await axios.delete(`/api/datasets/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      fetchDatasets(); if (onDatasetChange) onDatasetChange(); setDeleteConfirmId(null);
+    } catch { alert('Failed to delete dataset'); }
   };
 
   const handleTogglePrivacy = async (id, currentPrivate) => {
     try {
-      await axios.patch(`/api/datasets/${id}`, {
-        is_private: !currentPrivate
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await axios.patch(`/api/datasets/${id}`, { is_private: !currentPrivate }, { headers: { Authorization: `Bearer ${token}` } });
       fetchDatasets();
-    } catch (error) {
-      alert("Failed to update privacy");
-    }
+    } catch { alert('Failed to update privacy'); }
   };
 
-  const startEditing = (dataset) => {
-    setEditingId(dataset.id);
-    setEditTitle(dataset.title);
-  };
+  const startEditing = (ds) => { setEditingId(ds.id); setEditTitle(ds.title); };
 
   const saveTitle = async (id) => {
     try {
-      await axios.patch(`/api/datasets/${id}`, {
-        title: editTitle
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setEditingId(null);
-      fetchDatasets();
-    } catch (error) {
-      alert("Failed to rename dataset");
-    }
+      await axios.patch(`/api/datasets/${id}`, { title: editTitle }, { headers: { Authorization: `Bearer ${token}` } });
+      setEditingId(null); fetchDatasets();
+    } catch { alert('Failed to rename dataset'); }
   };
 
+  const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#f4f4f5' };
+
   return (
-    <div className="animate-fade-in-up max-w-6xl mx-auto space-y-12 pb-20">
-      
-      {/* PAGE HEADER */}
-      <div className="text-center md:text-left">
-        <h2 className="text-4xl font-black text-gray-900 flex items-center justify-center md:justify-start gap-3">
-          <Database className="text-indigo-600" size={40} />
-          Data Ingestion & Management
-        </h2>
-        <p className="text-gray-500 mt-3 text-lg max-w-2xl">
-          Upload and organize your sales datasets. Standardized data powers the Optima analytics engine.
-        </p>
+    <div className="max-w-6xl mx-auto space-y-10 pb-20 animate-in fade-in duration-500">
+
+      {/* HEADER */}
+      <div className="relative rounded-[2rem] p-8 overflow-hidden" style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.12) 0%,rgba(255,255,255,0.02) 100%)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/20 to-transparent pointer-events-none" />
+        <div className="relative z-10">
+          <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block" />
+            Data Pipeline
+          </p>
+          <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+            <Database className="text-indigo-400" size={28} /> Data Ingestion &amp; Management
+          </h2>
+          <p className="text-zinc-500 text-sm mt-1 ml-10">Upload and organize sales datasets. Standardized data powers the Optima analytics engine.</p>
+        </div>
       </div>
 
-      {/* UPLOAD SECTION (ADMIN ONLY) */}
+      {/* UPLOAD */}
       {role === 'ADMIN' ? (
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 ring-1 ring-gray-200/50">
+        <div className="rounded-3xl p-8" style={glass}>
           <div className="flex flex-col md:flex-row gap-8">
-            {/* Left: Instructions */}
-            <div className="md:w-1/3">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <UploadCloud className="text-indigo-500" /> 
-                New Dataset
+            {/* Left */}
+            <div className="md:w-1/3 space-y-5">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <UploadCloud className="text-indigo-400" size={18} /> New Dataset
               </h3>
-              <p className="text-sm text-gray-600 leading-relaxed mb-6">
-                Upload raw client sales data in Excel or CSV format. Our pipeline will clean, standardize, and integrate it into the global database.
-              </p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Dataset Title</label>
-                  <input 
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g., Q1 2026 Sales Data"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all font-medium"
-                  />
+              <p className="text-xs text-zinc-500 leading-relaxed">Upload raw client sales data in Excel or CSV format. Our pipeline will clean, standardize, and integrate it.</p>
+              <div>
+                <label className="block text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">Dataset Title</label>
+                <input
+                  type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Q1 2026 Sales Data"
+                  className="w-full px-4 py-3 rounded-xl outline-none font-medium text-sm transition-all"
+                  style={inputStyle}
+                />
+              </div>
+              <div className="pt-2">
+                <label className="block text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">Dataset Type</label>
+                <div className="flex flex-col gap-3">
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input type="radio" name="datasetType" value="MASTER" checked={datasetType === 'MASTER'} onChange={() => setDatasetType('MASTER')} className="mt-1 w-4 h-4 accent-indigo-500" />
+                    <div>
+                      <span className="block text-sm font-bold text-zinc-200 group-hover:text-white transition-colors">Master Dataset</span>
+                      <span className="text-[10px] text-zinc-500">Ready for analysis / pre-combined</span>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input type="radio" name="datasetType" value="YEARLY" checked={datasetType === 'YEARLY'} onChange={() => setDatasetType('YEARLY')} className="mt-1 w-4 h-4 accent-indigo-500" />
+                    <div>
+                      <span className="block text-sm font-bold text-zinc-200 group-hover:text-white transition-colors">Yearly Chunk</span>
+                      <span className="text-[10px] text-zinc-500">Partial data requiring assembly later</span>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>
-
-            {/* Right: Dropzone/File Select */}
+            {/* Right — dropzone */}
             <div className="md:w-2/3">
-              <div className="h-full border-2 border-dashed border-gray-200 rounded-3xl p-8 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors group">
-                <input 
-                  type="file" 
-                  id="file-upload"
-                  accept=".csv, .xlsx" 
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <label 
-                  htmlFor="file-upload"
-                  className="flex flex-col items-center cursor-pointer"
-                >
-                  <div className="p-4 bg-indigo-50 rounded-full text-indigo-600 mb-4 group-hover:scale-110 transition-transform">
-                    <FileSpreadsheet size={40} />
+              <div className="h-full rounded-2xl p-8 flex flex-col items-center justify-center border-2 border-dashed transition-colors group cursor-pointer"
+                style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                <input type="file" id="file-upload" accept=".csv,.xlsx" multiple onChange={handleFileChange} className="hidden" />
+                <label htmlFor="file-upload" className="flex flex-col items-center cursor-pointer">
+                  <div className="p-4 rounded-full mb-4 group-hover:scale-110 transition-transform"
+                    style={{ background: 'rgba(99,102,241,0.12)' }}>
+                    <FileSpreadsheet size={36} className="text-indigo-400" />
                   </div>
-                  <span className="text-gray-900 font-bold text-lg">{file ? file.name : "Select a File"}</span>
-                  <span className="text-gray-500 text-sm mt-1">Excel (.xlsx) or CSV format</span>
+                  <span className="text-white font-bold text-base">{files.length > 0 ? `${files.length} file(s) selected` : 'Select Files'}</span>
+                  <span className="text-zinc-500 text-xs mt-1">Excel (.xlsx) or CSV format</span>
                 </label>
-
-                <button 
+                <button
                   onClick={handleUpload}
-                  disabled={!file || !title || uploadStatus === 'loading'}
-                  className="mt-8 bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-3 transition-all shadow-lg shadow-indigo-200 active:scale-95"
-                >
-                  {uploadStatus === 'loading' ? <Loader2 className="animate-spin" /> : <Database size={20} />}
+                  disabled={files.length === 0 || !title || uploadStatus === 'loading'}
+                  className="mt-8 px-10 py-3 rounded-2xl font-black text-sm flex items-center gap-3 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: 'linear-gradient(135deg,#4f46e5,#6366f1)', color: '#fff', boxShadow: '0 0 24px rgba(99,102,241,0.3)' }}>
+                  {uploadStatus === 'loading' ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
                   Execute Pipeline
                 </button>
-
                 {uploadStatus === 'success' && (
-                  <div className="mt-6 flex items-center gap-2 text-green-700 font-bold animate-bounce">
-                    <CheckCircle size={20} />
-                    <span>{uploadMessage}</span>
+                  <div className="mt-5 flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                    <CheckCircle size={18} />{uploadMessage}
                   </div>
                 )}
-                
                 {uploadStatus === 'error' && (
-                  <div className="mt-6 flex items-center gap-2 text-red-600 font-bold">
-                    <AlertCircle size={20} />
-                    <span>{uploadMessage}</span>
+                  <div className="mt-5 flex items-center gap-2 text-rose-400 font-bold text-sm">
+                    <AlertCircle size={18} />{uploadMessage}
                   </div>
                 )}
               </div>
@@ -270,237 +238,245 @@ export default function DataIngestion({ onDatasetChange }) {
           </div>
         </div>
       ) : (
-        <div className="bg-slate-50 p-10 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-          <div className="bg-slate-200 p-4 rounded-full text-slate-500 mb-6">
-            <Lock size={32} />
+        <div className="rounded-3xl p-10 flex flex-col items-center justify-center text-center" style={glass}>
+          <div className="p-4 rounded-full mb-5" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <Lock size={28} className="text-zinc-500" />
           </div>
-          <h3 className="text-2xl font-black text-slate-900 mb-2">Dataset Browser</h3>
-          <p className="text-slate-500 font-medium max-w-md">
-            You are viewing the shared dataset inventory. Administrators manage the ingestion of new data.
-          </p>
+          <h3 className="text-xl font-black text-zinc-200 mb-2">Dataset Browser</h3>
+          <p className="text-zinc-500 text-sm max-w-md">You are viewing the shared dataset inventory. Administrators manage data ingestion.</p>
         </div>
       )}
 
-      {/* DATASET INVENTORY LIST */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            Dataset Inventory
-            {loadingDatasets && <Loader2 className="animate-spin text-gray-400" size={20} />}
-          </h3>
-          <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">{datasets.length} Datasets Total</span>
-        </div>
+      {/* INVENTORY + BLOCKLIST side-by-side */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
 
-        <div className="grid grid-cols-1 gap-4">
-          {datasets.map((ds) => (
-            <div key={ds.id} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row items-center gap-6">
-              
-              <div className="p-4 bg-gray-50 rounded-xl text-gray-400">
-                <FileSpreadsheet size={32} />
-              </div>
+        {/* DATASET INVENTORY */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-black text-white flex items-center gap-2">
+              <Database size={16} className="text-indigo-400" /> Dataset Inventory
+              {loadingDatasets && <Loader2 className="animate-spin text-zinc-600" size={16} />}
+            </h3>
+            <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">{datasets.length} datasets</span>
+          </div>
 
-              <div className="flex-1 w-full text-center md:text-left">
-                {editingId === ds.id ? (
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="text"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="text-xl font-bold text-gray-900 border-b-2 border-indigo-500 outline-none w-full"
-                      autoFocus
-                    />
-                    <button onClick={() => saveTitle(ds.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg"><Save size={20}/></button>
-                    <button onClick={() => setEditingId(null)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><X size={20}/></button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-center md:justify-start gap-3">
-                      <h4 className="text-xl font-bold text-gray-900">{ds.title}</h4>
-                      {ds.is_active && (
-                        <span className="flex items-center gap-1 text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> Active
-                        </span>
-                      )}
-                      {ds.is_private ? (
-                        <span className="flex items-center gap-1 text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                          <EyeOff size={10} /> Private
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                          <Globe size={10} /> Public
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-1 text-sm text-gray-500 font-medium">
-                      <span className="flex items-center gap-1"><Database size={14} /> {ds.row_count.toLocaleString()} rows</span>
-                      <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(ds.upload_date).toLocaleDateString()}</span>
-                      <span className="flex items-center gap-1"><User size={14} /> {ds.uploader}</span>
-                      <span className="flex items-center gap-1 text-gray-400 text-xs italic">({ds.filename})</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {role === 'ADMIN' && (
-                <div className="flex items-center gap-2 border-l border-gray-100 pl-6 h-full">
-                  <button 
-                    onClick={() => startEditing(ds)}
-                    className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                    title="Rename"
-                  >
-                    <Edit3 size={20} />
-                  </button>
-                  <button 
-                    onClick={() => handleTogglePrivacy(ds.id, ds.is_private)}
-                    className={`p-3 rounded-xl transition-all ${ds.is_private ? 'text-amber-600 hover:bg-amber-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
-                    title={ds.is_private ? "Make Public" : "Make Private"}
-                  >
-                    {ds.is_private ? <EyeOff size={20} /> : <Globe size={20} />}
-                  </button>
-                  {deleteConfirmId === ds.id ? (
-                    <div className="flex items-center gap-2 animate-pulse">
-                      <span className="text-[10px] font-black text-red-600 uppercase">Confirm?</span>
-                      <button 
-                        onClick={() => { handleDelete(ds.id); if (onDatasetChange) onDatasetChange(); }}
-                        className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-md"
-                        title="Yes, Delete"
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button 
-                        onClick={() => setDeleteConfirmId(null)}
-                        className="p-2 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200 transition-colors"
-                        title="Cancel"
-                      >
-                        <X size={16} />
-                      </button>
+          <div className="space-y-3">
+            {datasets.map((ds) => (
+              <div key={ds.id} className={`rounded-2xl p-5 flex items-center gap-4 ${glassHover}`} style={glass}>
+                <div className="p-3 rounded-xl flex-shrink-0" style={{ background: 'rgba(99,102,241,0.1)' }}>
+                  <FileSpreadsheet size={22} className="text-indigo-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  {editingId === ds.id ? (
+                    <div className="flex items-center gap-2">
+                      <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                        className="font-bold text-white rounded-lg px-2 py-1 outline-none w-full text-sm"
+                        style={inputStyle} autoFocus />
+                      <button onClick={() => saveTitle(ds.id)} className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-400/10"><Save size={16} /></button>
+                      <button onClick={() => setEditingId(null)} className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-400/10"><X size={16} /></button>
                     </div>
                   ) : (
-                    <button 
-                      onClick={() => setDeleteConfirmId(ds.id)}
-                      className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                      title="Delete Dataset"
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                    <>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-white text-sm truncate">{ds.title}</h4>
+                        {ds.dataset_type === 'MASTER' ? (
+                          <span className="text-[9px] font-black text-indigo-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(99,102,241,0.1)' }}>MASTER</span>
+                        ) : (
+                          <span className="text-[9px] font-black text-amber-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(251,191,36,0.1)' }}>YEARLY</span>
+                        )}
+                        {ds.is_active && <span className="text-[9px] font-black text-emerald-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(52,211,153,0.1)' }}>● Active</span>}
+                        {ds.is_private
+                          ? <span className="text-[9px] font-black text-amber-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(251,191,36,0.1)' }}><EyeOff size={8} className="inline mr-0.5" />Private</span>
+                          : <span className="text-[9px] font-black text-emerald-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(52,211,153,0.08)' }}><Globe size={8} className="inline mr-0.5" />Public</span>}
+                      </div>
+                      <div className="flex flex-wrap gap-3 mt-1 text-[10px] text-zinc-600 font-medium items-center">
+                        <span className="flex items-center gap-1"><Database size={10} />{ds.row_count.toLocaleString()} rows</span>
+                        <span className="flex items-center gap-1"><Calendar size={10} />Up: {new Date(ds.upload_date).toLocaleDateString()}</span>
+                        <span className="flex items-center gap-1"><User size={10} />{ds.uploader}</span>
+                        {ds.date_range_start && ds.date_range_end && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-zinc-400">
+                            {ds.date_range_start} to {ds.date_range_end}
+                          </span>
+                        )}
+                        {ds.gap_info && ds.gap_info !== 'Continuous' && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20" title={ds.gap_info}>
+                            <AlertTriangle size={10} /> {ds.gap_info.substring(0, 50)}{ds.gap_info.length > 50 ? '...' : ''}
+                          </span>
+                        )}
+                        {ds.gap_info === 'Continuous' && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 size={10} /> Continuous
+                          </span>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
-              )}
-            </div>
-          ))}
-
-          {datasets.length === 0 && !loadingDatasets && (
-            <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-              <Database className="mx-auto text-gray-300 mb-4" size={48} />
-              <p className="text-gray-500 font-bold">No datasets uploaded yet.</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* BLOCKED ITEMS SECTION */}
-      <div className="space-y-6 mt-12">
-        <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Ban className="text-red-500" size={24} />
-            Item Blocklist
-            {loadingBlocked && <Loader2 className="animate-spin text-gray-400" size={20} />}
-          </h3>
-          <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">{blockedItems.length} Blocked</span>
-        </div>
-        <p className="text-sm text-gray-500 -mt-4">
-          Block items from appearing in bundling analysis (e.g., promo bundles) or forecasting. Blocked items are excluded from the Optima pipeline.
-        </p>
-
-        {/* Add to blocklist */}
-        {role === 'ADMIN' && (
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Add Item to Blocklist</p>
-            <div className="relative mb-4">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={blockSearch}
-                onChange={(e) => setBlockSearch(e.target.value)}
-                placeholder="Search items to block..."
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition-all font-medium"
-              />
-            </div>
-            {blockSearch.length > 1 && (
-              <div className="max-h-48 overflow-y-auto space-y-1 border border-gray-100 rounded-xl p-2 bg-gray-50">
-                {allItems
-                  .filter(item => item.toLowerCase().includes(blockSearch.toLowerCase()))
-                  .filter(item => !blockedItems.find(b => b.item_description === item))
-                  .slice(0, 20)
-                  .map(item => (
-                    <button
-                      key={item}
-                      onClick={() => { handleBlockItem(item, true, false); setBlockSearch(''); }}
-                      className="w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all flex items-center justify-between"
-                    >
-                      {item}
-                      <span className="text-[10px] font-black text-red-400 uppercase">Block</span>
-                    </button>
-                  ))
-                }
-                {allItems.filter(item => item.toLowerCase().includes(blockSearch.toLowerCase())).filter(item => !blockedItems.find(b => b.item_description === item)).length === 0 && (
-                  <p className="text-center text-sm text-gray-400 py-4">No matching items found</p>
+                {role === 'ADMIN' && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => openViewer(ds.id, 1)} className="p-2 rounded-lg text-zinc-600 hover:text-indigo-400 hover:bg-indigo-400/10 transition-all" title="View Data"><Eye size={15} /></button>
+                    <button onClick={() => startEditing(ds)} className="p-2 rounded-lg text-zinc-600 hover:text-indigo-400 hover:bg-indigo-400/10 transition-all" title="Rename"><Edit3 size={15} /></button>
+                    <button onClick={() => handleTogglePrivacy(ds.id, ds.is_private)} className={`p-2 rounded-lg transition-all ${ds.is_private ? 'text-amber-400 hover:bg-amber-400/10' : 'text-zinc-600 hover:text-emerald-400 hover:bg-emerald-400/10'}`}>{ds.is_private ? <EyeOff size={15} /> : <Globe size={15} />}</button>
+                    {deleteConfirmId === ds.id ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] font-black text-rose-400 uppercase">Sure?</span>
+                        <button onClick={() => { handleDelete(ds.id); if (onDatasetChange) onDatasetChange(); }} className="p-2 rounded-lg text-rose-400 bg-rose-400/10 hover:bg-rose-400/20 transition-all"><Check size={14} /></button>
+                        <button onClick={() => setDeleteConfirmId(null)} className="p-2 rounded-lg text-zinc-600 hover:bg-white/5 transition-all"><X size={14} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteConfirmId(ds.id)} className="p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-400/10 transition-all"><Trash2 size={15} /></button>
+                    )}
+                  </div>
                 )}
+              </div>
+            ))}
+            {datasets.length === 0 && !loadingDatasets && (
+              <div className="py-16 rounded-2xl border-2 border-dashed text-center" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                <Database className="mx-auto text-zinc-700 mb-3" size={40} />
+                <p className="text-zinc-600 font-bold text-sm">No datasets uploaded yet.</p>
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Blocked items list */}
-        <div className="grid grid-cols-1 gap-3">
-          {blockedItems.map((item) => (
-            <div key={item.id} className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4">
-              <div className="p-3 bg-red-50 rounded-xl text-red-400">
-                <ShieldOff size={20} />
+        {/* ITEM BLOCKLIST */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-black text-white flex items-center gap-2">
+              <Ban size={16} className="text-rose-400" /> Item Blocklist
+              {loadingBlocked && <Loader2 className="animate-spin text-zinc-600" size={16} />}
+            </h3>
+            <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">{blockedItems.length} blocked</span>
+          </div>
+          <p className="text-xs text-zinc-600">Block items from bundling analysis or forecasting. Blocked items are excluded from the Optima pipeline.</p>
+
+          {role === 'ADMIN' && (
+            <div className="rounded-2xl p-5" style={glass}>
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-3">Add to Blocklist</p>
+              <div className="relative mb-3">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
+                <input type="text" value={blockSearch} onChange={(e) => setBlockSearch(e.target.value)}
+                  placeholder="Search items to block..."
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl outline-none text-sm font-medium transition-all"
+                  style={inputStyle} />
               </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-gray-900">{item.item_description}</h4>
-                <div className="flex items-center gap-3 mt-1">
-                  {item.block_bundling && (
-                    <span className="flex items-center gap-1 text-[10px] font-black bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase">
-                      <Brain size={10} /> Bundling
-                    </span>
+              {blockSearch.length > 1 && (
+                <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl p-2 custom-scrollbar" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  {allItems.filter(i => i.toLowerCase().includes(blockSearch.toLowerCase())).filter(i => !blockedItems.find(b => b.item_description === i)).slice(0, 20).map(item => (
+                    <button key={item} onClick={() => { handleBlockItem(item, true, false); setBlockSearch(''); }}
+                      className="w-full text-left px-3 py-2 text-xs font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all flex items-center justify-between">
+                      {item}<span className="text-[9px] font-black text-rose-500 uppercase">Block</span>
+                    </button>
+                  ))}
+                  {allItems.filter(i => i.toLowerCase().includes(blockSearch.toLowerCase())).filter(i => !blockedItems.find(b => b.item_description === i)).length === 0 && (
+                    <p className="text-center text-xs text-zinc-600 py-3">No matching items found</p>
                   )}
-                  {item.block_forecasting && (
-                    <span className="flex items-center gap-1 text-[10px] font-black bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full uppercase">
-                      <BarChart2 size={10} /> Forecasting
-                    </span>
-                  )}
-                </div>
-              </div>
-              {role === 'ADMIN' && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleBlockItem(item.item_description, item.block_bundling, !item.block_forecasting)}
-                    className={`p-2 rounded-lg transition-all text-xs font-bold ${item.block_forecasting ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400 hover:text-orange-600 hover:bg-orange-50'}`}
-                    title={item.block_forecasting ? "Unblock from Forecasting" : "Also block from Forecasting"}
-                  >
-                    <BarChart2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleUnblockItem(item.item_description)}
-                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                    title="Unblock Item"
-                  >
-                    <X size={16} />
-                  </button>
                 </div>
               )}
             </div>
-          ))}
-          {blockedItems.length === 0 && !loadingBlocked && (
-            <div className="text-center py-12 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-              <Ban className="mx-auto text-gray-300 mb-4" size={48} />
-              <p className="text-gray-500 font-bold">No items blocked. All items are included in analysis.</p>
-            </div>
           )}
+
+          <div className="space-y-3">
+            {blockedItems.map((item) => (
+              <div key={item.id} className={`rounded-2xl p-4 flex items-center gap-4 ${glassHover}`} style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
+                <div className="p-2.5 rounded-xl flex-shrink-0" style={{ background: 'rgba(239,68,68,0.1)' }}>
+                  <ShieldOff size={16} className="text-rose-400" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-zinc-200 text-sm">{item.item_description}</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    {item.block_bundling && <span className="text-[9px] font-black text-rose-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(239,68,68,0.1)' }}><Brain size={8} className="inline mr-0.5" />Bundling</span>}
+                    {item.block_forecasting && <span className="text-[9px] font-black text-orange-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(249,115,22,0.1)' }}><BarChart2 size={8} className="inline mr-0.5" />Forecasting</span>}
+                  </div>
+                </div>
+                {role === 'ADMIN' && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => handleBlockItem(item.item_description, item.block_bundling, !item.block_forecasting)}
+                      className={`p-2 rounded-lg transition-all ${item.block_forecasting ? 'text-orange-400 bg-orange-400/10' : 'text-zinc-600 hover:text-orange-400 hover:bg-orange-400/10'}`}
+                      title={item.block_forecasting ? 'Unblock Forecasting' : 'Block Forecasting'}><BarChart2 size={15} /></button>
+                    <button onClick={() => handleUnblockItem(item.item_description)} className="p-2 rounded-lg text-zinc-600 hover:text-emerald-400 hover:bg-emerald-400/10 transition-all" title="Unblock"><X size={15} /></button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {blockedItems.length === 0 && !loadingBlocked && (
+              <div className="py-12 rounded-2xl border-2 border-dashed text-center" style={{ borderColor: 'rgba(239,68,68,0.1)' }}>
+                <Ban className="mx-auto text-zinc-700 mb-3" size={36} />
+                <p className="text-zinc-600 font-bold text-sm">No items blocked.</p>
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
+
+      {/* VIEWER MODAL */}
+      {showViewer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-6xl max-h-[90vh] flex flex-col rounded-3xl p-6" style={{ background: '#09090b', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-xl font-black text-white flex items-center gap-2"><Database size={20} className="text-indigo-400" /> Dataset Viewer</h3>
+                <p className="text-xs text-zinc-500 mt-1">Viewing raw transaction data ({viewerTotalRows.toLocaleString()} rows total)</p>
+              </div>
+              <button onClick={() => setShowViewer(false)} className="text-zinc-500 hover:text-white p-2 rounded-xl hover:bg-white/5"><X size={20}/></button>
+            </div>
+
+            <div className="flex-1 overflow-auto rounded-xl border" style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+              {viewerLoading ? (
+                <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+                  <Loader2 size={30} className="animate-spin mb-4" />
+                  <p className="text-sm font-bold">Loading Data...</p>
+                </div>
+              ) : viewerData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+                  <p className="text-sm font-bold">No data found.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-[#0f0f12] text-xs font-black uppercase text-zinc-500 sticky top-0">
+                    <tr>
+                      {Object.keys(viewerData[0]).map(k => (
+                        <th key={k} className="px-4 py-3 border-b border-white/5">{k.replace('_', ' ')}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="text-zinc-300">
+                    {viewerData.map((row, i) => (
+                      <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        {Object.values(row).map((val, j) => (
+                          <td key={j} className="px-4 py-3">{val !== null && val !== undefined ? String(val) : '-'}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-xs font-bold text-zinc-500">Page {viewerPage} of {Math.ceil(viewerTotalRows / 50) || 1}</span>
+              <div className="flex gap-2">
+                <button 
+                  disabled={viewerPage === 1 || viewerLoading} 
+                  onClick={() => openViewer(viewerDatasetId, viewerPage - 1)}
+                  className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
+                >
+                  <ChevronLeft size={16} /> Prev
+                </button>
+                <button 
+                  disabled={viewerPage >= Math.ceil(viewerTotalRows / 50) || viewerLoading} 
+                  onClick={() => openViewer(viewerDatasetId, viewerPage + 1)}
+                  className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
+                >
+                  Next <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

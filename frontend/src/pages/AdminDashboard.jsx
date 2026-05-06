@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Shield, Check, X, Users, Activity, FileText, Clock, LogIn, LogOut, ShieldOff } from 'lucide-react';
+import { Shield, Check, X, Users, Activity, FileText, Clock, LogOut, ShieldOff } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { token, username } = useAuth();
@@ -12,177 +12,130 @@ const AdminDashboard = () => {
 
   const fetchPendingUsers = async () => {
     try {
-      const res = await fetch('/api/admin/pending-users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch('/api/admin/pending-users', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      if (res.ok) {
-        setPendingUsers(data.users || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+      if (res.ok) setPendingUsers(data.users || []);
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   const fetchAuditLogs = async () => {
     try {
-      const res = await fetch('/api/admin/audit-logs', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch('/api/admin/audit-logs', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      if (res.ok) {
-        setAuditLogs(data.logs || []);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      if (res.ok) setAuditLogs(data.logs || []);
+    } catch (err) { console.error(err); }
   };
 
   const fetchSessionLogs = async () => {
     try {
-      const res = await fetch('/api/admin/session-logs', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch('/api/admin/session-logs', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (res.ok) setSessionLogs(data.sessions || []);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleForceEnd = async (session_id) => {
-    if (!window.confirm('Force-end this session? The user will be immediately logged out and cannot log in again for 10 minutes.')) return;
+    if (!window.confirm('Force-end this session? The user will be immediately logged out.')) return;
     try {
       const res = await fetch('/api/admin/force-end-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ session_id })
       });
-      if (res.ok) {
-        await fetchSessionLogs(); // refresh the list
-      } else {
-        alert('Failed to force-end session.');
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      if (res.ok) await fetchSessionLogs();
+      else alert('Failed to force-end session.');
+    } catch (err) { console.error(err); }
   };
 
-  useEffect(() => {
-    fetchPendingUsers();
-    fetchAuditLogs();
-    fetchSessionLogs();
-  }, [token]);
+  useEffect(() => { fetchPendingUsers(); fetchAuditLogs(); fetchSessionLogs(); }, [token]);
 
   const handleAction = async (actionUsername, action) => {
     try {
       const res = await fetch(`/api/admin/${action}`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ username: actionUsername })
       });
-      if (res.ok) {
-        setPendingUsers(pendingUsers.filter(u => u.username !== actionUsername));
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      if (res.ok) setPendingUsers(pendingUsers.filter(u => u.username !== actionUsername));
+    } catch (err) { console.error(err); }
   };
 
+  const glass = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' };
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="bg-red-100 text-red-600 p-3 rounded-lg">
-          <Shield size={28} />
+    <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
+
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-2xl" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <Shield size={24} className="text-rose-400" />
         </div>
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-900">Admin Control Panel</h1>
-          <p className="text-gray-500 font-medium mt-1">Logged in as {username}</p>
+          <h1 className="text-2xl font-black text-white tracking-tight">Admin Control Panel</h1>
+          <p className="text-zinc-500 text-sm mt-0.5">Logged in as <span className="text-indigo-400 font-bold">{username}</span></p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="bg-orange-100 text-orange-600 p-4 rounded-xl">
-            <Users size={24} />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 gap-5">
+        {[
+          { label: 'Pending Approvals', value: pendingUsers.length, icon: <Users size={20} />, color: 'rgba(249,115,22,0.15)', textColor: '#fb923c' },
+          { label: 'Total Sessions', value: sessionLogs.length, icon: <Clock size={20} />, color: 'rgba(99,102,241,0.15)', textColor: '#818cf8' },
+          { label: 'System Status', value: 'Online', icon: <Activity size={20} />, color: 'rgba(52,211,153,0.15)', textColor: '#34d399' },
+        ].map(({ label, value, icon, color, textColor }) => (
+          <div key={label} className="p-5 rounded-2xl flex items-center gap-4" style={glass}>
+            <div className="p-3 rounded-xl flex-shrink-0" style={{ background: color }}>
+              <span style={{ color: textColor }}>{icon}</span>
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{label}</p>
+              <p className="text-2xl font-black text-white">{value}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Pending Approvals</p>
-            <p className="text-3xl font-black text-gray-900">{pendingUsers.length}</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="bg-indigo-100 text-indigo-600 p-4 rounded-xl">
-            <Clock size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total Sessions</p>
-            <p className="text-3xl font-black text-gray-900">{sessionLogs.length}</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="bg-green-100 text-green-600 p-4 rounded-xl">
-            <Activity size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">System Status</p>
-            <p className="text-3xl font-black text-gray-900">Online</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* TABS */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex border-b border-gray-100">
+      {/* Tabs Panel */}
+      <div className="rounded-2xl overflow-hidden" style={glass}>
+        {/* Tab Bar */}
+        <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           {[['queue', Users, 'Registration Queue'], ['sessions', Clock, 'Session Log'], ['audit', FileText, 'Audit Trail']].map(([id, Icon, label]) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-bold transition-colors ${
-                activeTab === id
-                  ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50'
-                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Icon size={16} />{label}
+            <button key={id} onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-2 px-5 py-3.5 text-xs font-black uppercase tracking-widest transition-all ${activeTab === id ? 'text-indigo-400 border-b-2 border-indigo-500' : 'text-zinc-600 hover:text-zinc-300'}`}
+              style={activeTab === id ? { background: 'rgba(99,102,241,0.08)' } : {}}>
+              <Icon size={13} />{label}
             </button>
           ))}
         </div>
 
-        {/* REGISTRATION QUEUE */}
+        {/* Registration Queue */}
         {activeTab === 'queue' && (
           loading ? (
-            <div className="p-8 text-center text-gray-500 font-medium">Loading queue...</div>
+            <div className="p-8 text-center text-zinc-600 text-sm">Loading queue...</div>
           ) : pendingUsers.length === 0 ? (
             <div className="p-12 text-center">
-              <Shield size={48} className="mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500 font-medium">No pending registrations to review.</p>
+              <Shield size={40} className="mx-auto text-zinc-700 mb-3" />
+              <p className="text-zinc-600 font-medium text-sm">No pending registrations.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul>
               {pendingUsers.map(user => (
-                <li key={user.username} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                <li key={user.username} className="px-6 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <div>
-                    <p className="text-lg font-bold text-gray-900">{user.username}</p>
-                    <p className="text-sm font-medium text-orange-500 mt-1 uppercase tracking-widest text-[10px]">Status: {user.status}</p>
+                    <p className="font-bold text-white text-sm">{user.username}</p>
+                    <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mt-0.5">Status: {user.status}</p>
                   </div>
-                  <div className="flex gap-3">
-                    <button 
-                      onClick={() => handleAction(user.username, 'approve')}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-bold transition-colors"
-                    >
-                      <Check size={18} /> Approve
+                  <div className="flex gap-2">
+                    <button onClick={() => handleAction(user.username, 'approve')}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-emerald-400 text-xs font-black uppercase tracking-widest transition-all hover:bg-emerald-400/10"
+                      style={{ border: '1px solid rgba(52,211,153,0.2)' }}>
+                      <Check size={14} /> Approve
                     </button>
-                    <button 
-                      onClick={() => handleAction(user.username, 'deny')}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg font-bold transition-colors"
-                    >
-                      <X size={18} /> Deny
+                    <button onClick={() => handleAction(user.username, 'deny')}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-rose-400 text-xs font-black uppercase tracking-widest transition-all hover:bg-rose-400/10"
+                      style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
+                      <X size={14} /> Deny
                     </button>
                   </div>
                 </li>
@@ -191,54 +144,49 @@ const AdminDashboard = () => {
           )
         )}
 
-        {/* SESSION LOG */}
+        {/* Session Log */}
         {activeTab === 'sessions' && (
-          <div className="max-h-[520px] overflow-y-auto">
+          <div className="max-h-[480px] overflow-y-auto custom-scrollbar">
             {sessionLogs.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 font-medium">No sessions recorded yet.</div>
+              <div className="p-8 text-center text-zinc-600 text-sm">No sessions recorded yet.</div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
+                <thead className="sticky top-0 z-10" style={{ background: 'rgba(15,15,18,0.95)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <tr>
-                    <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">User</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Role</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Login</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Logout</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Duration</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Action</th>
+                    {['User', 'Role', 'Login', 'Logout', 'Duration', 'Action'].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-[9px] font-black text-zinc-600 uppercase tracking-widest">{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody>
                   {sessionLogs.map((s) => (
-                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-gray-900">{s.username}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
-                          s.role === 'ADMIN' ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'
-                        }`}>{s.role}</span>
+                    <tr key={s.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td className="px-5 py-3 font-bold text-zinc-200 text-xs">{s.username}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${s.role === 'ADMIN' ? 'text-rose-400' : 'text-indigo-400'}`}
+                          style={{ background: s.role === 'ADMIN' ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,241,0.1)' }}>
+                          {s.role}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-600 font-mono text-xs">{new Date(s.login_time).toLocaleString()}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3 text-zinc-600 font-mono text-[10px]">{new Date(s.login_time).toLocaleString()}</td>
+                      <td className="px-5 py-3">
                         {s.logout_time ? (
-                          <span className="text-gray-600 font-mono text-xs flex items-center gap-1">
-                            <LogOut size={12} className="text-gray-400" />
-                            {new Date(s.logout_time).toLocaleString()}
+                          <span className="text-zinc-600 font-mono text-[10px] flex items-center gap-1">
+                            <LogOut size={10} />{new Date(s.logout_time).toLocaleString()}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 uppercase tracking-widest">
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                            Active
+                          <span className="flex items-center gap-1 text-[9px] font-black text-emerald-400 uppercase">
+                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse inline-block" />Active
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-gray-500 font-mono text-xs">{s.duration || '—'}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3 text-zinc-600 font-mono text-[10px]">{s.duration || '—'}</td>
+                      <td className="px-5 py-3">
                         {!s.logout_time && (
-                          <button
-                            onClick={() => handleForceEnd(s.session_id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors"
-                          >
-                            <ShieldOff size={12} /> Force End
+                          <button onClick={() => handleForceEnd(s.session_id)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all text-amber-400 hover:bg-amber-400/10"
+                            style={{ border: '1px solid rgba(251,191,36,0.2)' }}>
+                            <ShieldOff size={11} /> Force End
                           </button>
                         )}
                       </td>
@@ -250,21 +198,22 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* AUDIT TRAIL */}
+        {/* Audit Trail */}
         {activeTab === 'audit' && (
-          <div className="max-h-[520px] overflow-y-auto">
+          <div className="max-h-[480px] overflow-y-auto custom-scrollbar">
             {auditLogs.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 font-medium">No logs recorded yet.</div>
+              <div className="p-8 text-center text-zinc-600 text-sm">No logs recorded yet.</div>
             ) : (
-              <ul className="divide-y divide-gray-50">
-                {auditLogs.map((log, index) => (
-                  <li key={index} className="p-4 hover:bg-gray-50 flex flex-col gap-1 transition-colors">
+              <ul>
+                {auditLogs.map((log, i) => (
+                  <li key={i} className="px-5 py-3.5 flex flex-col gap-1 hover:bg-white/[0.02] transition-colors"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase text-indigo-600 tracking-widest">{log.action}</span>
-                      <span className="text-[10px] font-bold text-gray-400">{new Date(log.timestamp).toLocaleString()}</span>
+                      <span className="text-[9px] font-black uppercase text-indigo-400 tracking-widest">{log.action}</span>
+                      <span className="text-[9px] font-bold text-zinc-600">{new Date(log.timestamp).toLocaleString()}</span>
                     </div>
-                    <p className="text-sm font-medium text-gray-800">
-                      <span className="font-bold">{log.username}</span>: {log.details}
+                    <p className="text-xs font-medium text-zinc-400">
+                      <span className="font-bold text-zinc-200">{log.username}</span>: {log.details}
                     </p>
                   </li>
                 ))}

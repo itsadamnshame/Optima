@@ -110,6 +110,7 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
                 seasonality_prior_scale=sps,
                 daily_seasonality=True,
                 yearly_seasonality=True,
+                weekly_seasonality=False,
                 holidays=unified_holidays_df if not unified_holidays_df.empty else None
             )
             m.fit(tune_train)
@@ -130,7 +131,7 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
         # Pre-tuning SARIMA order here too
         try:
             # We tune on full data residuals for caching
-            m_temp = Prophet(**{**best_params, 'daily_seasonality': True, 'yearly_seasonality': True})
+            m_temp = Prophet(**{**best_params, 'daily_seasonality': True, 'yearly_seasonality': True, 'weekly_seasonality': True})
             m_temp.fit(df)
             res_temp = df['y'].values - m_temp.predict(df)['yhat'].values
             stepwise_model = auto_arima(res_temp, seasonal=True, m=7, suppress_warnings=True, error_action="ignore")
@@ -153,6 +154,7 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
         'seasonality_prior_scale': best_params['seasonality_prior_scale'],
         'daily_seasonality': True,
         'yearly_seasonality': True,
+        'weekly_seasonality': True,
         'holidays': unified_holidays_df if not unified_holidays_df.empty else None
     }
 
@@ -190,8 +192,13 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
         
         mae = mean_absolute_error(y_true_test, y_pred_test)
         rmse = np.sqrt(mean_squared_error(y_true_test, y_pred_test))
-        mape = mean_absolute_percentage_error(y_true_test + 1, y_pred_test + 1)
-        accuracy_score = max(0, (1 - mape) * 100)
+        
+        # Calculate sMAPE (Symmetric Mean Absolute Percentage Error)
+        def smape(A, F):
+            return 100/len(A) * np.sum(2 * np.abs(F - A) / (np.abs(A) + np.abs(F) + 1e-8))
+        
+        smape_val = smape(y_true_test, y_pred_test)
+        accuracy_score = max(0, 100 - smape_val)
     else:
         mae, rmse, mape, accuracy_score = 0.0, 0.0, 0.0, 0.0
 
@@ -221,13 +228,43 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
     # --- STAGE 5: DATA SYNTHESIS ---
     forecast_dates = future_slice['ds'].dt.strftime('%Y-%m-%d').values
     
-    result_df = pd.DataFrame({
+    # Extract holiday effect if it exists
+    if 'holidays' in future_slice.columns:
+        holiday_effect = future_slice['holidays'].values.round(2)
+    else:
+        holiday_effect = np.zeros(len(future_slice))
+    
+    future_df = pd.DataFrame({
         'forecast_date': forecast_dates,
+        'type': 'future',
         'predicted_quantity': np.maximum(0, final_combined).round(0),
+        'actual_quantity': None,
         'prophet_trend': prophet_future.round(2),
         'sarima_pattern_correction': sarima_correction.round(2),
-        'special_day_detected': special_days_mask
+        'special_day_detected': special_days_mask,
+        'holiday_effect': holiday_effect,
+        'yhat_lower': future_slice['yhat_lower'].values.round(2),
+        'yhat_upper': future_slice['yhat_upper'].values.round(2)
     })
+    
+    history_days = min(30, len(df))
+    if history_days > 0:
+        hist_slice = df.tail(history_days).copy()
+        hist_df = pd.DataFrame({
+            'forecast_date': hist_slice['ds'].dt.strftime('%Y-%m-%d').values,
+            'type': 'historical',
+            'predicted_quantity': hist_slice['y'].values,
+            'actual_quantity': hist_slice['y'].values,
+            'prophet_trend': None,
+            'sarima_pattern_correction': 0.0,
+            'special_day_detected': 0,
+            'holiday_effect': 0.0,
+            'yhat_lower': None,
+            'yhat_upper': None
+        })
+        result_df = pd.concat([hist_df, future_df], ignore_index=True)
+    else:
+        result_df = future_df
 
     result_df.attrs['metrics'] = {
         'mae': round(float(mae), 4),

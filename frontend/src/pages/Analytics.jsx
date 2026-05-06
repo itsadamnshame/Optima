@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Loader2, Activity, Calendar, AlertTriangle, 
-  Zap, Info, TrendingUp, ShieldCheck, CheckSquare, 
-  ListOrdered, Filter, ChevronDown, ChevronUp, Sparkles
+import {
+  Loader2, Activity, Calendar, AlertTriangle,
+  Zap, Info, TrendingUp, ShieldCheck, CheckSquare,
+  ListOrdered, Filter, ChevronDown, ChevronUp, Sparkles,
+  BarChart2, ArrowUpRight, ArrowDownRight, Minus
 } from 'lucide-react';
-import { 
-  XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, ComposedChart, Area, Line 
+import {
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ComposedChart, Area, Line, ReferenceLine
 } from 'recharts';
 
 import SpecialDaysManager from '../components/SpecialDaysManager';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function Analytics({ 
-  setGlobalRecommendations, 
-  setGlobalLoading, 
-  setPersistedChart, 
-  setPersistedMetrics, 
+export default function Analytics({
+  setGlobalRecommendations,
+  setGlobalLoading,
+  setPersistedChart,
+  setPersistedMetrics,
   setLastForecastTime,
   existingChart,
-  existingMetrics 
+  existingMetrics
 }) {
   const { token } = useAuth();
   // 1. Initialize local state with existing data from the Global Vault
@@ -31,12 +32,12 @@ export default function Analytics({
   const [calendarEvents, setCalendarEvents] = useState([]);
 
   // Selection States
-  const [selectionMode, setSelectionMode] = useState('top'); 
+  const [selectionMode, setSelectionMode] = useState('top');
   const [topN, setTopN] = useState(5);
   const [availableItems, setAvailableItems] = useState([]);
   const [selectedManualItems, setSelectedManualItems] = useState([]);
   const [endDate, setEndDate] = useState('');
-  
+
   // If we have data already, we might want to hide filters by default
   const [showFilters, setShowFilters] = useState(chartData.length === 0);
 
@@ -73,14 +74,14 @@ export default function Analytics({
       setError("Please select at least one item.");
       return;
     }
-    
+
     setIsGenerating(true);
     if (setGlobalLoading) setGlobalLoading(true);
     setError('');
-    
+
     try {
       const response = await axios.get('/api/generate-recommendations', {
-        params: { 
+        params: {
           end_date: endDate,
           mode: selectionMode,
           top_n: topN,
@@ -88,7 +89,7 @@ export default function Analytics({
         },
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       const data = response.data.chart_data;
       const metrics = response.data.performance_metrics;
       const recs = response.data.recommendations;
@@ -102,8 +103,8 @@ export default function Analytics({
       setPersistedMetrics(metrics);
       setGlobalRecommendations(recs);
       setLastForecastTime(new Date().getTime()); // Start the 10-minute timer
-      
-      setShowFilters(false); 
+
+      setShowFilters(false);
     } catch (err) {
       if (err.response && err.response.status === 401) {
         setError("Session Expired. Please logout and login again to refresh your access.");
@@ -133,230 +134,327 @@ export default function Analytics({
   }, [resultItems, activeItem]);
 
   const filteredData = chartData.filter(d => d.item_description === activeItem);
-  const peaks = [...filteredData].sort((a, b) => b.predicted_quantity - a.predicted_quantity).slice(0, 3);
-  const holidays = filteredData.filter(d => d.special_day_detected === 1);
+  const futureData = filteredData.filter(d => d.type === 'future');
+  const peaks = [...futureData].sort((a, b) => b.predicted_quantity - a.predicted_quantity).slice(0, 3);
+  const holidays = futureData.filter(d => d.special_day_detected === 1);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       {/* HEADER */}
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-4xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
-            <TrendingUp className="text-indigo-600" size={40} />
-            Quantitative Specialist
+      <div className="relative rounded-[2.5rem] p-8 overflow-hidden flex justify-between items-center"
+        style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(255,255,255,0.02) 100%)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/30 via-transparent to-transparent pointer-events-none" />
+        <div className="relative z-10">
+          <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block" />
+            Hybrid Analytical Engine Active
+          </p>
+          <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+            <TrendingUp className="text-indigo-400" size={30} /> Quantitative Specialist
           </h2>
-          <p className="text-slate-500 font-medium ml-12 italic">
-            Hybrid Analytical Engine: Macro (Prophet) + Micro (SARIMA) Forecasting.
+          <p className="text-zinc-500 text-xs font-medium mt-1 ml-10">
+            Prophet (Macro Trends) + SARIMA (Short-Term Corrections) · {calendarEvents.length} events loaded
           </p>
         </div>
-        <button 
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all px-5 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm"
-        >
-          <Filter size={16} />
-          {showFilters ? 'Minimize Config' : 'Adjust Parameters'}
-          {showFilters ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+        <button onClick={() => setShowFilters(!showFilters)}
+          className="relative z-10 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-zinc-300 hover:text-white transition-all px-5 py-3 rounded-2xl backdrop-blur-sm"
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <Filter size={13} />
+          {showFilters ? 'Hide Config' : 'Configure'}
+          {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
       </div>
 
-      {/* 1. CONFIGURATION BLOCK */}
+      {/* CONFIG BLOCK */}
       {showFilters && (
         <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Mode Selection */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">1. Forecast Mode</label>
+            {/* Mode */}
+            <div className="p-6 rounded-3xl space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">1. Forecast Mode</label>
               <div className="space-y-3">
-                <button onClick={() => setSelectionMode('top')} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectionMode === 'top' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
-                  <ListOrdered size={20} /><span className="font-bold text-sm text-center">Top Velocity Items</span>
-                </button>
-                <button onClick={() => setSelectionMode('manual')} className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectionMode === 'manual' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>
-                  <CheckSquare size={20} /><span className="font-bold text-sm text-center">Manual SKU Selection</span>
-                </button>
+                {[['top', 'Top Velocity Items'], ['manual', 'Manual SKU Selection']].map(([val, label]) => (
+                  <button key={val} onClick={() => setSelectionMode(val)}
+                    className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectionMode === val ? 'border-indigo-500 text-indigo-300' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    style={selectionMode === val ? { background: 'rgba(99,102,241,0.1)', borderColor: 'rgba(99,102,241,0.4)' } : { background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <span className="font-bold text-sm">{label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Scope & Date */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">2. Scope & Horizon</label>
+            {/* Scope */}
+            <div className="p-6 rounded-3xl space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">2. Scope & Horizon</label>
               {selectionMode === 'top' ? (
                 <div className="py-2">
-                  <input type="range" min="3" max="10" value={topN} onChange={(e) => setTopN(parseInt(e.target.value))} className="w-full h-2 bg-slate-100 rounded-lg accent-indigo-600 mb-2" />
-                  <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest italic font-black">Analyzing Top {topN} Products</p>
+                  <input type="range" min="3" max="10" value={topN} onChange={(e) => setTopN(parseInt(e.target.value))}
+                    className="w-full h-2 rounded-lg accent-indigo-600 mb-2" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                  <p className="text-[10px] font-black text-zinc-500 text-center uppercase tracking-widest">Analyzing Top {topN} Products</p>
                 </div>
               ) : (
                 <div className="h-28 overflow-y-auto pr-2 space-y-1 custom-scrollbar">
                   {availableItems.map(item => (
-                    <label key={item} className="flex items-center gap-3 p-1 hover:bg-slate-50 rounded-lg cursor-pointer">
-                      <input type="checkbox" checked={selectedManualItems.includes(item)} onChange={() => handleManualToggle(item)} className="rounded text-indigo-600" />
-                      <span className="text-[10px] font-bold text-slate-600 truncate uppercase">{item}</span>
+                    <label key={item} className="flex items-center gap-3 p-1 rounded-lg cursor-pointer hover:bg-white/5">
+                      <input type="checkbox" checked={selectedManualItems.includes(item)} onChange={() => handleManualToggle(item)} className="rounded accent-indigo-600" />
+                      <span className="text-[10px] font-bold text-zinc-400 truncate uppercase">{item}</span>
                     </label>
                   ))}
                 </div>
               )}
-              <input type="date" className="w-full border-slate-200 rounded-xl py-2.5 px-4 text-sm font-bold text-slate-600" onChange={(e) => setEndDate(e.target.value)} />
+              <input type="date" className="w-full rounded-xl py-2.5 px-4 text-sm font-bold text-zinc-300 outline-none"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                onChange={(e) => setEndDate(e.target.value)} />
             </div>
 
-            {/* Execute Button */}
-            <div className="bg-indigo-600 p-6 rounded-3xl shadow-xl shadow-indigo-100 flex flex-col justify-center items-center text-center space-y-4">
-               <div className="bg-indigo-500 p-3 rounded-full text-white animate-pulse"><Sparkles size={24}/></div>
-               <div>
-                  <h4 className="text-white font-black text-lg uppercase tracking-tight italic">Ready for Audit?</h4>
-                  <p className="text-indigo-200 text-[10px] font-medium leading-relaxed px-4">Reconciling Trends with {calendarEvents.length} Calendar Disruptions.</p>
-               </div>
-               <button onClick={runSpecialistAnalysis} disabled={isGenerating} className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20">
-                  {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
-                  GENERATE SPECIALIST AUDIT
-               </button>
+            {/* Execute */}
+            <div className="rounded-3xl p-6 flex flex-col justify-center items-center text-center space-y-4"
+              style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)', boxShadow: '0 0 40px rgba(99,102,241,0.25)' }}>
+              <div className="bg-white/20 p-3 rounded-full text-white animate-pulse"><Sparkles size={22} /></div>
+              <div>
+                <h4 className="text-white font-black text-lg uppercase tracking-tight italic">Ready for Audit?</h4>
+                <p className="text-indigo-200 text-[10px] font-medium leading-relaxed px-4 mt-1">
+                  Reconciling Trends with {calendarEvents.length} Calendar Disruptions.
+                </p>
+              </div>
+              <button onClick={runSpecialistAnalysis} disabled={isGenerating}
+                className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-lg">
+                {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
+                GENERATE SPECIALIST AUDIT
+              </button>
             </div>
           </div>
 
-          {/* Calendar Logic Monitor */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> 
+          {/* Calendar Manager + compact Hybrid Status strip */}
+          <div className="space-y-3">
             <SpecialDaysManager onUpdate={fetchCalendar} />
 
-            <div className="sticky top-6">
-              <div className="bg-slate-900 p-10 rounded-[3rem] flex flex-col justify-between border-l-[12px] border-indigo-500 shadow-2xl relative overflow-hidden group h-[550px]">
-                <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
+            {/* Hybrid Status — slim info bar */}
+            <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-4 border-l-4 border-indigo-500"
+              style={{ background: 'rgba(99,102,241,0.06)', borderTopColor: 'rgba(255,255,255,0.05)', borderRightColor: 'rgba(255,255,255,0.05)', borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse inline-block shadow-[0_0_6px_rgba(129,140,248,0.8)]" />
+                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.25em]">Hybrid Specialist · Listener Active</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Calendar Load</span>
+                  <span className="text-xs font-black text-white">{calendarEvents.length} <span className="text-zinc-600 font-normal">days</span></span>
+                </div>
+                <div className="w-px h-4 bg-white/10" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Impact</span>
+                  <span className="text-xs font-black text-emerald-400">High</span>
+                </div>
+                <div className="w-px h-4 bg-white/10" />
+                <p className="text-[9px] text-indigo-300/50 font-medium italic hidden lg:block">
+                  Prophet treats these as structural breaks
+                </p>
+              </div>
+            </div>
+          </div>
 
-                <div className="relative z-10">
-                    <p className="text-indigo-400 font-black text-[10px] uppercase tracking-[0.3em] mb-8 flex items-center gap-3 italic">
-                      <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(129,140,248,0.8)]"></div>
-                      Engine Status: Listener Active
+        </div>
+      )}
+
+      {error && (
+
+        <div className="rounded-2xl flex items-center gap-4 text-sm font-black p-5" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5' }}>
+          <AlertTriangle size={22} />{error}
+        </div>
+      )}
+
+      {/* RESULTS */}
+      {filteredData.length > 0 && (() => {
+        const m = performanceMetrics[activeItem] || {};
+        const totalFuture = futureData.reduce((s, r) => s + Number(r.predicted_quantity || 0), 0);
+        const avgFuture = futureData.length ? (totalFuture / futureData.length).toFixed(1) : 0;
+        const sarima0 = futureData[0]?.sarima_pattern_correction ?? 0;
+        const sarimaDir = sarima0 > 0.5 ? 'boosting' : sarima0 < -0.5 ? 'dampening' : 'stable';
+
+        return (
+          <div className="space-y-6 animate-in fade-in duration-700">
+            {/* Product Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {resultItems.map(item => (
+                <button key={item} onClick={() => setActiveItem(item)}
+                  className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${activeItem === item ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-zinc-500 hover:text-zinc-200'}`}
+                  style={activeItem !== item ? { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' } : {}}>
+                  {item}
+                </button>
+              ))}
+            </div>
+
+            {/* KPIs */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Model Accuracy', value: m.mape_pct || 'N/A', sub: 'sMAPE score', accent: '#818cf8', icon: <ShieldCheck size={16}/> },
+                { label: 'Avg Error (MAE)', value: `±${m.mae || 0}`, sub: 'units deviation', accent: '#71717a', icon: <Activity size={16}/> },
+                { label: 'Stability (RMSE)', value: m.rmse || 0, sub: 'outlier sensitivity', accent: '#71717a', icon: <BarChart2 size={16}/> },
+                { label: 'Avg Daily Forecast', value: `${avgFuture}`, sub: 'units / day', accent: '#a78bfa', icon: <TrendingUp size={16}/> },
+              ].map(({ label, value, sub, accent, icon }) => (
+                <div key={label} className="rounded-[2rem] p-6 relative overflow-hidden"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div className="absolute top-3 right-3 opacity-20" style={{ color: accent }}>{icon}</div>
+                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">{label}</p>
+                  <p className="text-3xl font-black tracking-tighter" style={{ color: accent }}>{value}</p>
+                  <p className="text-[9px] text-zinc-600 font-medium mt-2 uppercase">{sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Hero Chart + Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3 rounded-[3rem] p-8" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-tight uppercase">Final Hybrid Forecast</h3>
+                    <p className="text-xs text-zinc-500 font-medium mt-0.5">Last 30 days of actuals → future predictions with 80% confidence band</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-widest text-zinc-600">
+                    <span className="flex items-center gap-1.5"><span className="w-5 h-0.5 bg-zinc-600 inline-block rounded-full"/>Historical</span>
+                    <span className="flex items-center gap-1.5"><span className="w-5 border-t-2 border-dashed border-indigo-400 inline-block"/>Forecast</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block opacity-50" style={{ background: 'rgba(99,102,241,0.4)' }}/>Confidence</span>
+                  </div>
+                </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={filteredData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="confGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.04)"/>
+                      <XAxis dataKey="forecast_date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 9 }} dy={8} minTickGap={28}/>
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 10 }} dx={-4} width={40}/>
+                      <Tooltip contentStyle={{ borderRadius: '16px', background: '#18181b', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', color: '#f4f4f5', fontSize: 12 }}/>
+                      <Area type="monotone" dataKey="yhat_upper" stroke="none" fill="url(#confGrad)" fillOpacity={1}/>
+                      <Area type="monotone" dataKey="yhat_lower" stroke="none" fill="transparent" fillOpacity={1}/>
+                      <Line type="monotone" dataKey="actual_quantity" name="Actual Sales" stroke="#3f3f46" strokeWidth={2.5} dot={false} connectNulls/>
+                      <Line type="monotone" dataKey="predicted_quantity" name="Predicted" stroke="#6366f1" strokeWidth={3} strokeDasharray="6 3" dot={false} connectNulls/>
+                      {futureData[0] && <ReferenceLine x={futureData[0].forecast_date} stroke="rgba(255,255,255,0.1)" strokeDasharray="4 4" label={{ value: 'Forecast Start', fill: '#52525b', fontSize: 9 }}/>}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Insights */}
+              <div className="rounded-[3rem] p-8 flex flex-col gap-4" style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-2">
+                  <Sparkles size={12}/> Optima Insights
+                </p>
+                <div className="flex-1 space-y-3">
+                  <div className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Peak Forecast</p>
+                    <p className="text-2xl font-black text-white">{peaks[0]?.predicted_quantity ?? 0} <span className="text-xs font-normal text-zinc-500">units</span></p>
+                    <p className="text-[9px] text-zinc-600 mt-1">{peaks[0]?.forecast_date}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">SARIMA Status</p>
+                    <p className={`text-xs font-bold ${sarimaDir === 'boosting' ? 'text-emerald-400' : sarimaDir === 'dampening' ? 'text-rose-400' : 'text-zinc-500'}`}>
+                      {sarimaDir === 'boosting' ? <ArrowUpRight size={11} className="inline mr-1"/> : sarimaDir === 'dampening' ? <ArrowDownRight size={11} className="inline mr-1"/> : <Minus size={11} className="inline mr-1"/>}
+                      {sarimaDir === 'stable' ? 'Residuals stable · no correction' : `${sarima0 > 0 ? '+' : ''}${sarima0.toFixed(1)} units correction`}
                     </p>
-                    
-                    <h3 className="text-white text-4xl font-black leading-[1.1] tracking-tighter uppercase italic">
-                      Hybrid Specialist <br/>Context.
-                    </h3>
-                    
-                    <div className="mt-12 grid grid-cols-2 gap-6">
-                      <div className="bg-slate-800/40 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-md">
-                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Calendar Load</p>
-                          <p className="text-3xl font-black text-white italic">{calendarEvents.length} <span className="text-xs font-normal text-slate-500">Days</span></p>
+                  </div>
+                  <div className="p-4 rounded-2xl" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                    <p className="text-[9px] text-indigo-400/70 font-black uppercase tracking-widest mb-1.5">Model Narrative</p>
+                    <p className="text-indigo-200/70 text-[10px] font-medium leading-relaxed italic">
+                      The shaded band shows an 80% confidence interval. Prophet captures the yearly structural trend; SARIMA corrects for short-term volatility.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Data Table + Audit */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3 rounded-[3rem] p-8" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">Forecast Data Table</h3>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 px-3 py-1.5 rounded-xl"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>{filteredData.length} rows</span>
+                </div>
+                <div className="overflow-y-auto max-h-96 rounded-2xl custom-scrollbar" style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <table className="w-full text-left">
+                    <thead className="sticky top-0 z-10" style={{ background: 'rgba(18,18,20,0.95)', backdropFilter: 'blur(8px)' }}>
+                      <tr>
+                        {['Date','Type','Qty','CI Low','CI High','Event Δ'].map(h => (
+                          <th key={h} className="px-4 py-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest border-b"
+                            style={{ borderColor: 'rgba(255,255,255,0.05)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredData.slice().reverse().map((row, i) => {
+                        const qty = row.type === 'historical' ? row.actual_quantity : row.predicted_quantity;
+                        const impact = row.holiday_effect;
+                        return (
+                          <tr key={i} className="border-b transition-colors hover:bg-white/[0.02]"
+                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                            <td className="px-4 py-3 text-xs font-bold text-zinc-500 font-mono">{row.forecast_date}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-full ${row.type === 'historical' ? 'text-zinc-500' : 'text-indigo-400'}`}
+                                style={row.type === 'historical' ? { background: 'rgba(255,255,255,0.06)' } : { background: 'rgba(99,102,241,0.15)' }}>
+                                {row.type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-black text-white">{qty}</td>
+                            <td className="px-4 py-3 text-xs text-zinc-600">{row.yhat_lower != null ? Number(row.yhat_lower).toFixed(0) : '—'}</td>
+                            <td className="px-4 py-3 text-xs text-zinc-600">{row.yhat_upper != null ? Number(row.yhat_upper).toFixed(0) : '—'}</td>
+                            <td className="px-4 py-3">
+                              {impact != null && impact !== 0
+                                ? <span className={`font-bold text-xs ${impact > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{impact > 0 ? '+' : ''}{Number(impact).toFixed(1)}</span>
+                                : <span className="text-zinc-700 text-xs">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Hybrid Audit */}
+              <div className="rounded-[3rem] p-8 flex flex-col" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <h4 className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
+                  <Calendar size={12} className="text-indigo-400"/> Hybrid Audit
+                </h4>
+                <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1 max-h-80">
+                  {holidays.length > 0 ? holidays.map((day, i) => {
+                    const eff = day.holiday_effect ?? 0;
+                    const isPos = eff > 0.1; const isNeg = eff < -0.1;
+                    return (
+                      <div key={i} className="p-3 rounded-2xl flex items-start gap-3"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className={`mt-0.5 w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0`}
+                          style={{ background: isPos ? 'rgba(52,211,153,0.1)' : isNeg ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.05)' }}>
+                          <Info size={11} className={isPos ? 'text-emerald-400' : isNeg ? 'text-rose-400' : 'text-zinc-500'}/>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] font-mono text-zinc-600">{day.forecast_date}</p>
+                          <p className="text-[10px] font-black text-zinc-300 uppercase leading-tight">Event</p>
+                          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[8px] font-black ${isPos ? 'text-emerald-400' : isNeg ? 'text-rose-400' : 'text-zinc-600'}`}
+                            style={isPos ? { background: 'rgba(52,211,153,0.1)' } : isNeg ? { background: 'rgba(239,68,68,0.1)' } : { background: 'rgba(255,255,255,0.05)' }}>
+                            {isPos ? '+' : ''}{eff.toFixed(1)} units
+                          </span>
+                        </div>
                       </div>
-                      <div className="bg-slate-800/40 p-6 rounded-[2rem] border border-slate-700/50 backdrop-blur-md">
-                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Level</p>
-                          <p className="text-3xl font-black text-emerald-400 italic">High</p>
-                      </div>
+                    );
+                  }) : (
+                    <div className="flex flex-col items-center justify-center h-40 text-zinc-700">
+                      <Calendar size={36}/>
+                      <p className="text-[9px] font-black uppercase mt-2 tracking-widest">Clear Horizon</p>
                     </div>
-                </div>
-
-                <div className="relative z-10 mt-12">
-                    <div className="p-6 bg-indigo-600/10 rounded-3xl border border-indigo-500/20 backdrop-blur-sm">
-                      <p className="text-indigo-200 text-xs font-bold italic leading-relaxed text-center">
-                        "Prophet will treat these {calendarEvents.length} entries as structural breaks, adjusting trends to neutralize holiday variance in core calculations."
-                      </p>
-                    </div>
-                    <div className="flex justify-between items-center mt-6 px-2">
-                      <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest italic">Protocol v1.4</p>
-                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {error && <div className="bg-rose-50 border border-rose-200 text-rose-600 p-5 rounded-2xl flex items-center gap-4 text-sm font-black"><AlertTriangle size={24} />{error}</div>}
-
-      {/* 2. RESULTS SECTION (PERSISTENT) */}
-      {filteredData.length > 0 && (
-        <div className="space-y-8 animate-in fade-in zoom-in-95 duration-700 pt-8 border-t border-slate-100">
-          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
-            {resultItems.map(item => (
-              <button key={item} onClick={() => setActiveItem(item)} className={`px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${activeItem === item ? 'bg-indigo-600 text-white shadow-xl -translate-y-1' : 'bg-white text-slate-400 border border-slate-100 hover:border-indigo-200'}`}>{item}</button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 relative overflow-hidden group shadow-sm">
-               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity"><ShieldCheck size={80}/></div>
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">Model Accuracy (MAPE)</p>
-               <h3 className="text-5xl font-black text-indigo-600 tracking-tighter">{performanceMetrics[activeItem]?.mape_pct || "N/A"}</h3>
-               <p className="text-[10px] font-bold text-slate-400 mt-4 uppercase italic">Verified Reliability Fit</p>
-            </div>
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">Avg Error (MAE)</p>
-               <h3 className="text-5xl font-black text-slate-800 tracking-tighter">±{performanceMetrics[activeItem]?.mae || "0"}</h3>
-               <p className="text-[10px] font-bold text-slate-400 mt-4 uppercase italic">Units Deviation Factor</p>
-            </div>
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">Stability (RMSE)</p>
-               <h3 className="text-5xl font-black text-slate-800 tracking-tighter">{performanceMetrics[activeItem]?.rmse || "0"}</h3>
-               <p className="text-[10px] font-bold text-slate-400 mt-4 uppercase italic">Outlier Sensitivity Score</p>
-            </div>
-          </div>
-
-          <div className="space-y-10">
-            {/* MACRO CHART */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              <div className="lg:col-span-3 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-start mb-8">
-                  <div><h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">Prophet Component</h3><p className="text-sm text-slate-500 font-medium italic">Low-Frequency Structural Shifts (The Yearly Trend Skeleton).</p></div>
-                  <div className="px-4 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-xl uppercase tracking-widest text-center">Macro-Specialist</div>
-                </div>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={filteredData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="forecast_date" fontSize={10} tickMargin={10} fontWeight="bold" stroke="#cbd5e1" />
-                      <YAxis stroke="#cbd5e1" fontSize={11} fontWeight="bold" />
-                      <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)' }} />
-                      <Line type="monotone" dataKey="prophet_trend" name="Core Trend" stroke="#6366f1" strokeWidth={6} dot={false} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="bg-white p-8 rounded-[3rem] border border-slate-100 flex flex-col shadow-sm">
-                <h4 className="font-black text-slate-400 text-[10px] uppercase mb-6 tracking-[0.2em] flex items-center gap-2 italic"><Calendar size={16} className="text-indigo-500" /> Hybrid Audit</h4>
-                <div className="space-y-4 h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                  {holidays.length > 0 ? holidays.map((day, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-[1.5rem] border border-slate-100">
-                      <div className="bg-white p-2 rounded-xl text-indigo-500 shadow-sm"><Info size={16} /></div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-400">{day.forecast_date}</p>
-                        <p className="text-[11px] font-black text-slate-900 uppercase leading-tight tracking-tighter">Event Detected</p>
-                      </div>
-                    </div>
-                  )) : <div className="text-center h-40 flex flex-col justify-center opacity-20 text-center"><Calendar size={48} className="mx-auto" /><p className="text-[10px] font-black uppercase mt-2 italic">Clear Horizon</p></div>}
-                </div>
-              </div>
-            </div>
-
-            {/* MICRO CHART */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              <div className="lg:col-span-3 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-start mb-8">
-                  <div><h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">SARIMA Component</h3><p className="text-sm text-slate-500 font-medium italic">High-Frequency Micro-Patterns (The Seasonal Heartbeat).</p></div>
-                  <div className="px-4 py-2 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl uppercase tracking-widest text-center">Micro-Specialist</div>
-                </div>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={filteredData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="forecast_date" hide />
-                      <YAxis stroke="#cbd5e1" fontSize={11} fontWeight="bold" />
-                      <Tooltip cursor={{stroke: '#e2e8f0'}} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)' }} />
-                      <Area type="monotone" dataKey="sarima_pattern_correction" name="Seasonal Offset" fill="#e0f2fe" stroke="#0ea5e9" strokeWidth={4} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col shadow-xl">
-                <h4 className="font-black text-indigo-400 text-[10px] uppercase mb-8 tracking-[0.2em] flex items-center gap-2 italic"><Activity size={16} /> Pattern Peaks</h4>
-                <div className="space-y-8 flex-1">
-                  {peaks.map((day, i) => (
-                    <div key={i} className="border-l-2 border-slate-800 pl-4">
-                        <p className="text-[10px] text-slate-500 font-mono mb-1">{day.forecast_date}</p>
-                        <p className="text-3xl font-black text-white italic">{day.predicted_quantity} <span className="text-[11px] font-normal text-slate-500 tracking-widest uppercase">Units</span></p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
+

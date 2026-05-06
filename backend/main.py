@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import traceback
 import json
+from typing import List
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends, Header, Form
 from pydantic import BaseModel
 import jwt
@@ -129,6 +130,20 @@ def setup_db():
         except Exception:
             pass  # column already exists
         
+        try:
+            conn.execute(text("ALTER TABLE datasets ADD COLUMN dataset_type TEXT DEFAULT 'MASTER'"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("ALTER TABLE datasets ADD COLUMN date_range_start TEXT"))
+            conn.execute(text("ALTER TABLE datasets ADD COLUMN date_range_end TEXT"))
+            conn.execute(text("ALTER TABLE datasets ADD COLUMN gap_info TEXT"))
+            conn.commit()
+        except Exception:
+            pass
+
         # SCHEMA MIGRATION: ADD NEW COLUMNS IF THEY DON'T EXIST
         try:
             conn.execute(text("ALTER TABLE users ADD COLUMN full_name TEXT"))
@@ -533,44 +548,120 @@ async def get_audit_logs(user=Depends(get_current_user)):
 # ==========================================
 # DATA INGESTION
 # ==========================================
+def analyze_dataset_gaps(df):
+    if df.empty or 'order_date' not in df.columns:
+        return None, None, "Continuous"
+        
+    start_date = df['order_date'].min()
+    end_date = df['order_date'].max()
+    dr_start = start_date.strftime('%Y-%m-%d') if pd.notnull(start_date) else None
+    dr_end = end_date.strftime('%Y-%m-%d') if pd.notnull(end_date) else None
+
+    gap_str = "Continuous"
+    if pd.notnull(start_date) and pd.notnull(end_date):
+        unique_years = df['order_date'].dt.year.dropna().unique()
+        if len(unique_years) > 0:
+            expected_years = list(range(int(start_date.year), int(end_date.year) + 1))
+            missing_years = [y for y in expected_years if y not in unique_years]
+            if missing_years:
+                gap_str = "Missing Years: " + ", ".join(map(str, missing_years))
+            else:
+                unique_months = df['order_date'].dt.to_period('M').unique()
+                expected_months = pd.period_range(start=start_date, end=end_date, freq='M')
+                missing_months = expected_months.difference(unique_months)
+                if not missing_months.empty:
+                    if len(missing_months) > 5:
+                        gap_str = f"Missing {len(missing_months)} Months"
+                    else:
+                        gap_str = "Missing Months: " + ", ".join(missing_months.strftime('%b %Y'))
+    return dr_start, dr_end, gap_str
+
 @app.post("/api/upload-data")
-async def process_sales_data(title: str = Form(...), file: UploadFile = File(...), user=Depends(get_current_user)):
+async def process_sales_data(
+    title: str = Form(...),
+    dataset_type: str = Form("MASTER"),
+    files: List[UploadFile] = File(...),
+    user=Depends(get_current_user)
+):
     if user.get("role") != "ADMIN":
         raise HTTPException(status_code=403, detail="Admin access required to upload data")
     try:
-        contents = await file.read()
-        df = pd.read_excel(io.BytesIO(contents)) if file.filename.endswith('.xlsx') else pd.read_csv(io.BytesIO(contents))
-        
-        df.columns = (df.columns.str.strip().str.lower().str.replace(' ', '_').str.replace(r'\(|\)', '', regex=True))
-        df = df.rename(columns={'orderdate': 'order_date', 'itemdescription': 'item_description', 'customerid': 'customer_id', 'orderid': 'order_id'})
-        
+        all_frames = []
+        filenames = []
+
+        COLUMN_ALIASES = {
+            'orderdate': 'order_date', 'order date': 'order_date',
+            'itemdescription': 'item_description', 'item description': 'item_description', 'item': 'item_description',
+            'customerid': 'customer_id', 'customer id': 'customer_id',
+            'orderid': 'order_id', 'order id': 'order_id',
+        }
+
+        for file in files:
+            contents = await file.read()
+            filenames.append(file.filename)
+
+            if file.filename.endswith('.xlsx') or file.filename.endswith('.xls'):
+                # Read ALL sheets and concatenate them
+                xl = pd.ExcelFile(io.BytesIO(contents))
+                for sheet in xl.sheet_names:
+                    try:
+                        sheet_df = xl.parse(sheet)
+                        sheet_df.columns = (
+                            sheet_df.columns.str.strip().str.lower()
+                            .str.replace(' ', '_').str.replace(r'[\(\)]', '', regex=True)
+                        )
+                        sheet_df = sheet_df.rename(columns=COLUMN_ALIASES)
+                        all_frames.append(sheet_df)
+                    except Exception:
+                        continue  # skip unparseable sheets silently
+            else:
+                # CSV
+                csv_df = pd.read_csv(io.BytesIO(contents))
+                csv_df.columns = (
+                    csv_df.columns.str.strip().str.lower()
+                    .str.replace(' ', '_').str.replace(r'[\(\)]', '', regex=True)
+                )
+                csv_df = csv_df.rename(columns=COLUMN_ALIASES)
+                all_frames.append(csv_df)
+
+        if not all_frames:
+            raise HTTPException(status_code=400, detail="No readable data found in uploaded files.")
+
+        df = pd.concat(all_frames, ignore_index=True)
         df['order_date'] = pd.to_datetime(df['order_date'], dayfirst=True, errors='coerce')
         df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce')
-        
         valid_sales = df.dropna(subset=['item_description', 'order_id', 'order_date']).copy()
-        
+        # Remove duplicate order rows that may appear across year-split files
+        valid_sales = valid_sales.drop_duplicates(subset=['order_id', 'item_description', 'order_date'])
+
+        combined_filename = ", ".join(filenames)
+        dr_start, dr_end, gap_info_str = analyze_dataset_gaps(valid_sales)
+
         with engine.connect() as conn:
-            # 1. Create dataset metadata
             now = datetime.datetime.utcnow().isoformat()
-            # Note: In SQLite with SQLAlchemy, we use connection.execute and then get lastrowid if supported, 
-            # or we can query for the max ID. Actually res.lastrowid is standard for sqlite cursor.
             cursor = conn.execute(
-                text("INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private) VALUES (:t, :f, :d, :u, :rc, 0)"),
-                {"t": title, "f": file.filename, "d": now, "u": user['username'], "rc": len(valid_sales)}
+                text("INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 0, :dt, :drs, :dre, :gap)"),
+                {"t": title, "f": combined_filename, "d": now, "u": user['username'], "rc": len(valid_sales), "dt": dataset_type, "drs": dr_start, "dre": dr_end, "gap": gap_info_str}
             )
             conn.commit()
             dataset_id = cursor.lastrowid
-            
-            # 2. Add dataset_id to dataframe
+
             valid_sales['dataset_id'] = dataset_id
-            
-            # 3. Append to SQL
             valid_sales.to_sql("sales_transactions", engine, if_exists="append", index=False)
-            
-            log_audit(conn, user['username'], "UPLOAD_DATA", f"Uploaded dataset '{title}' ({len(valid_sales)} rows)")
+
+            log_audit(conn, user['username'], "UPLOAD_DATA",
+                      f"Uploaded dataset '{title}' from {len(files)} file(s), {len(all_frames)} sheet(s), {len(valid_sales)} rows")
             conn.commit()
-            
-        return {"status": "success", "total_rows": len(valid_sales), "dataset_id": dataset_id}
+
+        return {
+            "status": "success",
+            "total_rows": len(valid_sales),
+            "dataset_id": dataset_id,
+            "files_processed": len(files),
+            "sheets_processed": len(all_frames)
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -583,14 +674,18 @@ async def get_datasets(user=Depends(get_current_user)):
     try:
         with engine.connect() as conn:
             if user.get("role") == "ADMIN":
-                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active FROM datasets ORDER BY id DESC"
+                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active, dataset_type, date_range_start, date_range_end, gap_info FROM datasets ORDER BY id DESC"
                 res = conn.execute(text(query)).fetchall()
             else:
-                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active FROM datasets WHERE is_private = 0 ORDER BY id DESC"
+                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active, dataset_type, date_range_start, date_range_end, gap_info FROM datasets WHERE is_private = 0 ORDER BY id DESC"
                 res = conn.execute(text(query)).fetchall()
             
             datasets = []
             for r in res:
+                dt = r[8] if len(r) > 8 else "MASTER"
+                drs = r[9] if len(r) > 9 else None
+                dre = r[10] if len(r) > 10 else None
+                gap = r[11] if len(r) > 11 else None
                 datasets.append({
                     "id": r[0],
                     "title": r[1],
@@ -599,10 +694,84 @@ async def get_datasets(user=Depends(get_current_user)):
                     "uploader": r[4],
                     "row_count": r[5],
                     "is_private": bool(r[6]),
-                    "is_active": bool(r[7])
+                    "is_active": bool(r[7]),
+                    "dataset_type": dt,
+                    "date_range_start": drs,
+                    "date_range_end": dre,
+                    "gap_info": gap
                 })
             return {"datasets": datasets}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class CombineRequest(BaseModel):
+    title: str
+    dataset_ids: List[int]
+
+@app.post("/api/combine-datasets")
+async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
+    try:
+        df_list = []
+        filenames = []
+        for d_id in req.dataset_ids:
+            with engine.connect() as conn:
+                res = conn.execute(text("SELECT filename FROM datasets WHERE id = :id"), {"id": d_id}).fetchone()
+                if res:
+                    filenames.append(res[0])
+            df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE dataset_id={d_id}", engine)
+            if not df.empty:
+                df_list.append(df)
+                
+        if not df_list:
+            raise HTTPException(status_code=400, detail="No data found in selected datasets.")
+            
+        combined_df = pd.concat(df_list, ignore_index=True)
+        # Drop duplicates across combined years
+        combined_df = combined_df.drop_duplicates(subset=['order_id', 'item_description', 'order_date'])
+        
+        combined_filename = "COMBINED: " + ", ".join(filenames)[:200]
+        dr_start, dr_end, gap_info_str = analyze_dataset_gaps(combined_df)
+        
+        with engine.connect() as conn:
+            now = datetime.datetime.utcnow().isoformat()
+            cursor = conn.execute(
+                text("INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 1, 'MASTER', :drs, :dre, :gap)"),
+                {"t": req.title, "f": combined_filename, "d": now, "u": user['username'], "rc": len(combined_df), "drs": dr_start, "dre": dr_end, "gap": gap_info_str}
+            )
+            conn.commit()
+            new_dataset_id = cursor.lastrowid
+            
+            combined_df['dataset_id'] = new_dataset_id
+            combined_df.to_sql("sales_transactions", engine, if_exists="append", index=False)
+            
+            log_audit(conn, user['username'], "COMBINE_DATASETS", f"Combined {len(req.dataset_ids)} datasets into '{req.title}' ({len(combined_df)} rows)")
+            conn.commit()
+            
+        return {"status": "success", "dataset_id": new_dataset_id, "total_rows": len(combined_df)}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/datasets/{dataset_id}/data")
+async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, user=Depends(get_current_user)):
+    try:
+        offset = (page - 1) * limit
+        df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE dataset_id={dataset_id} LIMIT {limit} OFFSET {offset}", engine)
+        
+        with engine.connect() as conn:
+            total_rows_res = conn.execute(text("SELECT row_count FROM datasets WHERE id=:id"), {"id": dataset_id}).fetchone()
+            total_rows = total_rows_res[0] if total_rows_res else 0
+            
+        data = df.to_dict(orient="records")
+        return {
+            "status": "success",
+            "data": data,
+            "page": page,
+            "limit": limit,
+            "total_rows": total_rows
+        }
+    except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/datasets/{dataset_id}/activate")
