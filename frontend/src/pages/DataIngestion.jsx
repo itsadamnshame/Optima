@@ -36,19 +36,40 @@ export default function DataIngestion({ onDatasetChange }) {
   const [viewerLoading, setViewerLoading] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
 
-  const openViewer = async (datasetId, page = 1) => {
+  const [viewerYearFilter, setViewerYearFilter] = useState('');
+  const [viewerAvailableYears, setViewerAvailableYears] = useState([]);
+  const [viewerPageInput, setViewerPageInput] = useState('');
+
+  const openViewer = async (datasetId, page = 1, year = '') => {
     setViewerDatasetId(datasetId);
     setViewerPage(page);
+    setViewerYearFilter(year);
     setShowViewer(true);
     setViewerLoading(true);
     try {
-      const res = await axios.get(`/api/datasets/${datasetId}/data?page=${page}&limit=50`, { headers: { Authorization: `Bearer ${token}` } });
+      if (datasetId !== viewerDatasetId) {
+        const yearsRes = await axios.get(`/api/datasets/${datasetId}/years`, { headers: { Authorization: `Bearer ${token}` } });
+        setViewerAvailableYears(yearsRes.data.years || []);
+      }
+      
+      const yearQuery = year ? `&year=${year}` : '';
+      const res = await axios.get(`/api/datasets/${datasetId}/data?page=${page}&limit=50${yearQuery}`, { headers: { Authorization: `Bearer ${token}` } });
       setViewerData(res.data.data);
       setViewerTotalRows(res.data.total_rows);
     } catch(e) {
       console.error(e);
     } finally {
       setViewerLoading(false);
+    }
+  };
+
+  const handlePageJump = (e) => {
+    e.preventDefault();
+    const p = parseInt(viewerPageInput);
+    const maxPage = Math.ceil(viewerTotalRows / 50) || 1;
+    if (p >= 1 && p <= maxPage) {
+      openViewer(viewerDatasetId, p, viewerYearFilter);
+      setViewerPageInput('');
     }
   };
 
@@ -419,7 +440,19 @@ export default function DataIngestion({ onDatasetChange }) {
                 <h3 className="text-xl font-black text-white flex items-center gap-2"><Database size={20} className="text-indigo-400" /> Dataset Viewer</h3>
                 <p className="text-xs text-zinc-500 mt-1">Viewing raw transaction data ({viewerTotalRows.toLocaleString()} rows total)</p>
               </div>
-              <button onClick={() => setShowViewer(false)} className="text-zinc-500 hover:text-white p-2 rounded-xl hover:bg-white/5"><X size={20}/></button>
+              <div className="flex items-center gap-4">
+                {viewerAvailableYears.length > 0 && (
+                  <select 
+                    value={viewerYearFilter} 
+                    onChange={(e) => openViewer(viewerDatasetId, 1, e.target.value)}
+                    className="bg-[#18181b] border border-white/10 text-white text-sm font-bold rounded-xl px-3 py-2 outline-none"
+                  >
+                    <option value="">All Years</option>
+                    {viewerAvailableYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+                  </select>
+                )}
+                <button onClick={() => setShowViewer(false)} className="text-zinc-500 hover:text-white p-2 rounded-xl hover:bg-white/5"><X size={20}/></button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-auto rounded-xl border" style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
@@ -456,21 +489,35 @@ export default function DataIngestion({ onDatasetChange }) {
 
             <div className="mt-4 flex items-center justify-between">
               <span className="text-xs font-bold text-zinc-500">Page {viewerPage} of {Math.ceil(viewerTotalRows / 50) || 1}</span>
-              <div className="flex gap-2">
-                <button 
-                  disabled={viewerPage === 1 || viewerLoading} 
-                  onClick={() => openViewer(viewerDatasetId, viewerPage - 1)}
-                  className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
-                >
-                  <ChevronLeft size={16} /> Prev
-                </button>
-                <button 
-                  disabled={viewerPage >= Math.ceil(viewerTotalRows / 50) || viewerLoading} 
-                  onClick={() => openViewer(viewerDatasetId, viewerPage + 1)}
-                  className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
-                >
-                  Next <ChevronRight size={16} />
-                </button>
+              <div className="flex items-center gap-4">
+                <form onSubmit={handlePageJump} className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max={Math.ceil(viewerTotalRows / 50) || 1} 
+                    value={viewerPageInput} 
+                    onChange={(e) => setViewerPageInput(e.target.value)}
+                    placeholder="Go to page..."
+                    className="bg-[#18181b] border border-white/10 text-white text-xs font-bold rounded-xl px-3 py-2 outline-none w-28"
+                  />
+                  <button type="submit" className="text-xs font-bold bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded-xl transition-all">Go</button>
+                </form>
+                <div className="flex gap-2">
+                  <button 
+                    disabled={viewerPage === 1 || viewerLoading} 
+                    onClick={() => openViewer(viewerDatasetId, viewerPage - 1, viewerYearFilter)}
+                    className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
+                  >
+                    <ChevronLeft size={16} /> Prev
+                  </button>
+                  <button 
+                    disabled={viewerPage >= (Math.ceil(viewerTotalRows / 50) || 1) || viewerLoading} 
+                    onClick={() => openViewer(viewerDatasetId, viewerPage + 1, viewerYearFilter)}
+                    className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
+                  >
+                    Next <ChevronRight size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

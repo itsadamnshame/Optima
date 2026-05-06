@@ -1,4 +1,5 @@
 import asyncio
+import numpy as np
 import pandas as pd
 import io
 import traceback
@@ -753,15 +754,25 @@ async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/datasets/{dataset_id}/data")
-async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, user=Depends(get_current_user)):
+async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, year: str = None, user=Depends(get_current_user)):
     try:
         offset = (page - 1) * limit
-        df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE dataset_id={dataset_id} LIMIT {limit} OFFSET {offset}", engine)
+        where_clause = f"dataset_id={dataset_id}"
+        if year:
+            where_clause += f" AND strftime('%Y', order_date) = '{year}'"
+            
+        df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE {where_clause} LIMIT {limit} OFFSET {offset}", engine)
         
         with engine.connect() as conn:
-            total_rows_res = conn.execute(text("SELECT row_count FROM datasets WHERE id=:id"), {"id": dataset_id}).fetchone()
-            total_rows = total_rows_res[0] if total_rows_res else 0
+            if year:
+                total_rows_res = conn.execute(text(f"SELECT COUNT(*) FROM sales_transactions WHERE {where_clause}")).fetchone()
+                total_rows = total_rows_res[0] if total_rows_res else 0
+            else:
+                total_rows_res = conn.execute(text("SELECT row_count FROM datasets WHERE id=:id"), {"id": dataset_id}).fetchone()
+                total_rows = total_rows_res[0] if total_rows_res else 0
             
+        # Replace NaN, Inf, -Inf with None for JSON serialization
+        df = df.replace([np.nan, np.inf, -np.inf], None)
         data = df.to_dict(orient="records")
         return {
             "status": "success",
@@ -770,6 +781,17 @@ async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, user
             "limit": limit,
             "total_rows": total_rows
         }
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/datasets/{dataset_id}/years")
+async def get_dataset_years(dataset_id: int, user=Depends(get_current_user)):
+    try:
+        with engine.connect() as conn:
+            res = conn.execute(text("SELECT DISTINCT strftime('%Y', order_date) as yr FROM sales_transactions WHERE dataset_id=:id AND yr IS NOT NULL ORDER BY yr ASC"), {"id": dataset_id}).fetchall()
+            years = [r[0] for r in res if r[0]]
+        return {"status": "success", "years": years}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

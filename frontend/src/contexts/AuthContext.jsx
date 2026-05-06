@@ -4,14 +4,18 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
-  const [role, setRole] = useState(localStorage.getItem('role') || null);
+  const [actualRole, setActualRole] = useState(localStorage.getItem('role') || null);
+  const [isNonAdminView, setIsNonAdminView] = useState(false);
   const [username, setUsername] = useState(localStorage.getItem('username') || null);
   const [sessionId, setSessionId] = useState(localStorage.getItem('session_id') || null);
   const pollRef = useRef(null);
 
+  const role = isNonAdminView ? 'USER' : actualRole;
+
   const login = (newToken, newRole, newUsername, newSessionId) => {
     setToken(newToken);
-    setRole(newRole);
+    setActualRole(newRole);
+    setIsNonAdminView(false);
     setUsername(newUsername);
     setSessionId(newSessionId || null);
     localStorage.setItem('token', newToken);
@@ -22,7 +26,8 @@ export const AuthProvider = ({ children }) => {
 
   const clearSession = useCallback(() => {
     setToken(null);
-    setRole(null);
+    setActualRole(null);
+    setIsNonAdminView(false);
     setUsername(null);
     setSessionId(null);
     localStorage.removeItem('token');
@@ -104,7 +109,7 @@ export const AuthProvider = ({ children }) => {
   }, [token, logout]);
 
   return (
-    <AuthContext.Provider value={{ token, role, username, sessionId, login, logout }}>
+    <AuthContext.Provider value={{ token, role, actualRole, username, sessionId, login, logout, isNonAdminView, setIsNonAdminView }}>
       {children}
     </AuthContext.Provider>
   );

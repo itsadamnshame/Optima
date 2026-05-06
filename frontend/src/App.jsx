@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2 } from 'lucide-react';
 
 import DataIngestion from './pages/DataIngestion';
 import Analytics from './pages/Analytics';
@@ -41,7 +41,8 @@ const AdminRoute = ({ children }) => {
 };
 
 function AppContent() {
-  const { token, role, logout } = useAuth();
+  const { token, role, actualRole, username, logout, isNonAdminView, setIsNonAdminView } = useAuth();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const [recommendations, setRecommendations] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -216,17 +217,47 @@ function AppContent() {
           </div>
 
 
-          {/* Logout */}
-          <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <button
-              onClick={logout}
-              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
+          {/* Account Profile Card */}
+          <div className="p-4 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            {showProfileMenu && (
+              <div className="absolute bottom-full mb-2 left-4 right-4 bg-[#18181b] border border-white/10 rounded-2xl p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2 z-50">
+                <button onClick={() => alert("Account Settings page coming soon!")} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
+                  <Settings size={16} className="text-zinc-500" /> Account Settings
+                </button>
+                
+                {actualRole === 'ADMIN' && (
+                  <div className="my-1 border-t border-white/5" />
+                )}
+                {actualRole === 'ADMIN' && (
+                  <button onClick={() => setIsNonAdminView(!isNonAdminView)} className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
+                    <span className="flex items-center gap-3"><Eye size={16} className={isNonAdminView ? "text-amber-400" : "text-zinc-500"} /> View as User</span>
+                    {isNonAdminView && <CheckCircle2 size={14} className="text-amber-400" />}
+                  </button>
+                )}
+
+                <div className="my-1 border-t border-white/5" />
+                <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all text-left">
+                  <LogOut size={16} /> Logout
+                </button>
+              </div>
+            )}
+            
+            <button 
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="flex items-center justify-between w-full p-3 rounded-2xl hover:bg-white/5 transition-all"
+              style={{ background: showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent' }}
             >
-              <LogOut size={14} /> Logout
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                  <User size={16} className="text-indigo-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-black text-white leading-none mb-1">{username || 'Account'}</p>
+                  <p className="text-[10px] font-bold text-zinc-500 leading-none uppercase tracking-widest">{role}</p>
+                </div>
+              </div>
+              {showProfileMenu ? <ChevronDown size={16} className="text-zinc-500" /> : <ChevronUp size={16} className="text-zinc-500" />}
             </button>
-            <div className="mt-3 text-[9px] font-bold text-zinc-700 text-center uppercase tracking-widest">
-              Thesis Prototype v1.0
-            </div>
           </div>
         </aside>
       )}
