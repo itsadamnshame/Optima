@@ -45,6 +45,7 @@ export default function Analytics({
 
   // If we have data already, we might want to hide filters by default
   const [showFilters, setShowFilters] = useState(chartData.length === 0);
+  const [showDecomp, setShowDecomp] = useState(false);
 
   const fetchCalendar = async () => {
     try {
@@ -506,7 +507,6 @@ export default function Analytics({
             </div>
             {/* SIGNAL DECOMPOSITION PANELS */}
             {(() => {
-              const [showDecomp, setShowDecomp] = React.useState(false);
               const combined = filteredData.map(d => ({
                 ...d,
                 decomp_seasonal: ((d.decomp_weekly ?? 0) + (d.decomp_yearly ?? 0)),
