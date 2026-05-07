@@ -57,6 +57,33 @@ function AppContent() {
   const [combineTitle, setCombineTitle] = useState('');
   const [selectedCombineIds, setSelectedCombineIds] = useState([]);
   const [combineStatus, setCombineStatus] = useState('idle');
+  
+  // Forecast persistence states
+  const [forecastEndDate, setForecastEndDate] = useState('');
+  const [forecastSelectionMode, setForecastSelectionMode] = useState('top');
+  const [forecastTopN, setForecastTopN] = useState(5);
+  const [forecastSelectedItems, setForecastSelectedItems] = useState([]);
+  const [auditProgress, setAuditProgress] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (isGenerating) {
+      setAuditProgress(0);
+      interval = setInterval(() => {
+        setAuditProgress(prev => {
+          if (prev >= 99.9) return 99.9; 
+          if (prev >= 90) return prev + 0.05; 
+          if (prev >= 75) return prev + 0.1;
+          if (prev >= 50) return prev + 0.3;
+          return prev + 1; 
+        });
+      }, 800);
+    } else {
+      setAuditProgress(0);
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   useEffect(() => {
     if (!token) return;
@@ -78,16 +105,23 @@ function AppContent() {
   const handleActivateDataset = async (datasetId) => {
     setActivatingDataset(true);
     try {
-      await fetch(`/api/datasets/${datasetId}/activate`, {
+      const res = await fetch(`/api/datasets/${datasetId}/activate`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || "Failed to activate dataset.");
+      }
       setActiveDatasetId(datasetId);
       setPersistedChart([]);
       setPersistedMetrics({});
       setRecommendations({});
       setLastForecastTime(null);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e); 
+      alert(e.message || "Failed to activate dataset. Please try again.");
+    }
     setActivatingDataset(false);
   };
 
@@ -108,7 +142,10 @@ function AppContent() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ title: combineTitle, dataset_ids: selectedCombineIds })
       });
-      if (!res.ok) throw new Error('Combine failed');
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Combine failed');
+      }
       const data = await res.json();
 
       const dsRes = await fetch('/api/datasets', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -270,6 +307,8 @@ function AppContent() {
           <Route path="/analytics" element={
             <ProtectedRoute>
               <Analytics
+                activeDatasetId={activeDatasetId}
+                isGenerating={isGenerating}
                 setGlobalRecommendations={setRecommendations}
                 setGlobalLoading={setIsGenerating}
                 setPersistedChart={setPersistedChart}
@@ -277,6 +316,16 @@ function AppContent() {
                 setLastForecastTime={setLastForecastTime}
                 existingChart={getValidData(persistedChart, [])}
                 existingMetrics={getValidData(persistedMetrics, {})}
+                // Persisted Config
+                endDate={forecastEndDate}
+                setEndDate={setForecastEndDate}
+                selectionMode={forecastSelectionMode}
+                setSelectionMode={setForecastSelectionMode}
+                topN={forecastTopN}
+                setTopN={setForecastTopN}
+                selectedManualItems={forecastSelectedItems}
+                setSelectedManualItems={setForecastSelectedItems}
+                progress={auditProgress}
               />
             </ProtectedRoute>
           } />

@@ -10,6 +10,8 @@ from pmdarima import auto_arima
 import logging
 import json
 from pathlib import Path
+import os
+import time
 
 # Silence Prophet and cmdstanpy to keep logs clean
 logging.getLogger('prophet').setLevel(logging.ERROR)
@@ -113,7 +115,15 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
                 weekly_seasonality=False,
                 holidays=unified_holidays_df if not unified_holidays_df.empty else None
             )
-            m.fit(tune_train)
+            # Retry logic for Windows 'Operation not permitted' errors
+            for attempt in range(3):
+                try:
+                    m.fit(tune_train)
+                    break
+                except Exception as e:
+                    if attempt == 2: return 1e9 # Give up after 3 tries
+                    time.sleep(0.5)
+            
             future_tune = m.make_future_dataframe(periods=len(tune_val))
             forecast_tune = m.predict(future_tune)
             preds = forecast_tune.iloc[split_idx:]['yhat'].values
@@ -123,7 +133,7 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
         
         if len(df) > 14:
             study = optuna.create_study(direction='minimize')
-            study.optimize(objective, n_trials=10) # Faster tuning
+            study.optimize(objective, n_trials=5) # Reduced for speed
             best_params = study.best_params
         else:
             best_params = {'changepoint_prior_scale': 0.05, 'seasonality_prior_scale': 10.0}
@@ -134,7 +144,7 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
             m_temp = Prophet(**{**best_params, 'daily_seasonality': True, 'yearly_seasonality': True, 'weekly_seasonality': True})
             m_temp.fit(df)
             res_temp = df['y'].values - m_temp.predict(df)['yhat'].values
-            stepwise_model = auto_arima(res_temp, seasonal=True, m=7, suppress_warnings=True, error_action="ignore")
+            stepwise_model = auto_arima(res_temp, seasonal=True, m=7, max_p=2, max_q=2, suppress_warnings=True, error_action="ignore")
             best_sarima_order = stepwise_model.order
             best_sarima_seasonal = stepwise_model.seasonal_order
         except:
@@ -204,7 +214,13 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
 
     # --- STAGE 4: PASS 2 - FULL FORECAST (100% Data) ---
     model_p = Prophet(**prophet_kwargs)
-    model_p.fit(df)
+    for attempt in range(3):
+        try:
+            model_p.fit(df)
+            break
+        except:
+            if attempt == 2: pass
+            time.sleep(0.5)
     
     future = model_p.make_future_dataframe(periods=forecast_days)
     forecast_p = model_p.predict(future)
@@ -234,6 +250,12 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
     else:
         holiday_effect = np.zeros(len(future_slice))
     
+    # --- DECOMPOSITION COMPONENTS ---
+    # Extract Prophet's internal signal decomposition columns
+    trend_future = future_slice['trend'].values.round(2)
+    weekly_future = future_slice['weekly'].values.round(2) if 'weekly' in future_slice.columns else np.zeros(len(future_slice))
+    yearly_future = future_slice['yearly'].values.round(2) if 'yearly' in future_slice.columns else np.zeros(len(future_slice))
+
     future_df = pd.DataFrame({
         'forecast_date': forecast_dates,
         'type': 'future',
@@ -244,12 +266,22 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
         'special_day_detected': special_days_mask,
         'holiday_effect': holiday_effect,
         'yhat_lower': future_slice['yhat_lower'].values.round(2),
-        'yhat_upper': future_slice['yhat_upper'].values.round(2)
+        'yhat_upper': future_slice['yhat_upper'].values.round(2),
+        'decomp_trend': trend_future,
+        'decomp_weekly': weekly_future,
+        'decomp_yearly': yearly_future,
     })
     
     history_days = min(30, len(df))
     if history_days > 0:
         hist_slice = df.tail(history_days).copy()
+        hist_forecast_slice = forecast_p.iloc[len(df) - history_days:len(df)].copy()
+
+        hist_trend = hist_forecast_slice['trend'].values.round(2)
+        hist_weekly = hist_forecast_slice['weekly'].values.round(2) if 'weekly' in hist_forecast_slice.columns else np.zeros(history_days)
+        hist_yearly = hist_forecast_slice['yearly'].values.round(2) if 'yearly' in hist_forecast_slice.columns else np.zeros(history_days)
+        hist_residuals = (hist_slice['y'].values - hist_forecast_slice['yhat'].values).round(2)
+
         hist_df = pd.DataFrame({
             'forecast_date': hist_slice['ds'].dt.strftime('%Y-%m-%d').values,
             'type': 'historical',
@@ -260,7 +292,10 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
             'special_day_detected': 0,
             'holiday_effect': 0.0,
             'yhat_lower': None,
-            'yhat_upper': None
+            'yhat_upper': None,
+            'decomp_trend': hist_trend,
+            'decomp_weekly': hist_weekly,
+            'decomp_yearly': hist_yearly,
         })
         result_df = pd.concat([hist_df, future_df], ignore_index=True)
     else:

@@ -1000,17 +1000,36 @@ async def trigger_optima_pipeline(
 
         performance_metrics = {}
 
+        from concurrent.futures import ThreadPoolExecutor
+
         def run_quantitative_branch():
             all_forecasts = []
-            for item in items_to_forecast:
+            
+            import time
+            def process_item(item):
+                start = time.time()
                 item_df = raw_df[raw_df['item_description'] == item].copy()
                 forecast = preprocess_and_forecast_item(item_df, end_date, item)
-                
                 if not forecast.empty:
                     forecast['item_description'] = item
+                    print(f"OPTIMA: [{item}] Audit Complete ({time.time() - start:.1f}s)")
+                    return item, forecast, forecast.attrs.get('metrics', {})
+                return item, None, None
+
+            import os
+            # Droplet-friendly parallelization: 
+            # We limit to CPU count with a hard cap of 3 to prevent OOM (Out of Memory) 
+            # crashes on 1GB/2GB VPS environments while still providing a 2-3x speedup.
+            max_workers = min(os.cpu_count() or 1, 3)
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                results = list(executor.map(process_item, items_to_forecast))
+
+            for item, forecast, metrics in results:
+                if forecast is not None:
                     all_forecasts.append(forecast)
-                    if hasattr(forecast, 'attrs') and 'metrics' in forecast.attrs:
-                        performance_metrics[item] = forecast.attrs['metrics']
+                    if metrics:
+                        performance_metrics[item] = metrics
             
             return pd.concat(all_forecasts, ignore_index=True) if all_forecasts else pd.DataFrame()
 

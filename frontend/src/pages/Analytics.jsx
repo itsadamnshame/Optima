@@ -4,39 +4,44 @@ import {
   Loader2, Activity, Calendar, AlertTriangle,
   Zap, Info, TrendingUp, ShieldCheck, CheckSquare,
   ListOrdered, Filter, ChevronDown, ChevronUp, Sparkles,
-  BarChart2, ArrowUpRight, ArrowDownRight, Minus
+  BarChart2, ArrowUpRight, ArrowDownRight, Minus, X, CheckCircle
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ComposedChart, Area, Line, ReferenceLine
+  ResponsiveContainer, ComposedChart, Area, Line, ReferenceLine, BarChart, Bar, Cell
 } from 'recharts';
 
 import SpecialDaysManager from '../components/SpecialDaysManager';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Analytics({
+  activeDatasetId,
+  isGenerating,
   setGlobalRecommendations,
   setGlobalLoading,
   setPersistedChart,
   setPersistedMetrics,
   setLastForecastTime,
   existingChart,
-  existingMetrics
+  existingMetrics,
+  endDate,
+  setEndDate,
+  selectionMode,
+  setSelectionMode,
+  topN,
+  setTopN,
+  selectedManualItems,
+  setSelectedManualItems,
+  progress
 }) {
   const { token } = useAuth();
   // 1. Initialize local state with existing data from the Global Vault
   const [chartData, setChartData] = useState(existingChart || []);
   const [performanceMetrics, setPerformanceMetrics] = useState(existingMetrics || {});
-  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [auditComplete, setAuditComplete] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
-
-  // Selection States
-  const [selectionMode, setSelectionMode] = useState('top');
-  const [topN, setTopN] = useState(5);
   const [availableItems, setAvailableItems] = useState([]);
-  const [selectedManualItems, setSelectedManualItems] = useState([]);
-  const [endDate, setEndDate] = useState('');
 
   // If we have data already, we might want to hide filters by default
   const [showFilters, setShowFilters] = useState(chartData.length === 0);
@@ -66,6 +71,10 @@ export default function Analytics({
   }, []);
 
   const runSpecialistAnalysis = async () => {
+    if (!activeDatasetId) {
+      setError("No active dataset selected. Please choose a source from the sidebar first.");
+      return;
+    }
     if (!endDate) {
       setError("Please select a target end date.");
       return;
@@ -75,13 +84,14 @@ export default function Analytics({
       return;
     }
 
-    setIsGenerating(true);
     if (setGlobalLoading) setGlobalLoading(true);
+    setAuditComplete(false);
     setError('');
 
     try {
       const response = await axios.get('/api/generate-recommendations', {
         params: {
+          dataset_id: activeDatasetId,
           end_date: endDate,
           mode: selectionMode,
           top_n: topN,
@@ -105,14 +115,17 @@ export default function Analytics({
       setLastForecastTime(new Date().getTime()); // Start the 10-minute timer
 
       setShowFilters(false);
+      setAuditComplete(true);
+      setTimeout(() => setAuditComplete(false), 5000);
     } catch (err) {
       if (err.response && err.response.status === 401) {
         setError("Session Expired. Please logout and login again to refresh your access.");
+      } else if (err.response && err.response.data && err.response.data.detail) {
+        setError(err.response.data.detail);
       } else {
         setError("Analysis failed. Check your connection or date range.");
       }
     } finally {
-      setIsGenerating(false);
       if (setGlobalLoading) setGlobalLoading(false);
     }
   };
@@ -126,11 +139,16 @@ export default function Analytics({
     }
   };
 
-  const resultItems = [...new Set(chartData.map(d => d.item_description))];
+  const resultItems = React.useMemo(() => {
+    return Array.isArray(chartData) ? [...new Set(chartData.map(d => d.item_description))] : [];
+  }, [chartData]);
+
   const [activeItem, setActiveItem] = useState('');
 
   useEffect(() => {
-    if (resultItems.length > 0 && !activeItem) setActiveItem(resultItems[0]);
+    if (resultItems.length > 0 && !activeItem) {
+      setActiveItem(resultItems[0]);
+    }
   }, [resultItems, activeItem]);
 
   const filteredData = chartData.filter(d => d.item_description === activeItem);
@@ -140,6 +158,23 @@ export default function Analytics({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+
+      {/* SUCCESS TOAST */}
+      {auditComplete && (
+        <div
+          className="fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-top-4 duration-500"
+          style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)', backdropFilter: 'blur(12px)', color: '#6ee7b7' }}
+        >
+          <CheckCircle size={20} className="text-emerald-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-black text-white">Audit Complete</p>
+            <p className="text-[10px] text-emerald-400/80 font-medium">Specialist analysis ready — scroll down to view results</p>
+          </div>
+          <button onClick={() => setAuditComplete(false)} className="ml-2 text-emerald-400/50 hover:text-white transition-colors">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       {/* HEADER */}
       <div className="relative rounded-[2.5rem] p-8 overflow-hidden flex justify-between items-center"
         style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(255,255,255,0.02) 100%)', border: '1px solid rgba(255,255,255,0.07)' }}>
@@ -164,6 +199,18 @@ export default function Analytics({
           {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
       </div>
+
+      {/* Error Banner — fixed below header so it's always visible */}
+      {error && (
+        <div className="rounded-2xl flex items-center gap-4 text-sm font-black p-5 animate-in slide-in-from-top-2 duration-300"
+          style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+          <AlertTriangle size={22} className="flex-shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="ml-auto text-red-300 hover:text-white transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* CONFIG BLOCK */}
       {showFilters && (
@@ -207,62 +254,68 @@ export default function Analytics({
                 onChange={(e) => setEndDate(e.target.value)} />
             </div>
 
-            {/* Execute */}
-            <div className="rounded-3xl p-6 flex flex-col justify-center items-center text-center space-y-4"
+          {/* Execute */}
+            <div className="rounded-3xl p-6 flex flex-col justify-center items-center text-center space-y-4 relative overflow-hidden"
               style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)', boxShadow: '0 0 40px rgba(99,102,241,0.25)' }}>
-              <div className="bg-white/20 p-3 rounded-full text-white animate-pulse"><Sparkles size={22} /></div>
-              <div>
-                <h4 className="text-white font-black text-lg uppercase tracking-tight italic">Ready for Audit?</h4>
-                <p className="text-indigo-200 text-[10px] font-medium leading-relaxed px-4 mt-1">
-                  Reconciling Trends with {calendarEvents.length} Calendar Disruptions.
-                </p>
-              </div>
-              <button onClick={runSpecialistAnalysis} disabled={isGenerating}
-                className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-lg">
-                {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
-                GENERATE SPECIALIST AUDIT
-              </button>
+              {isGenerating ? (
+                <>
+                  <div className="w-full space-y-4">
+                    <div className="flex items-center gap-3 justify-center">
+                      <Loader2 className="animate-spin text-white" size={22} />
+                      <p className="text-white font-black text-base uppercase tracking-tight">
+                        {progress < 20 ? 'Initializing Specialist Pipeline...' :
+                         progress < 40 ? 'Phase 1: Multi-SKU Hyper-Tuning...' :
+                         progress < 70 ? 'Phase 2: Hybrid Pattern Fitting...' :
+                         progress < 90 ? 'Phase 3: Accuracy Validation...' :
+                         'Finalizing Strategic Verdict...'}
+                      </p>
+                    </div>
+                    <div className="bg-black/20 rounded-xl p-3 border border-white/5 space-y-1">
+                       <p className="text-indigo-200 text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
+                         <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                         Live Audit Status: {Math.round(progress)}%
+                       </p>
+                       <p className="text-indigo-300/60 text-[8px] font-medium italic">
+                         Optimizing {selectionMode === 'top' ? topN : selectedManualItems.length} items @ 5 trials/SKU
+                       </p>
+                    </div>
+                    {/* Simplified progress line */}
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-1000 ease-out"
+                        style={{
+                          background: '#fff',
+                          width: `${Math.min(progress, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-white/20 p-3 rounded-full text-white animate-pulse"><Sparkles size={22} /></div>
+                  <div>
+                    <h4 className="text-white font-black text-lg uppercase tracking-tight italic">Ready for Audit?</h4>
+                    <p className="text-indigo-200 text-[10px] font-medium leading-relaxed px-4 mt-1">
+                      Reconciling Trends with {calendarEvents.length} Calendar Disruptions.
+                    </p>
+                  </div>
+                  <button onClick={runSpecialistAnalysis}
+                    className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-lg">
+                    <Zap size={18} /> GENERATE SPECIALIST AUDIT
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Calendar Manager + compact Hybrid Status strip */}
-          <div className="space-y-3">
-            <SpecialDaysManager onUpdate={fetchCalendar} />
-
-            {/* Hybrid Status — slim info bar */}
-            <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-4 border-l-4 border-indigo-500"
-              style={{ background: 'rgba(99,102,241,0.06)', borderTopColor: 'rgba(255,255,255,0.05)', borderRightColor: 'rgba(255,255,255,0.05)', borderBottomColor: 'rgba(255,255,255,0.05)' }}>
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse inline-block shadow-[0_0_6px_rgba(129,140,248,0.8)]" />
-                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.25em]">Hybrid Specialist · Listener Active</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Calendar Load</span>
-                  <span className="text-xs font-black text-white">{calendarEvents.length} <span className="text-zinc-600 font-normal">days</span></span>
-                </div>
-                <div className="w-px h-4 bg-white/10" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Impact</span>
-                  <span className="text-xs font-black text-emerald-400">High</span>
-                </div>
-                <div className="w-px h-4 bg-white/10" />
-                <p className="text-[9px] text-indigo-300/50 font-medium italic hidden lg:block">
-                  Prophet treats these as structural breaks
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Calendar Manager with integrated Hybrid Status */}
+          <SpecialDaysManager onUpdate={fetchCalendar} />
 
         </div>
       )}
 
-      {error && (
-
-        <div className="rounded-2xl flex items-center gap-4 text-sm font-black p-5" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5' }}>
-          <AlertTriangle size={22} />{error}
-        </div>
-      )}
+      {/* OLD error block removed — now lives above config */}
 
       {/* RESULTS */}
       {filteredData.length > 0 && (() => {
@@ -451,6 +504,106 @@ export default function Analytics({
                 </div>
               </div>
             </div>
+            {/* SIGNAL DECOMPOSITION PANELS */}
+            {(() => {
+              const [showDecomp, setShowDecomp] = React.useState(false);
+              const combined = filteredData.map(d => ({
+                ...d,
+                decomp_seasonal: ((d.decomp_weekly ?? 0) + (d.decomp_yearly ?? 0)),
+              }));
+
+              const panels = [
+                {
+                  label: 'DATA', sub: 'Raw observed + predicted signal', color: '#a1a1aa',
+                  dataKey: d => d.type === 'historical' ? d.actual_quantity : d.predicted_quantity,
+                  valueKey: 'actual_quantity',
+                  render: (data) => (
+                    <>
+                      <Line type="monotone" dataKey="actual_quantity" name="Actual" stroke="#a1a1aa" strokeWidth={2} dot={false} connectNulls />
+                      <Line type="monotone" dataKey="predicted_quantity" name="Predicted" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 3" dot={false} connectNulls />
+                    </>
+                  )
+                },
+                {
+                  label: 'TREND', sub: "Prophet's long-run baseline curve", color: '#818cf8',
+                  render: () => (
+                    <Line type="monotone" dataKey="decomp_trend" name="Trend" stroke="#818cf8" strokeWidth={2.5} dot={false} connectNulls />
+                  )
+                },
+                {
+                  label: 'SEASONAL', sub: 'Weekly + yearly rhythms extracted by Prophet', color: '#34d399',
+                  render: () => (
+                    <>
+                      <ReferenceLine y={0} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                      <Bar dataKey="decomp_seasonal" name="Seasonal" fill="#34d399" fillOpacity={0.5} radius={[2,2,0,0]}>
+                        {combined.map((entry, i) => (
+                          <Cell key={i} fill={(entry.decomp_seasonal ?? 0) >= 0 ? '#34d399' : '#f87171'} fillOpacity={0.55} />
+                        ))}
+                      </Bar>
+                    </>
+                  )
+                },
+                {
+                  label: 'REMAINDER', sub: 'SARIMA short-term corrections (residuals)', color: '#fb923c',
+                  render: () => (
+                    <>
+                      <ReferenceLine y={0} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                      <Bar dataKey="sarima_pattern_correction" name="Residual" fill="#fb923c" fillOpacity={0.5} radius={[2,2,0,0]}>
+                        {combined.map((entry, i) => (
+                          <Cell key={i} fill={(entry.sarima_pattern_correction ?? 0) >= 0 ? '#fb923c' : '#f87171'} fillOpacity={0.6} />
+                        ))}
+                      </Bar>
+                    </>
+                  )
+                },
+              ];
+
+              return (
+                <div className="rounded-[3rem] overflow-hidden" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <button
+                    onClick={() => setShowDecomp(!showDecomp)}
+                    className="w-full px-8 py-5 flex items-center justify-between hover:bg-white/[0.02] transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BarChart2 size={18} className="text-indigo-400" />
+                      <div className="text-left">
+                        <h3 className="text-base font-black text-white uppercase tracking-tight">Signal Decomposition</h3>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Trend · Seasonal · Remainder — breakdown of the hybrid model components</p>
+                      </div>
+                    </div>
+                    {showDecomp ? <ChevronUp size={16} className="text-zinc-500" /> : <ChevronDown size={16} className="text-zinc-500" />}
+                  </button>
+
+                  {showDecomp && (
+                    <div className="px-8 pb-8 space-y-2 animate-in slide-in-from-top-2 duration-300" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      {panels.map(({ label, sub, color, render }) => (
+                        <div key={label}>
+                          <div className="flex items-baseline gap-3 pt-5 pb-2">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color, writingMode: 'horizontal-tb' }}>{label}</span>
+                            <span className="text-[9px] text-zinc-600 font-medium">{sub}</span>
+                          </div>
+                          <div className="h-28">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <ComposedChart data={combined} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                                <XAxis dataKey="forecast_date" axisLine={false} tickLine={false} tick={{ fill: '#3f3f46', fontSize: 8 }} dy={6} minTickGap={40} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#3f3f46', fontSize: 9 }} dx={-2} width={36} />
+                                <Tooltip
+                                  contentStyle={{ borderRadius: '12px', background: '#18181b', border: '1px solid rgba(255,255,255,0.08)', color: '#f4f4f5', fontSize: 11 }}
+                                  labelStyle={{ color: '#71717a', fontSize: 10 }}
+                                />
+                                {render(combined)}
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
           </div>
         );
       })()}

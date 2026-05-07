@@ -79,8 +79,8 @@ const AdminDashboard = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-5">
         {[
-          { label: 'Pending Approvals', value: pendingUsers.length, icon: <Users size={20} />, color: 'rgba(249,115,22,0.15)', textColor: '#fb923c' },
           { label: 'Total Sessions', value: sessionLogs.length, icon: <Clock size={20} />, color: 'rgba(99,102,241,0.15)', textColor: '#818cf8' },
+          { label: 'Pending Approvals', value: pendingUsers.length, icon: <Users size={20} />, color: 'rgba(249,115,22,0.15)', textColor: '#fb923c' },
           { label: 'System Status', value: 'Online', icon: <Activity size={20} />, color: 'rgba(52,211,153,0.15)', textColor: '#34d399' },
         ].map(({ label, value, icon, color, textColor }) => (
           <div key={label} className="p-5 rounded-2xl flex items-center gap-4" style={glass}>
@@ -99,7 +99,7 @@ const AdminDashboard = () => {
       <div className="rounded-2xl overflow-hidden" style={glass}>
         {/* Tab Bar */}
         <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {[['queue', Users, 'Registration Queue'], ['sessions', Clock, 'Session Log'], ['audit', FileText, 'Audit Trail']].map(([id, Icon, label]) => (
+          {[['sessions', Clock, 'Session Log'], ['audit', FileText, 'Audit Trail'], ['queue', Users, 'Registration Queue']].map(([id, Icon, label]) => (
             <button key={id} onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 px-5 py-3.5 text-xs font-black uppercase tracking-widest transition-all ${activeTab === id ? 'text-indigo-400 border-b-2 border-indigo-500' : 'text-zinc-600 hover:text-zinc-300'}`}
               style={activeTab === id ? { background: 'rgba(99,102,241,0.08)' } : {}}>

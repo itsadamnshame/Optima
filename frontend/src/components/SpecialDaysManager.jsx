@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Calendar, Plus, Trash2, Loader2, Search, FilterX, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function SpecialDaysManager({ onUpdate }) {
+export default function SpecialDaysManager({ onUpdate, calendarCount }) {
   const { token, role } = useAuth();
   const [events, setEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,7 +14,9 @@ export default function SpecialDaysManager({ onUpdate }) {
 
   const fetchEvents = async () => {
     try {
-      const res = await axios.get('/api/get-events');
+      const res = await axios.get('/api/get-events', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       setEvents(res.data.events || []);
       if (onUpdate) onUpdate();
     } catch { console.error('Failed to fetch events'); }
@@ -137,6 +139,27 @@ export default function SpecialDaysManager({ onUpdate }) {
               <p className="text-[9px] font-black uppercase tracking-widest">No results</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Hybrid Status Footer — unified with calendar card */}
+      <div className="px-4 py-3 flex items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(99,102,241,0.05)' }}>
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse inline-block shadow-[0_0_6px_rgba(129,140,248,0.8)]" />
+          <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.25em]">Hybrid Specialist · Listener Active</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Calendar Load</span>
+            <span className="text-xs font-black text-white">{events.length} <span className="text-zinc-600 font-normal">days</span></span>
+          </div>
+          <div className="w-px h-4 bg-white/10" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Impact</span>
+            <span className="text-xs font-black text-emerald-400">High</span>
+          </div>
+          <div className="w-px h-4 bg-white/10" />
+          <p className="text-[9px] text-indigo-300/50 font-medium italic hidden lg:block">Prophet treats these as structural breaks</p>
         </div>
       </div>
     </div>

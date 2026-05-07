@@ -102,14 +102,20 @@ export default function DataIngestion({ onDatasetChange }) {
     try {
       await axios.post('/api/blocked-items', { item_description: itemDesc, block_bundling: blockBundling, block_forecasting: blockForecasting }, { headers: { Authorization: `Bearer ${token}` } });
       fetchBlockedItems();
-    } catch { alert('Failed to block item'); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || 'Failed to block item';
+      alert(msg); 
+    }
   };
 
   const handleUnblockItem = async (itemDesc) => {
     try {
       await axios.delete(`/api/blocked-items/${encodeURIComponent(itemDesc)}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchBlockedItems();
-    } catch { alert('Failed to unblock item'); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || 'Failed to unblock item';
+      alert(msg); 
+    }
   };
 
   const handleFileChange = (e) => {
@@ -135,9 +141,10 @@ export default function DataIngestion({ onDatasetChange }) {
       setFiles([]); setTitle('');
       fetchDatasets();
       if (onDatasetChange) onDatasetChange();
-    } catch {
+    } catch (err) {
       setUploadStatus('error');
-      setUploadMessage('Upload failed. Is the backend running?');
+      const msg = err.response?.data?.detail || 'Upload failed. Please check your file format and connection.';
+      setUploadMessage(msg);
     }
   };
 
@@ -145,14 +152,20 @@ export default function DataIngestion({ onDatasetChange }) {
     try {
       await axios.delete(`/api/datasets/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchDatasets(); if (onDatasetChange) onDatasetChange(); setDeleteConfirmId(null);
-    } catch { alert('Failed to delete dataset'); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || 'Failed to delete dataset';
+      alert(msg); 
+    }
   };
 
   const handleTogglePrivacy = async (id, currentPrivate) => {
     try {
       await axios.patch(`/api/datasets/${id}`, { is_private: !currentPrivate }, { headers: { Authorization: `Bearer ${token}` } });
       fetchDatasets();
-    } catch { alert('Failed to update privacy'); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || 'Failed to update privacy';
+      alert(msg); 
+    }
   };
 
   const startEditing = (ds) => { setEditingId(ds.id); setEditTitle(ds.title); };
@@ -161,7 +174,10 @@ export default function DataIngestion({ onDatasetChange }) {
     try {
       await axios.patch(`/api/datasets/${id}`, { title: editTitle }, { headers: { Authorization: `Bearer ${token}` } });
       setEditingId(null); fetchDatasets();
-    } catch { alert('Failed to rename dataset'); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || 'Failed to rename dataset';
+      alert(msg); 
+    }
   };
 
   const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#f4f4f5' };
