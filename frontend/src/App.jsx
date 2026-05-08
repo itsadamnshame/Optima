@@ -18,8 +18,8 @@ function NavLink({ to, icon: Icon, children }) {
     <Link
       to={to}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold ${isActive
-          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 glow-pulse'
-          : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-200'
+        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 glow-pulse'
+        : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-200'
         }`}
     >
       <Icon size={17} className={isActive ? 'text-white' : 'text-zinc-600'} />
@@ -57,7 +57,7 @@ function AppContent() {
   const [combineTitle, setCombineTitle] = useState('');
   const [selectedCombineIds, setSelectedCombineIds] = useState([]);
   const [combineStatus, setCombineStatus] = useState('idle');
-  
+
   // Forecast persistence states
   const [forecastEndDate, setForecastEndDate] = useState('');
   const [forecastSelectionMode, setForecastSelectionMode] = useState('top');
@@ -71,11 +71,11 @@ function AppContent() {
       setAuditProgress(0);
       interval = setInterval(() => {
         setAuditProgress(prev => {
-          if (prev >= 99.9) return 99.9; 
-          if (prev >= 90) return prev + 0.05; 
+          if (prev >= 99.9) return 99.9;
+          if (prev >= 90) return prev + 0.05;
           if (prev >= 75) return prev + 0.1;
           if (prev >= 50) return prev + 0.3;
-          return prev + 1; 
+          return prev + 1;
         });
       }, 800);
     } else {
@@ -118,8 +118,8 @@ function AppContent() {
       setPersistedMetrics({});
       setRecommendations({});
       setLastForecastTime(null);
-    } catch (e) { 
-      console.error(e); 
+    } catch (e) {
+      console.error(e);
       alert(e.message || "Failed to activate dataset. Please try again.");
     }
     setActivatingDataset(false);
@@ -261,7 +261,7 @@ function AppContent() {
                 <button onClick={() => alert("Account Settings page coming soon!")} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
                   <Settings size={16} className="text-zinc-500" /> Account Settings
                 </button>
-                
+
                 {actualRole === 'ADMIN' && (
                   <div className="my-1 border-t border-white/5" />
                 )}
@@ -278,8 +278,8 @@ function AppContent() {
                 </button>
               </div>
             )}
-            
-            <button 
+
+            <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex items-center justify-between w-full p-3 rounded-2xl hover:bg-white/5 transition-all"
               style={{ background: showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent' }}

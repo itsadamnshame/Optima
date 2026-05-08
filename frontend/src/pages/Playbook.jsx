@@ -21,13 +21,13 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
           <span className="text-indigo-400 font-bold">{topItem}</span> segment is entering a statistically significant
           demand phase. With a verified model reliability of{' '}
           <span className="font-bold text-white">{accuracy}</span>, the risk of inventory stockout remains low, provided
-          that the detected SARIMA micro-patterns are used to guide weekend stocking levels.
+          that the detected short-term buying patterns are used to guide weekend stocking levels.
         </p>
         <p className="text-base leading-relaxed text-zinc-300 font-medium">
           Qualitative discovery suggests a dominant relational affinity between{' '}
           <span className="font-bold text-white">{topItem}</span> and{' '}
-          <span className="text-indigo-400 font-bold">{bestFollower}</span>, showing a predictive reliability of{' '}
-          <span className="text-indigo-400 font-bold">{topConfidence}%</span>. Our Random Forest decision layer predicts
+          <span className="text-indigo-400 font-bold">{bestFollower}</span>, showing a reliability rate of{' '}
+          <span className="text-indigo-400 font-bold">{topConfidence}%</span>. Our decision analysis predicts
           a high success probability for multi-item bundling in this category.
         </p>
       </div>

@@ -189,7 +189,7 @@ export default function Analytics({
             <TrendingUp className="text-indigo-400" size={30} /> Quantitative Specialist
           </h2>
           <p className="text-zinc-500 text-xs font-medium mt-1 ml-10">
-            Prophet (Macro Trends) + SARIMA (Short-Term Corrections) · {calendarEvents.length} events loaded
+            Long-Term Trend Analysis + Short-Term Pattern Corrections · {calendarEvents.length} events loaded
           </p>
         </div>
         <button onClick={() => setShowFilters(!showFilters)}
@@ -340,11 +340,12 @@ export default function Analytics({
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {[
-                { label: 'Model Accuracy', value: m.mape_pct || 'N/A', sub: 'sMAPE score', accent: '#818cf8', icon: <ShieldCheck size={16}/> },
-                { label: 'Avg Error (MAE)', value: `±${m.mae || 0}`, sub: 'units deviation', accent: '#71717a', icon: <Activity size={16}/> },
-                { label: 'Stability (RMSE)', value: m.rmse || 0, sub: 'outlier sensitivity', accent: '#71717a', icon: <BarChart2 size={16}/> },
+                { label: 'Model Accuracy', value: m.mape_pct || 'N/A', sub: 'how close predictions are', accent: '#818cf8', icon: <ShieldCheck size={16}/> },
+                { label: 'Model Fit', value: m.r2 != null ? m.r2.toFixed(4) : 'N/A', sub: 'how well the model explains patterns', accent: '#22d3ee', icon: <CheckSquare size={16}/> },
+                { label: 'Avg Prediction Error', value: `±${m.mae || 0}`, sub: 'typical units off per day', accent: '#71717a', icon: <Activity size={16}/> },
+                { label: 'Prediction Consistency', value: m.rmse || 0, sub: 'lower is more stable', accent: '#71717a', icon: <BarChart2 size={16}/> },
                 { label: 'Avg Daily Forecast', value: `${avgFuture}`, sub: 'units / day', accent: '#a78bfa', icon: <TrendingUp size={16}/> },
               ].map(({ label, value, sub, accent, icon }) => (
                 <div key={label} className="rounded-[2rem] p-6 relative overflow-hidden"
@@ -363,12 +364,12 @@ export default function Analytics({
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h3 className="text-lg font-black text-white tracking-tight uppercase">Final Hybrid Forecast</h3>
-                    <p className="text-xs text-zinc-500 font-medium mt-0.5">Last 30 days of actuals → future predictions with 80% confidence band</p>
+                    <p className="text-xs text-zinc-500 font-medium mt-0.5">Last 30 days of actual sales → future predictions with estimated range</p>
                   </div>
                   <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-widest text-zinc-600">
                     <span className="flex items-center gap-1.5"><span className="w-5 h-0.5 bg-zinc-600 inline-block rounded-full"/>Historical</span>
                     <span className="flex items-center gap-1.5"><span className="w-5 border-t-2 border-dashed border-indigo-400 inline-block"/>Forecast</span>
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block opacity-50" style={{ background: 'rgba(99,102,241,0.4)' }}/>Confidence</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block opacity-50" style={{ background: 'rgba(99,102,241,0.4)' }}/>Expected Range</span>
                   </div>
                 </div>
                 <div className="h-80">
@@ -406,16 +407,16 @@ export default function Analytics({
                     <p className="text-[9px] text-zinc-600 mt-1">{peaks[0]?.forecast_date}</p>
                   </div>
                   <div className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                    <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">SARIMA Status</p>
+                    <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Short-Term Adjustment</p>
                     <p className={`text-xs font-bold ${sarimaDir === 'boosting' ? 'text-emerald-400' : sarimaDir === 'dampening' ? 'text-rose-400' : 'text-zinc-500'}`}>
                       {sarimaDir === 'boosting' ? <ArrowUpRight size={11} className="inline mr-1"/> : sarimaDir === 'dampening' ? <ArrowDownRight size={11} className="inline mr-1"/> : <Minus size={11} className="inline mr-1"/>}
-                      {sarimaDir === 'stable' ? 'Residuals stable · no correction' : `${sarima0 > 0 ? '+' : ''}${sarima0.toFixed(1)} units correction`}
+                      {sarimaDir === 'stable' ? 'Pattern is steady · no adjustment needed' : `${sarima0 > 0 ? '+' : ''}${sarima0.toFixed(1)} units adjusted`}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                    <p className="text-[9px] text-indigo-400/70 font-black uppercase tracking-widest mb-1.5">Model Narrative</p>
+                    <p className="text-[9px] text-indigo-400/70 font-black uppercase tracking-widest mb-1.5">How It Works</p>
                     <p className="text-indigo-200/70 text-[10px] font-medium leading-relaxed italic">
-                      The shaded band shows an 80% confidence interval. Prophet captures the yearly structural trend; SARIMA corrects for short-term volatility.
+                      The shaded area shows the expected range of demand. The system captures long-term trends and adjusts for short-term fluctuations like weekly patterns.
                     </p>
                   </div>
                 </div>
@@ -434,7 +435,7 @@ export default function Analytics({
                   <table className="w-full text-left">
                     <thead className="sticky top-0 z-10" style={{ background: 'rgba(18,18,20,0.95)', backdropFilter: 'blur(8px)' }}>
                       <tr>
-                        {['Date','Type','Qty','CI Low','CI High','Event Δ'].map(h => (
+                        {['Date','Type','Qty','Min Expected','Max Expected','Event Impact'].map(h => (
                           <th key={h} className="px-4 py-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest border-b"
                             style={{ borderColor: 'rgba(255,255,255,0.05)' }}>{h}</th>
                         ))}
@@ -514,7 +515,7 @@ export default function Analytics({
 
               const panels = [
                 {
-                  label: 'DATA', sub: 'Raw observed + predicted signal', color: '#a1a1aa',
+                  label: 'OVERVIEW', sub: 'Actual sales vs. predicted demand', color: '#a1a1aa',
                   dataKey: d => d.type === 'historical' ? d.actual_quantity : d.predicted_quantity,
                   valueKey: 'actual_quantity',
                   render: (data) => (
@@ -525,13 +526,13 @@ export default function Analytics({
                   )
                 },
                 {
-                  label: 'TREND', sub: "Prophet's long-run baseline curve", color: '#818cf8',
+                  label: 'TREND', sub: 'Overall direction of demand over time', color: '#818cf8',
                   render: () => (
                     <Line type="monotone" dataKey="decomp_trend" name="Trend" stroke="#818cf8" strokeWidth={2.5} dot={false} connectNulls />
                   )
                 },
                 {
-                  label: 'SEASONAL', sub: 'Weekly + yearly rhythms extracted by Prophet', color: '#34d399',
+                  label: 'SEASONAL', sub: 'Repeating weekly and yearly buying patterns', color: '#34d399',
                   render: () => (
                     <>
                       <ReferenceLine y={0} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
@@ -544,7 +545,7 @@ export default function Analytics({
                   )
                 },
                 {
-                  label: 'REMAINDER', sub: 'SARIMA short-term corrections (residuals)', color: '#fb923c',
+                  label: 'ADJUSTMENTS', sub: 'Short-term corrections for recent demand shifts', color: '#fb923c',
                   render: () => (
                     <>
                       <ReferenceLine y={0} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
@@ -567,8 +568,8 @@ export default function Analytics({
                     <div className="flex items-center gap-3">
                       <BarChart2 size={18} className="text-indigo-400" />
                       <div className="text-left">
-                        <h3 className="text-base font-black text-white uppercase tracking-tight">Signal Decomposition</h3>
-                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Trend · Seasonal · Remainder — breakdown of the hybrid model components</p>
+                        <h3 className="text-base font-black text-white uppercase tracking-tight">Forecast Breakdown</h3>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Trend · Seasonal Patterns · Adjustments — what drives the forecast</p>
                       </div>
                     </div>
                     {showDecomp ? <ChevronUp size={16} className="text-zinc-500" /> : <ChevronDown size={16} className="text-zinc-500" />}

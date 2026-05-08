@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from prophet import Prophet
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error, r2_score
 from sqlalchemy import create_engine, text
 import warnings
 import optuna
@@ -202,6 +202,7 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
         
         mae = mean_absolute_error(y_true_test, y_pred_test)
         rmse = np.sqrt(mean_squared_error(y_true_test, y_pred_test))
+        r2 = r2_score(y_true_test, y_pred_test)
         
         # Calculate sMAPE (Symmetric Mean Absolute Percentage Error)
         def smape(A, F):
@@ -210,7 +211,7 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
         smape_val = smape(y_true_test, y_pred_test)
         accuracy_score = max(0, 100 - smape_val)
     else:
-        mae, rmse, mape, accuracy_score = 0.0, 0.0, 0.0, 0.0
+        mae, rmse, mape, accuracy_score, r2 = 0.0, 0.0, 0.0, 0.0, 0.0
 
     # --- STAGE 4: PASS 2 - FULL FORECAST (100% Data) ---
     model_p = Prophet(**prophet_kwargs)
@@ -304,7 +305,8 @@ def _run_optima_specialist_logic(df, forecast_days, latest_date, end_date):
     result_df.attrs['metrics'] = {
         'mae': round(float(mae), 4),
         'rmse': round(float(rmse), 4),
-        'mape_pct': f"{round(float(accuracy_score), 2)}%"
+        'mape_pct': f"{round(float(accuracy_score), 2)}%",
+        'r2': round(float(r2), 4)
     }
 
     return result_df

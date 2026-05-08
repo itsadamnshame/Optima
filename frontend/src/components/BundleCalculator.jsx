@@ -98,7 +98,7 @@ export default function BundleCalculator() {
                 </div>
                 <div>
                     <h3 className="text-xl font-black text-slate-900 uppercase italic tracking-tight">Bundle Strength Simulator</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Manual Apriori & Profitability Audit</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Test Any Product Combination</p>
                 </div>
             </div>
 
@@ -217,7 +217,7 @@ export default function BundleCalculator() {
                     {loading && (
                         <div className="text-center space-y-4">
                             <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calculating Lift & Reliability...</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Analyzing Bundle Strength...</p>
                         </div>
                     )}
 
@@ -225,11 +225,11 @@ export default function BundleCalculator() {
                         <div className="w-full space-y-8 animate-in fade-in duration-500">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Impact Multiplier (Lift)</p>
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Buying Power Multiplier</p>
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-3xl font-black text-indigo-600 italic">x{results.lift}</span>
                                         <span className={`text-[10px] font-bold ${results.lift > 1 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                            {results.lift > 1 ? 'Positive' : 'Dilutive'}
+                                            {results.lift > 1 ? 'Strong Synergy' : 'Weak Synergy'}
                                         </span>
                                     </div>
                                 </div>
@@ -244,13 +244,13 @@ export default function BundleCalculator() {
                             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
                                 <div className="flex justify-between items-center relative z-10">
                                     <div>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Predictive Support</p>
-                                        <p className="text-sm font-black text-slate-900">{(results.support * 100).toFixed(4)}%</p>
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Purchase Frequency</p>
+                                        <p className="text-sm font-black text-slate-900">{(results.support * 100).toFixed(4)}% of orders</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Market Reach</p>
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Customer Reach</p>
                                         <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
-                                            {results.support > 0.01 ? 'High Frequency' : 'Niche Target'}
+                                            {results.support > 0.01 ? 'Commonly Bought Together' : 'Niche Combination'}
                                         </p>
                                     </div>
                                 </div>

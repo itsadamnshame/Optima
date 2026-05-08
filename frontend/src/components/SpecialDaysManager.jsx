@@ -159,7 +159,7 @@ export default function SpecialDaysManager({ onUpdate, calendarCount }) {
             <span className="text-xs font-black text-emerald-400">High</span>
           </div>
           <div className="w-px h-4 bg-white/10" />
-          <p className="text-[9px] text-indigo-300/50 font-medium italic hidden lg:block">Prophet treats these as structural breaks</p>
+          <p className="text-[9px] text-indigo-300/50 font-medium italic hidden lg:block">These events are factored into demand predictions</p>
         </div>
       </div>
     </div>

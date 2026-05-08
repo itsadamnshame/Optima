@@ -25,12 +25,12 @@ export default function Qualitative({ recommendations = {}, isGenerating }) {
           {filteredData.length > 0 ? filteredData.map((play, i) => (
             <div key={i} className="rounded-[1.75rem] border overflow-hidden flex flex-col md:flex-row group transition-all hover:border-indigo-500/40"
               style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.07)' }}>
-              {/* Lift sidebar */}
+              {/* Buying Power sidebar */}
               <div className="p-6 md:w-32 flex flex-col justify-center items-center text-center"
                 style={{ background: 'rgba(99,102,241,0.12)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
                 <p className="text-[8px] font-black text-indigo-400 uppercase mb-1 tracking-wider">Impact</p>
                 <p className="text-2xl font-black text-emerald-400 italic">x{play.lift}</p>
-                <p className="text-[8px] font-bold text-zinc-600 mt-1 uppercase tracking-wider">Lift</p>
+                <p className="text-[8px] font-bold text-zinc-600 mt-1 uppercase tracking-wider">Buying Power</p>
               </div>
               <div className="p-6 flex-1">
                 <div className="flex justify-between items-start mb-4">
@@ -42,11 +42,11 @@ export default function Qualitative({ recommendations = {}, isGenerating }) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                   <div className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <p className="text-[8px] font-black text-zinc-500 uppercase mb-1">Leader Set</p>
+                    <p className="text-[8px] font-black text-zinc-500 uppercase mb-1">Main Product(s)</p>
                     <p className="text-[10px] font-bold text-zinc-300 uppercase leading-relaxed">{play.leader}</p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.15)' }}>
-                    <p className="text-[8px] font-black text-indigo-400 uppercase mb-1">Target Follower(s)</p>
+                    <p className="text-[8px] font-black text-indigo-400 uppercase mb-1">Pair With</p>
                     <p className="text-[10px] font-bold text-indigo-200 uppercase leading-relaxed">{play.follower}</p>
                   </div>
                 </div>
@@ -62,7 +62,7 @@ export default function Qualitative({ recommendations = {}, isGenerating }) {
               <p className="text-[10px] font-black text-zinc-600 uppercase italic tracking-widest">
                 No {activeSize}-Item {title} Available
               </p>
-              <p className="text-[8px] text-zinc-700 uppercase mt-1">Adjust support thresholds or forecast items</p>
+              <p className="text-[8px] text-zinc-700 uppercase mt-1">Try forecasting more items to discover patterns</p>
             </div>
           )}
         </div>
