@@ -178,7 +178,7 @@ export default function Analytics({
       )}
       {/* HEADER */}
       <div className="relative rounded-[2.5rem] p-8 overflow-hidden flex justify-between items-center"
-        style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(255,255,255,0.02) 100%)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        style={{ background: 'var(--gradient-hero)', border: `1px solid var(--glass-border)` }}>
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/30 via-transparent to-transparent pointer-events-none" />
         <div className="relative z-10">
           <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
@@ -194,7 +194,7 @@ export default function Analytics({
         </div>
         <button onClick={() => setShowFilters(!showFilters)}
           className="relative z-10 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-zinc-300 hover:text-white transition-all px-5 py-3 rounded-2xl backdrop-blur-sm"
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          style={{ background: 'var(--glass-bg)', border: `1px solid var(--border-strong)` }}>
           <Filter size={13} />
           {showFilters ? 'Hide Config' : 'Configure'}
           {showFilters ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -218,7 +218,7 @@ export default function Analytics({
         <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Mode */}
-            <div className="p-6 rounded-3xl space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="p-6 rounded-3xl space-y-4" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
               <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">1. Forecast Mode</label>
               <div className="space-y-3">
                 {[['top', 'Top Velocity Items'], ['manual', 'Manual SKU Selection']].map(([val, label]) => (
@@ -232,7 +232,7 @@ export default function Analytics({
             </div>
 
             {/* Scope */}
-            <div className="p-6 rounded-3xl space-y-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="p-6 rounded-3xl space-y-4" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
               <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">2. Scope & Horizon</label>
               {selectionMode === 'top' ? (
                 <div className="py-2">
@@ -251,7 +251,7 @@ export default function Analytics({
                 </div>
               )}
               <input type="date" className="w-full rounded-xl py-2.5 px-4 text-sm font-bold text-zinc-300 outline-none"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                style={{ background: 'var(--input-bg)', border: `1px solid var(--input-border)`, color: 'var(--input-text)' }}
                 onChange={(e) => setEndDate(e.target.value)} />
             </div>
 
@@ -349,7 +349,7 @@ export default function Analytics({
                 { label: 'Avg Daily Forecast', value: `${avgFuture}`, sub: 'units / day', accent: '#a78bfa', icon: <TrendingUp size={16}/> },
               ].map(({ label, value, sub, accent, icon }) => (
                 <div key={label} className="rounded-[2rem] p-6 relative overflow-hidden"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
                   <div className="absolute top-3 right-3 opacity-20" style={{ color: accent }}>{icon}</div>
                   <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">{label}</p>
                   <p className="text-3xl font-black tracking-tighter" style={{ color: accent }}>{value}</p>
@@ -360,7 +360,7 @@ export default function Analytics({
 
             {/* Hero Chart + Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-3 rounded-[3rem] p-8" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="lg:col-span-3 rounded-[3rem] p-8" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h3 className="text-lg font-black text-white tracking-tight uppercase">Final Hybrid Forecast</h3>
@@ -384,7 +384,7 @@ export default function Analytics({
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.04)"/>
                       <XAxis dataKey="forecast_date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 9 }} dy={8} minTickGap={28}/>
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 10 }} dx={-4} width={40}/>
-                      <Tooltip contentStyle={{ borderRadius: '16px', background: '#18181b', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', color: '#f4f4f5', fontSize: 12 }}/>
+                      <Tooltip contentStyle={{ borderRadius: '16px', background: 'var(--tooltip-bg)', border: `1px solid var(--border)`, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', color: 'var(--text-primary)', fontSize: 12 }}/>
                       <Area type="monotone" dataKey="yhat_upper" stroke="none" fill="url(#confGrad)" fillOpacity={1}/>
                       <Area type="monotone" dataKey="yhat_lower" stroke="none" fill="transparent" fillOpacity={1}/>
                       <Line type="monotone" dataKey="actual_quantity" name="Actual Sales" stroke="#3f3f46" strokeWidth={2.5} dot={false} connectNulls/>
@@ -425,7 +425,7 @@ export default function Analytics({
 
             {/* Data Table + Audit */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-3 rounded-[3rem] p-8" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="lg:col-span-3 rounded-[3rem] p-8" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
                 <div className="flex justify-between items-center mb-5">
                   <h3 className="text-base font-black text-white uppercase tracking-tight">Forecast Data Table</h3>
                   <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 px-3 py-1.5 rounded-xl"
@@ -433,7 +433,7 @@ export default function Analytics({
                 </div>
                 <div className="overflow-y-auto max-h-96 rounded-2xl custom-scrollbar" style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
                   <table className="w-full text-left">
-                    <thead className="sticky top-0 z-10" style={{ background: 'rgba(18,18,20,0.95)', backdropFilter: 'blur(8px)' }}>
+                    <thead className="sticky top-0 z-10" style={{ background: 'var(--table-header-bg)', backdropFilter: 'blur(8px)' }}>
                       <tr>
                         {['Date','Type','Qty','Min Expected','Max Expected','Event Impact'].map(h => (
                           <th key={h} className="px-4 py-3 text-[9px] font-black text-zinc-600 uppercase tracking-widest border-b"
@@ -472,7 +472,7 @@ export default function Analytics({
               </div>
 
               {/* Hybrid Audit */}
-              <div className="rounded-[3rem] p-8 flex flex-col" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="rounded-[3rem] p-8 flex flex-col" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
                 <h4 className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
                   <Calendar size={12} className="text-indigo-400"/> Hybrid Audit
                 </h4>
@@ -560,7 +560,7 @@ export default function Analytics({
               ];
 
               return (
-                <div className="rounded-[3rem] overflow-hidden" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="rounded-[3rem] overflow-hidden" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
                   <button
                     onClick={() => setShowDecomp(!showDecomp)}
                     className="w-full px-8 py-5 flex items-center justify-between hover:bg-white/[0.02] transition-all"
@@ -590,7 +590,7 @@ export default function Analytics({
                                 <XAxis dataKey="forecast_date" axisLine={false} tickLine={false} tick={{ fill: '#3f3f46', fontSize: 8 }} dy={6} minTickGap={40} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#3f3f46', fontSize: 9 }} dx={-2} width={36} />
                                 <Tooltip
-                                  contentStyle={{ borderRadius: '12px', background: '#18181b', border: '1px solid rgba(255,255,255,0.08)', color: '#f4f4f5', fontSize: 11 }}
+                                  contentStyle={{ borderRadius: '12px', background: 'var(--tooltip-bg)', border: `1px solid var(--border)`, color: 'var(--text-primary)', fontSize: 11 }}
                                   labelStyle={{ color: '#71717a', fontSize: 10 }}
                                 />
                                 {render(combined)}

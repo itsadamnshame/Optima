@@ -1,15 +1,162 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
+/* ============================================
+   DARK THEME (default)
+   ============================================ */
 :root {
   --bg-base: #09090b;
   --bg-surface: #111113;
   --bg-elevated: #18181b;
+  --bg-sidebar: #0f0f12;
   --border: rgba(255,255,255,0.07);
+  --border-subtle: rgba(255,255,255,0.05);
+  --border-strong: rgba(255,255,255,0.1);
   --accent: #6366f1;
   --accent-glow: rgba(99,102,241,0.25);
   --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
   --text-muted: #71717a;
+  --text-faint: #52525b;
+  --text-heading: #ffffff;
+  --glass-bg: rgba(255,255,255,0.035);
+  --glass-bg-hover: rgba(255,255,255,0.05);
+  --glass-border: rgba(255,255,255,0.07);
+  --input-bg: rgba(255,255,255,0.05);
+  --input-border: rgba(255,255,255,0.08);
+  --input-text: #f4f4f5;
+  --overlay-bg: rgba(0,0,0,0.8);
+  --modal-bg: #09090b;
+  --tooltip-bg: #18181b;
+  --table-header-bg: rgba(15,15,18,0.95);
+  --table-row-hover: rgba(255,255,255,0.02);
+  --table-border: rgba(255,255,255,0.04);
+  --scrollbar-thumb: #27272a;
+  --scrollbar-hover: #3f3f46;
+  --gradient-hero: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(255,255,255,0.02) 100%);
+  --gradient-hero-overlay: rgba(49,46,129,0.2);
+  --card-accent-bg: rgba(99,102,241,0.12);
+  --badge-master-bg: rgba(99,102,241,0.1);
+  --badge-yearly-bg: rgba(251,191,36,0.1);
+  --badge-active-bg: rgba(52,211,153,0.1);
+  --error-bg: rgba(239,68,68,0.12);
+  --error-border: rgba(239,68,68,0.3);
+  --success-bg: rgba(16,185,129,0.15);
+  --success-border: rgba(16,185,129,0.35);
+  --option-bg: #18181b;
+  --profile-menu-bg: #18181b;
+  /* Bundle Simulator (embedded light component in dark mode - now unified) */
+  --sim-bg: rgba(255,255,255,0.03);
+  --sim-border: rgba(255,255,255,0.07);
+  --sim-surface: rgba(255,255,255,0.04);
+  --sim-input-bg: rgba(255,255,255,0.06);
+  --sim-input-border: rgba(255,255,255,0.08);
+  --sim-text-heading: #ffffff;
+  --sim-text-primary: #e4e4e7;
+  --sim-text-secondary: #a1a1aa;
+  --sim-text-muted: #71717a;
+  --sim-text-faint: #52525b;
+  --sim-item-checked-bg: #4f46e5;
+  --sim-item-hover-bg: rgba(255,255,255,0.05);
+  --sim-item-text: #a1a1aa;
+  --sim-tag-bg: rgba(99,102,241,0.15);
+  --sim-tag-text: #a5b4fc;
+  --sim-tag-border: rgba(99,102,241,0.25);
+  --sim-btn-bg: #4f46e5;
+  --sim-btn-text: #ffffff;
+  --sim-btn-disabled-bg: rgba(255,255,255,0.05);
+  --sim-result-card-bg: rgba(255,255,255,0.04);
+  --sim-result-card-border: rgba(255,255,255,0.08);
+  --sim-result-text: #ffffff;
+  --sim-verdict-bg: rgba(99,102,241,0.15);
+  --sim-scrollbar-thumb: #3f3f46;
+  --sim-empty-border: rgba(255,255,255,0.08);
+  --sim-checkbox-bg: rgba(255,255,255,0.08);
+  --sim-checkbox-border: #52525b;
+  --sim-checkbox-checked-dot: #6366f1;
+  --sim-error-bg: rgba(239,68,68,0.12);
+  --sim-error-border: rgba(239,68,68,0.2);
+  --sim-error-text: #fca5a5;
+  --sim-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* ============================================
+   LIGHT THEME
+   ============================================ */
+[data-theme="light"] {
+  --bg-base: #f8f9fb;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f1f3f5;
+  --bg-sidebar: #ffffff;
+  --border: rgba(0,0,0,0.08);
+  --border-subtle: rgba(0,0,0,0.05);
+  --border-strong: rgba(0,0,0,0.12);
+  --accent: #4f46e5;
+  --accent-glow: rgba(79,70,229,0.2);
+  --text-primary: #1e1e2e;
+  --text-secondary: #4a4a5a;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+  --text-heading: #111827;
+  --glass-bg: rgba(255,255,255,0.7);
+  --glass-bg-hover: rgba(255,255,255,0.85);
+  --glass-border: rgba(0,0,0,0.06);
+  --input-bg: #f3f4f6;
+  --input-border: #d1d5db;
+  --input-text: #1e1e2e;
+  --overlay-bg: rgba(0,0,0,0.4);
+  --modal-bg: #ffffff;
+  --tooltip-bg: #ffffff;
+  --table-header-bg: #f9fafb;
+  --table-row-hover: rgba(0,0,0,0.02);
+  --table-border: rgba(0,0,0,0.06);
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-hover: #9ca3af;
+  --gradient-hero: linear-gradient(135deg, rgba(79,70,229,0.08) 0%, rgba(255,255,255,0.5) 100%);
+  --gradient-hero-overlay: rgba(79,70,229,0.05);
+  --card-accent-bg: rgba(79,70,229,0.08);
+  --badge-master-bg: rgba(79,70,229,0.08);
+  --badge-yearly-bg: rgba(217,119,6,0.08);
+  --badge-active-bg: rgba(16,185,129,0.08);
+  --error-bg: rgba(239,68,68,0.08);
+  --error-border: rgba(239,68,68,0.2);
+  --success-bg: rgba(16,185,129,0.08);
+  --success-border: rgba(16,185,129,0.2);
+  --option-bg: #ffffff;
+  --profile-menu-bg: #ffffff;
+  /* Bundle Simulator */
+  --sim-bg: #ffffff;
+  --sim-border: #e5e7eb;
+  --sim-surface: #f3f4f6;
+  --sim-input-bg: #f3f4f6;
+  --sim-input-border: #d1d5db;
+  --sim-text-heading: #111827;
+  --sim-text-primary: #374151;
+  --sim-text-secondary: #6b7280;
+  --sim-text-muted: #9ca3af;
+  --sim-text-faint: #d1d5db;
+  --sim-item-checked-bg: #4f46e5;
+  --sim-item-hover-bg: #f9fafb;
+  --sim-item-text: #4b5563;
+  --sim-tag-bg: #eef2ff;
+  --sim-tag-text: #4338ca;
+  --sim-tag-border: #c7d2fe;
+  --sim-btn-bg: #111827;
+  --sim-btn-text: #ffffff;
+  --sim-btn-disabled-bg: #e5e7eb;
+  --sim-result-card-bg: #ffffff;
+  --sim-result-card-border: #e5e7eb;
+  --sim-result-text: #111827;
+  --sim-verdict-bg: #312e81;
+  --sim-scrollbar-thumb: #d1d5db;
+  --sim-empty-border: #e5e7eb;
+  --sim-checkbox-bg: #ffffff;
+  --sim-checkbox-border: #d1d5db;
+  --sim-checkbox-checked-dot: #4f46e5;
+  --sim-error-bg: #fef2f2;
+  --sim-error-border: #fecaca;
+  --sim-error-text: #dc2626;
+  --sim-shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
 
 * { box-sizing: border-box; }
@@ -20,20 +167,21 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Glass card utility */
 .glass {
-  background: rgba(255,255,255,0.035);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
 }
 
-/* Custom scrollbar — dark */
+/* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 99px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 99px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 /* Glow pulse animation */
 @keyframes glow-pulse {
@@ -51,3 +199,28 @@ body {
 /* Scrollbar hide */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Light mode overrides for Tailwind utilities */
+[data-theme="light"] .text-white { color: var(--text-heading) !important; }
+[data-theme="light"] .text-zinc-200 { color: #374151 !important; }
+[data-theme="light"] .text-zinc-300 { color: #4b5563 !important; }
+[data-theme="light"] .text-zinc-400 { color: #6b7280 !important; }
+[data-theme="light"] .text-zinc-500 { color: #9ca3af !important; }
+[data-theme="light"] .text-zinc-600 { color: #6b7280 !important; }
+[data-theme="light"] .text-zinc-700 { color: #d1d5db !important; }
+[data-theme="light"] .hover\:text-white:hover { color: var(--text-heading) !important; }
+[data-theme="light"] .hover\:text-zinc-200:hover { color: #374151 !important; }
+[data-theme="light"] .hover\:text-zinc-300:hover { color: #4b5563 !important; }
+[data-theme="light"] .hover\:bg-white\/5:hover { background: rgba(0,0,0,0.04) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover { background: rgba(0,0,0,0.02) !important; }
+[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover { background: rgba(0,0,0,0.03) !important; }
+[data-theme="light"] .hover\:bg-white\/10:hover { background: rgba(0,0,0,0.06) !important; }
+[data-theme="light"] .bg-white\/5 { background: rgba(0,0,0,0.03) !important; }
+[data-theme="light"] .bg-white\/10 { background: rgba(0,0,0,0.05) !important; }
+[data-theme="light"] .bg-white\/20 { background: rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .bg-black\/20 { background: rgba(0,0,0,0.06) !important; }
+[data-theme="light"] .bg-black\/80 { background: rgba(0,0,0,0.4) !important; }
+[data-theme="light"] .border-white\/5 { border-color: rgba(0,0,0,0.05) !important; }
+[data-theme="light"] .border-white\/10 { border-color: rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .bg-\[\#18181b\] { background: var(--bg-elevated) !important; }
+[data-theme="light"] .bg-\[\#0f0f12\] { background: var(--table-header-bg) !important; }

@@ -67,20 +67,20 @@ const Register = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 items-center justify-center font-sans py-12">
-      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+    <div className="flex min-h-screen items-center justify-center font-sans py-12" style={{ background: 'var(--bg-base)' }}>
+      <div className="w-full max-w-md p-8 rounded-xl" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-indigo-200 shadow-lg">
             <Zap size={24} />
           </div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tighter italic">OPTIMA</h1>
+          <h1 className="text-2xl font-black tracking-tighter italic" style={{ color: 'var(--text-heading)' }}>OPTIMA</h1>
         </div>
         
-        <h2 className="text-xl font-bold text-gray-800 text-center mb-6">Create an Account</h2>
+        <h2 className="text-xl font-bold text-center mb-6" style={{ color: 'var(--text-primary)' }}>Create an Account</h2>
         
-        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium">{error}</div>}
+        {error && <div className="p-3 rounded-lg mb-4 text-sm font-medium" style={{ background: 'var(--error-bg)', color: 'var(--sim-error-text)' }}>{error}</div>}
         {success && (
-          <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 text-sm font-medium text-center">
+          <div className="p-4 rounded-lg mb-4 text-sm font-medium text-center" style={{ background: 'var(--success-bg)', color: '#059669' }}>
             Account created successfully!<br/><br/>
             Your account is currently <span className="font-bold">Under Review</span>. An Administrator must approve it before you can log in.
             <br/><br/>

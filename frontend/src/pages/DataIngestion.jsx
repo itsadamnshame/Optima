@@ -450,7 +450,7 @@ export default function DataIngestion({ onDatasetChange }) {
       {/* VIEWER MODAL */}
       {showViewer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-6xl max-h-[90vh] flex flex-col rounded-3xl p-6" style={{ background: '#09090b', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="w-full max-w-6xl max-h-[90vh] flex flex-col rounded-3xl p-6" style={{ background: 'var(--modal-bg)', border: `1px solid var(--border-strong)` }}>
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-xl font-black text-white flex items-center gap-2"><Database size={20} className="text-indigo-400" /> Dataset Viewer</h3>
@@ -461,7 +461,8 @@ export default function DataIngestion({ onDatasetChange }) {
                   <select 
                     value={viewerYearFilter} 
                     onChange={(e) => openViewer(viewerDatasetId, 1, e.target.value)}
-                    className="bg-[#18181b] border border-white/10 text-white text-sm font-bold rounded-xl px-3 py-2 outline-none"
+                    className="border text-sm font-bold rounded-xl px-3 py-2 outline-none"
+                    style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--input-text)' }}
                   >
                     <option value="">All Years</option>
                     {viewerAvailableYears.map(yr => <option key={yr} value={yr}>{yr}</option>)}
@@ -483,7 +484,7 @@ export default function DataIngestion({ onDatasetChange }) {
                 </div>
               ) : (
                 <table className="w-full text-left text-sm whitespace-nowrap">
-                  <thead className="bg-[#0f0f12] text-xs font-black uppercase text-zinc-500 sticky top-0">
+                  <thead className="text-xs font-black uppercase text-zinc-500 sticky top-0" style={{ background: 'var(--table-header-bg)' }}>
                     <tr>
                       {Object.keys(viewerData[0]).map(k => (
                         <th key={k} className="px-4 py-3 border-b border-white/5">{k.replace('_', ' ')}</th>
@@ -514,7 +515,8 @@ export default function DataIngestion({ onDatasetChange }) {
                     value={viewerPageInput} 
                     onChange={(e) => setViewerPageInput(e.target.value)}
                     placeholder="Go to page..."
-                    className="bg-[#18181b] border border-white/10 text-white text-xs font-bold rounded-xl px-3 py-2 outline-none w-28"
+                    className="border text-xs font-bold rounded-xl px-3 py-2 outline-none w-28"
+                    style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--input-text)' }}
                   />
                   <button type="submit" className="text-xs font-bold bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded-xl transition-all">Go</button>
                 </form>

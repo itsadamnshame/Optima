@@ -60,7 +60,7 @@ const AdminDashboard = () => {
     } catch (err) { console.error(err); }
   };
 
-  const glass = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' };
+  const glass = { background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
@@ -98,7 +98,7 @@ const AdminDashboard = () => {
       {/* Tabs Panel */}
       <div className="rounded-2xl overflow-hidden" style={glass}>
         {/* Tab Bar */}
-        <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex" style={{ borderBottom: `1px solid var(--border)` }}>
           {[['sessions', Clock, 'Session Log'], ['audit', FileText, 'Audit Trail'], ['queue', Users, 'Registration Queue']].map(([id, Icon, label]) => (
             <button key={id} onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 px-5 py-3.5 text-xs font-black uppercase tracking-widest transition-all ${activeTab === id ? 'text-indigo-400 border-b-2 border-indigo-500' : 'text-zinc-600 hover:text-zinc-300'}`}
@@ -121,7 +121,7 @@ const AdminDashboard = () => {
             <ul>
               {pendingUsers.map(user => (
                 <li key={user.username} className="px-6 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  style={{ borderBottom: `1px solid var(--table-border)` }}>
                   <div>
                     <p className="font-bold text-white text-sm">{user.username}</p>
                     <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mt-0.5">Status: {user.status}</p>
@@ -151,7 +151,7 @@ const AdminDashboard = () => {
               <div className="p-8 text-center text-zinc-600 text-sm">No sessions recorded yet.</div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10" style={{ background: 'rgba(15,15,18,0.95)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <thead className="sticky top-0 z-10" style={{ background: 'var(--table-header-bg)', borderBottom: `1px solid var(--border)` }}>
                   <tr>
                     {['User', 'Role', 'Login', 'Logout', 'Duration', 'Action'].map(h => (
                       <th key={h} className="px-5 py-3 text-left text-[9px] font-black text-zinc-600 uppercase tracking-widest">{h}</th>
@@ -160,7 +160,7 @@ const AdminDashboard = () => {
                 </thead>
                 <tbody>
                   {sessionLogs.map((s) => (
-                    <tr key={s.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <tr key={s.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderBottom: `1px solid var(--table-border)` }}>
                       <td className="px-5 py-3 font-bold text-zinc-200 text-xs">{s.username}</td>
                       <td className="px-5 py-3">
                         <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${s.role === 'ADMIN' ? 'text-rose-400' : 'text-indigo-400'}`}
@@ -207,7 +207,7 @@ const AdminDashboard = () => {
               <ul>
                 {auditLogs.map((log, i) => (
                   <li key={i} className="px-5 py-3.5 flex flex-col gap-1 hover:bg-white/[0.02] transition-colors"
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    style={{ borderBottom: `1px solid var(--table-border)` }}>
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] font-black uppercase text-indigo-400 tracking-widest">{log.action}</span>
                       <span className="text-[9px] font-bold text-zinc-600">{new Date(log.timestamp).toLocaleString()}</span>

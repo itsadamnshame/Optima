@@ -48,12 +48,12 @@ export default function SpecialDaysManager({ onUpdate, calendarCount }) {
     ev.name.toLowerCase().includes(searchTerm.toLowerCase()) || ev.date.includes(searchTerm)
   );
 
-  const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#f4f4f5' };
+  const inputStyle = { background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' };
 
   return (
-    <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
       {/* Compact header */}
-      <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(99,102,241,0.1)' }}>
+      <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: `1px solid var(--border)`, background: 'var(--card-accent-bg)' }}>
         <div className="flex items-center gap-2">
           <Calendar size={14} className="text-indigo-400" />
           <h3 className="text-xs font-black text-white uppercase tracking-widest">Calendar Manager</h3>
@@ -143,7 +143,7 @@ export default function SpecialDaysManager({ onUpdate, calendarCount }) {
       </div>
 
       {/* Hybrid Status Footer — unified with calendar card */}
-      <div className="px-4 py-3 flex items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(99,102,241,0.05)' }}>
+      <div className="px-4 py-3 flex items-center justify-between gap-4" style={{ borderTop: `1px solid var(--border)`, background: 'var(--card-accent-bg)' }}>
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse inline-block shadow-[0_0_6px_rgba(129,140,248,0.8)]" />
           <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.25em]">Hybrid Specialist · Listener Active</p>

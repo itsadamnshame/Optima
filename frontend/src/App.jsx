@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2, Sun, Moon } from 'lucide-react';
 
 import DataIngestion from './pages/DataIngestion';
 import Analytics from './pages/Analytics';
@@ -10,6 +10,25 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+
+// Dynamic page titles
+const PAGE_TITLES = {
+  '/': 'Data Ingestion — Optima',
+  '/analytics': 'Forecasting — Optima',
+  '/qualitative': 'Product Bundler — Optima',
+  '/playbook': 'Strategic Playbook — Optima',
+  '/admin': 'Admin Panel — Optima',
+  '/login': 'Sign In — Optima',
+  '/register': 'Register — Optima',
+};
+
+function usePageTitle() {
+  const location = useLocation();
+  useEffect(() => {
+    document.title = PAGE_TITLES[location.pathname] || 'Optima';
+  }, [location.pathname]);
+}
 
 function NavLink({ to, icon: Icon, children }) {
   const location = useLocation();
@@ -42,6 +61,7 @@ const AdminRoute = ({ children }) => {
 
 function AppContent() {
   const { token, role, actualRole, username, logout, isNonAdminView, setIsNonAdminView } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const [recommendations, setRecommendations] = useState({});
@@ -64,6 +84,9 @@ function AppContent() {
   const [forecastTopN, setForecastTopN] = useState(5);
   const [forecastSelectedItems, setForecastSelectedItems] = useState([]);
   const [auditProgress, setAuditProgress] = useState(0);
+
+  // Dynamic page title
+  usePageTitle();
 
   useEffect(() => {
     let interval;
@@ -174,11 +197,11 @@ function AppContent() {
   };
 
   return (
-    <div className="flex h-screen" style={{ background: '#09090b' }}>
+    <div className="flex h-screen" style={{ background: 'var(--bg-base)' }}>
       {token && (
-        <aside className="w-64 flex flex-col border-r" style={{ background: '#0f0f12', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <aside className="w-64 flex flex-col border-r" style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}>
           {/* Logo */}
-          <div className="p-6 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="p-6 flex items-center gap-3" style={{ borderBottom: `1px solid var(--border)` }}>
             <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/30 glow-pulse">
               <Zap size={20} />
             </div>
@@ -192,13 +215,13 @@ function AppContent() {
             <NavLink to="/analytics" icon={BarChart2}>Forecasting</NavLink>
             <NavLink to="/qualitative" icon={Brain}>Product Bundler</NavLink>
 
-            <div className="pt-4 mt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="pt-4 mt-4" style={{ borderTop: `1px solid var(--border-subtle)` }}>
               <p className="px-4 text-[9px] font-black text-indigo-500 uppercase tracking-[0.25em] mb-3">Executive Output</p>
               <NavLink to="/playbook" icon={Sparkles}>Strategic Playbook</NavLink>
             </div>
 
             {role === 'ADMIN' && (
-              <div className="pt-4 mt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="pt-4 mt-4" style={{ borderTop: `1px solid var(--border-subtle)` }}>
                 <p className="px-4 text-[9px] font-black text-rose-500 uppercase tracking-[0.25em] mb-3">System</p>
                 <NavLink to="/admin" icon={Shield}>Admin Panel</NavLink>
               </div>
@@ -206,7 +229,7 @@ function AppContent() {
           </nav>
 
           {/* Dataset selector */}
-          <div className="px-4 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="px-4 py-4" style={{ borderTop: `1px solid var(--border)` }}>
             <p className="px-2 text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
               <Database size={11} /> Active Source
             </p>
@@ -220,13 +243,13 @@ function AppContent() {
                       value={activeDatasetId || ''}
                       onChange={(e) => handleActivateDataset(parseInt(e.target.value))}
                       disabled={activatingDataset || masterDatasets.length === 0}
-                      className="w-full appearance-none rounded-xl px-4 py-3 pr-10 text-xs font-bold text-zinc-200 outline-none transition-all disabled:opacity-50 cursor-pointer"
-                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                      className="w-full appearance-none rounded-xl px-4 py-3 pr-10 text-xs font-bold outline-none transition-all disabled:opacity-50 cursor-pointer"
+                      style={{ background: 'var(--input-bg)', border: `1px solid var(--input-border)`, color: 'var(--text-primary)' }}
                     >
                       {masterDatasets.length === 0 ? <option value="">No datasets</option>
                         : !activeDatasetId ? <option value="">Select dataset...</option> : null}
                       {masterDatasets.map(ds => (
-                        <option key={ds.id} value={ds.id} style={{ background: '#18181b' }}>
+                        <option key={ds.id} value={ds.id} style={{ background: 'var(--option-bg)' }}>
                           {ds.title} ({ds.row_count.toLocaleString()})
                         </option>
                       ))}
@@ -255,11 +278,20 @@ function AppContent() {
 
 
           {/* Account Profile Card */}
-          <div className="p-4 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="p-4 relative" style={{ borderTop: `1px solid var(--border)` }}>
             {showProfileMenu && (
-              <div className="absolute bottom-full mb-2 left-4 right-4 bg-[#18181b] border border-white/10 rounded-2xl p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2 z-50">
+              <div className="absolute bottom-full mb-2 left-4 right-4 rounded-2xl p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2 z-50"
+                style={{ background: 'var(--profile-menu-bg)', border: `1px solid var(--border-strong)` }}>
                 <button onClick={() => alert("Account Settings page coming soon!")} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
                   <Settings size={16} className="text-zinc-500" /> Account Settings
+                </button>
+
+                {/* Theme Toggle */}
+                <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
+                  <span className="flex items-center gap-3">
+                    {theme === 'dark' ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-indigo-400" />}
+                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  </span>
                 </button>
 
                 {actualRole === 'ADMIN' && (
@@ -282,7 +314,7 @@ function AppContent() {
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex items-center justify-between w-full p-3 rounded-2xl hover:bg-white/5 transition-all"
-              style={{ background: showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent' }}
+              style={{ background: showProfileMenu ? 'var(--glass-bg)' : 'transparent' }}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
@@ -349,8 +381,8 @@ function AppContent() {
 
       {/* COMBINE MODAL */}
       {showCombineModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl p-8" style={{ background: '#09090b', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in" style={{ background: 'var(--overlay-bg)' }}>
+          <div className="w-full max-w-lg rounded-3xl p-8" style={{ background: 'var(--modal-bg)', border: `1px solid var(--border-strong)` }}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-black text-white">Assemble Master Dataset</h3>
               <button onClick={() => setShowCombineModal(false)} className="text-zinc-500 hover:text-white"><X size={20} /></button>
@@ -364,8 +396,8 @@ function AppContent() {
                 <input
                   type="text" value={combineTitle} onChange={(e) => setCombineTitle(e.target.value)}
                   placeholder="e.g., 2024-2026 Consolidated Sales"
-                  className="w-full px-4 py-3 rounded-xl outline-none font-medium text-sm text-white"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  className="w-full px-4 py-3 rounded-xl outline-none font-medium text-sm"
+                  style={{ background: 'var(--input-bg)', border: `1px solid var(--input-border)`, color: 'var(--input-text)' }}
                 />
               </div>
 
@@ -373,7 +405,7 @@ function AppContent() {
                 <label className="block text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">Select Chunks to Merge</label>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                   {sidebarDatasets.filter(ds => ds.dataset_type === 'YEARLY').map(ds => (
-                    <label key={ds.id} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <label key={ds.id} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" style={{ border: `1px solid var(--border-subtle)` }}>
                       <input
                         type="checkbox"
                         checked={selectedCombineIds.includes(ds.id)}
@@ -420,11 +452,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

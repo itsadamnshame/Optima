@@ -26,17 +26,17 @@ const Login = () => {
   };
 
   const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    color: '#f4f4f5',
+    background: 'var(--input-bg)',
+    border: '1px solid var(--input-border)',
+    color: 'var(--input-text)',
   };
 
   return (
-    <div className="flex h-screen items-center justify-center" style={{ background: '#09090b' }}>
+    <div className="flex h-screen items-center justify-center" style={{ background: 'var(--bg-base)' }}>
       {/* Ambient glow */}
-      <div className="absolute w-96 h-96 rounded-full blur-3xl pointer-events-none" style={{ background: 'rgba(99,102,241,0.08)', top: '20%', left: '50%', transform: 'translateX(-50%)' }} />
+      <div className="absolute w-96 h-96 rounded-full blur-3xl pointer-events-none" style={{ background: 'var(--accent-glow)', top: '20%', left: '50%', transform: 'translateX(-50%)' }} />
 
-      <div className="relative z-10 w-full max-w-sm p-8 rounded-[2rem]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)' }}>
+      <div className="relative z-10 w-full max-w-sm p-8 rounded-[2rem]" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)`, backdropFilter: 'blur(12px)' }}>
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-500/30 glow-pulse">
@@ -48,7 +48,7 @@ const Login = () => {
         <h2 className="text-lg font-bold text-zinc-200 text-center mb-6">Welcome Back</h2>
 
         {error && (
-          <div className="p-3 rounded-xl mb-4 text-sm font-medium text-rose-300" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <div className="p-3 rounded-xl mb-4 text-sm font-medium text-rose-300" style={{ background: 'var(--error-bg)', border: `1px solid var(--error-border)` }}>
             {error}
           </div>
         )}
