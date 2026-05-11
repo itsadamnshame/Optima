@@ -35,7 +35,10 @@ logging.getLogger("uvicorn.access").addFilter(PollingFilter())
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optima.db")
 IS_POSTGRES = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine_kwargs = {"pool_pre_ping": True}
+if IS_POSTGRES:
+    engine_kwargs["isolation_level"] = "AUTOCOMMIT"
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 def _csv_origins(value: str):
     return [origin.strip() for origin in value.split(",") if origin.strip()]
@@ -74,6 +77,14 @@ def _year_expr(column: str) -> str:
     if IS_POSTGRES:
         return f"TO_CHAR({column}::timestamp, 'YYYY')"
     return f"strftime('%Y', {column})"
+
+def _ignore_schema_error(conn):
+    if not IS_POSTGRES:
+        return
+    try:
+        conn.rollback()
+    except Exception:
+        pass
 
 # ==========================================
 # QUALITATIVE CACHE (Apriori + RF results)
@@ -155,18 +166,21 @@ def setup_db():
             conn.execute(text("ALTER TABLE users ADD COLUMN login_locked_until TEXT"))
             conn.commit()
         except Exception:
+            _ignore_schema_error(conn)
             pass  # column already exists
         
         try:
             conn.execute(text("ALTER TABLE datasets ADD COLUMN dataset_type TEXT DEFAULT 'MASTER'"))
             conn.commit()
         except Exception:
+            _ignore_schema_error(conn)
             pass
         
         try:
             conn.execute(text("ALTER TABLE datasets ADD COLUMN last_edited_at TEXT"))
             conn.commit()
         except Exception:
+            _ignore_schema_error(conn)
             pass
 
 
@@ -176,6 +190,7 @@ def setup_db():
             conn.execute(text("ALTER TABLE datasets ADD COLUMN gap_info TEXT"))
             conn.commit()
         except Exception:
+            _ignore_schema_error(conn)
             pass
 
         # [NEW] CREATE FORECAST TABLES
@@ -230,6 +245,7 @@ def setup_db():
             conn.execute(text("ALTER TABLE users ADD COLUMN email TEXT"))
             conn.execute(text("ALTER TABLE users ADD COLUMN phone_number TEXT"))
         except Exception:
+            _ignore_schema_error(conn)
             pass # Columns likely already exist
             
         try:
@@ -239,14 +255,23 @@ def setup_db():
             conn.commit()
             print("OPTIMA: users table schema upgraded with split names.")
         except Exception:
+            _ignore_schema_error(conn)
             pass
-        
-        # SCHEMA MIGRATION: dataset_id for sales_transactions
-        try:
-            conn.execute(text("ALTER TABLE sales_transactions ADD COLUMN dataset_id INTEGER"))
-            conn.commit()
-        except Exception:
-            pass
+
+        # Raw uploaded rows. Pandas can create this implicitly, but declaring it
+        # keeps PostgreSQL startup and old-dataset recovery paths predictable.
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sales_transactions (
+                ItemDescription TEXT,
+                OrderID TEXT,
+                OrderDate TEXT,
+                Quantity REAL,
+                Total REAL,
+                CustomerID TEXT,
+                dataset_id INTEGER REFERENCES datasets(id) ON DELETE CASCADE
+            )
+        """))
+        conn.commit()
         
         # SCHEMA MIGRATION: is_active for datasets
         try:
@@ -254,6 +279,7 @@ def setup_db():
             conn.commit()
             print("OPTIMA: datasets table upgraded with is_active column.")
         except Exception:
+            _ignore_schema_error(conn)
             pass
         
         # [NEW] CREATE aggregated_sales TABLE
