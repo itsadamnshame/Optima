@@ -6,7 +6,8 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
   const generateStrategy = () => {
     const metricKeys = Object.keys(forecastMetrics || {});
     const firstItemKey = metricKeys.length > 0 ? metricKeys[0] : null;
-    const accuracy = firstItemKey ? (forecastMetrics[firstItemKey]?.mape_pct ?? 'N/A') : 'N/A';
+    const mape = firstItemKey ? (forecastMetrics[firstItemKey]?.mape_pct ?? null) : null;
+    const accuracy = mape !== null ? `${Math.max(0, 100 - mape).toFixed(1)}%` : 'N/A';
     const avgMae = firstItemKey ? (forecastMetrics[firstItemKey]?.mae ?? '0.00') : '0.00';
     const velocityPlays = recommendations?.velocity ?? [];
     const hasVelocity = velocityPlays.length > 0;
@@ -46,7 +47,7 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
           style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)', color: '#a5b4fc' }}>
           <Sparkles size={13} /> Executive Strategy Report
         </div>
-        <h2 className="text-4xl font-black text-white tracking-tighter uppercase italic">Strategic Playbook</h2>
+        <h2 className="text-4xl font-black text-white tracking-tighter uppercase italic">Executive Output</h2>
         <p className="text-zinc-500 font-medium italic">Synthesized Market Intelligence & Action Plan</p>
       </div>
 
@@ -112,7 +113,7 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
           style={{ borderColor: 'var(--border)' }}>
           <ClipboardList size={48} className="text-zinc-700 mb-6" />
           <h3 className="text-2xl font-black text-zinc-300 uppercase italic">Awaiting Analytical Inputs</h3>
-          <p className="text-zinc-600 text-sm max-w-sm mt-2">Run both Quantitative and Qualitative modules to generate the Strategic Playbook.</p>
+          <p className="text-zinc-600 text-sm max-w-sm mt-2">Run both Quantitative and Qualitative modules to generate the Executive Output.</p>
         </div>
       )}
     </div>

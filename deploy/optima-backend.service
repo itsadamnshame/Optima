@@ -1,0 +1,15 @@
+[Unit]
+Description=Optima FastAPI backend
+After=network.target postgresql.service
+
+[Service]
+User=itsadamnshame
+Group=www-data
+WorkingDirectory=/home/itsadamnshame/Optima/backend
+EnvironmentFile=/etc/optima/backend.env
+ExecStart=/home/itsadamnshame/Optima/backend/venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

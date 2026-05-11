@@ -235,11 +235,23 @@ export default function Analytics() {
 
               <div className="flex items-center gap-4">
                 {metrics.mape_pct !== undefined && (
-                  <div className="flex gap-4">
+                  <div className="flex flex-wrap gap-4">
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Model Accuracy</p>
-                      <p className="text-sm font-bold text-white">{metrics.mape_pct?.toFixed(1)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
+                      <p className="text-sm font-bold text-white">{Math.max(0, 100 - metrics.mape_pct).toFixed(1)}% <span className="text-[10px] text-zinc-500 ml-1">Accuracy</span></p>
                     </div>
+                    {metrics.mae !== undefined && (
+                      <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Avg. Error Magnitude</p>
+                        <p className="text-sm font-bold text-white">{(typeof metrics.mae === 'number' ? metrics.mae : 0).toFixed(2)} <span className="text-[10px] text-zinc-500 ml-1">MAE</span></p>
+                      </div>
+                    )}
+                    {metrics.rmse !== undefined && (
+                      <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Peak Error Sensitivity</p>
+                        <p className="text-sm font-bold text-white">{(typeof metrics.rmse === 'number' ? metrics.rmse : 0).toFixed(2)} <span className="text-[10px] text-zinc-500 ml-1">RMSE</span></p>
+                      </div>
+                    )}
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Model Health</p>
                       <p className="text-sm font-bold text-white flex items-center gap-2">
@@ -379,13 +391,9 @@ export default function Analytics() {
                               {component === 'remainder' ? (
                                 <>
                                   <ReferenceLine y={0} stroke="#52525b" strokeWidth={1} />
-                                  <Line 
-                                    type="monotone"
+                                  <Scatter 
                                     dataKey="val" 
-                                    stroke="#f59e0b" 
-                                    strokeWidth={1.5}
-                                    dot={{ fill: '#f59e0b', r: 2.5, strokeWidth: 0 }}
-                                    activeDot={{ r: 4, strokeWidth: 0 }}
+                                    fill="#f59e0b"
                                   />
                                 </>
                               ) : (

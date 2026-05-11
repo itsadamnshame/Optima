@@ -114,6 +114,23 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
     }
   }, [selectedRunId, isSandbox]);
 
+  const openBundleDetail = (runId, bundleIndex) => {
+    if (isSandbox) {
+      navigate(`/bundler/runs/sandbox?bundle=${bundleIndex}`, {
+        state: {
+          bundles,
+          run: {
+            id: 'sandbox',
+            name: stagedInfo?.name || 'Sandbox Preview',
+            dataset_id: stagedInfo?.datasetId
+          }
+        }
+      });
+    } else {
+      navigate(`/bundler/runs/${runId}?bundle=${bundleIndex}`);
+    }
+  };
+
   const fetchBundlerRuns = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -318,7 +335,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {bundles.map((bundle, idx) => (
-                        <tr key={idx} className="group hover:bg-white/[0.02] transition-colors">
+                        <tr key={idx} className="group hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => openBundleDetail(selectedRunId, idx)}>
                           <td className="px-8 py-8 font-black text-zinc-700 italic text-2xl group-hover:text-emerald-500 transition-colors">#{idx + 1}</td>
                           <td className="px-8 py-8">
                             <div className="flex items-center gap-3">

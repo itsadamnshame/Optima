@@ -55,12 +55,62 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [viewerPageInput, setViewerPageInput] = useState('');
   const [viewerType, setViewerType] = useState('raw'); // 'raw' | 'aggregated' | 'global_aggregated'
   const [viewerSort, setViewerSort] = useState({ key: '', dir: 'DESC' });
+  const [showInventory, setShowInventory] = useState(false);
+  const [localItemConfigs, setLocalItemConfigs] = useState({});
+  const [defaultItemConfigs, setDefaultItemConfigs] = useState({});
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configLoading, setConfigLoading] = useState(false);
 
   useEffect(() => {
     if (selectedDatasetIds.length > 0) {
       fetchForecastRuns(selectedDatasetIds[0]);
     }
   }, [selectedDatasetIds]);
+
+  const openConfigModal = async (datasetIds) => {
+    if (!datasetIds || datasetIds.length === 0) return;
+    setShowConfigModal(true);
+    setConfigLoading(true);
+    try {
+      const id = datasetIds[0];
+      const res = await axios.get(`/api/datasets/${id}/metadata`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const meta = res.data.metadata || {};
+      setDefaultItemConfigs(meta);
+      // Initialize local configs with default metadata if not already set
+      setLocalItemConfigs(prev => {
+        const next = { ...prev };
+        Object.keys(meta).forEach(item => {
+          if (!next[item]) next[item] = meta[item];
+        });
+        return next;
+      });
+    } catch (err) {
+      console.error("Failed to fetch metadata", err);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const updateLocalConfig = (item, field, value) => {
+    setLocalItemConfigs(prev => ({
+      ...prev,
+      [item]: {
+        ...prev[item],
+        [field]: value
+      }
+    }));
+  };
+
+  const resetToDefault = (item) => {
+    if (defaultItemConfigs[item]) {
+      setLocalItemConfigs(prev => ({
+        ...prev,
+        [item]: { ...defaultItemConfigs[item] }
+      }));
+    }
+  };
 
   const fetchForecastRuns = async (datasetId) => {
     try {
@@ -269,8 +319,10 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         dataset_ids: selectedDatasetIds.map(id => parseInt(id)),
         train_forecast: trainForecast,
         train_bundler: trainBundler,
+        save_bundler: persistBundler,
         ref_forecast_id: refForecastId === 'auto' ? 'auto' : (refForecastId === 'none' ? 'none' : parseInt(refForecastId)),
-        min_support: minSupport / 100
+        min_support: minSupport / 100,
+        item_configs: localItemConfigs
       };
       const res = await axios.post('/api/forecast/train', payload, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -415,24 +467,35 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         </div>
       </div>
 
-      {role === 'ADMIN' ? (
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 mb-8 px-2">
-            {[1, 2].map(s => (
-              <div key={s} className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${step >= s ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-zinc-800 text-zinc-600'}`}>
-                  {s}
+      <div className="space-y-6">
+          <div className="flex items-center justify-between mb-8 px-2">
+            <div className="flex items-center gap-4">
+              {[1, 2].map(s => (
+                <div key={s} className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${step >= s ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-zinc-800 text-zinc-600'}`}>
+                    {s}
+                  </div>
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${step >= s ? 'text-indigo-400' : 'text-zinc-600'}`}>
+                    {s === 1 ? 'Scan File' : 'Configure Items'}
+                  </span>
+                  {s === 1 && <div className={`w-8 h-px ${step > 1 ? 'bg-indigo-500' : 'bg-zinc-800'}`} />}
                 </div>
-                <span className={`text-[9px] font-black uppercase tracking-widest ${step >= s ? 'text-indigo-400' : 'text-zinc-600'}`}>
-                  {s === 1 ? 'Scan File' : 'Configure Items'}
-                </span>
-                {s === 1 && <div className={`w-8 h-px ${step > 1 ? 'bg-indigo-500' : 'bg-zinc-800'}`} />}
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <button 
+              onClick={() => setShowInventory(!showInventory)}
+              className={`px-4 py-2 rounded-xl border transition-all group/inv flex items-center gap-2 ${showInventory ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:bg-white/10'}`}
+              title="Toggle Dataset Inventory"
+            >
+              <Database size={14} className="group-hover/inv:scale-110 transition-transform" />
+              <span className="text-[9px] font-black uppercase tracking-widest">Inventory</span>
+            </button>
           </div>
 
           {step === 1 ? (
-            <div className="p-10 rounded-[2.5rem] border-2 border-dashed flex flex-col items-center text-center transition-all hover:border-indigo-500/50 group" style={{ background: 'rgba(255,255,255,0.01)', borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="relative p-20 min-h-[500px] rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center transition-all hover:border-indigo-500/50 group" style={{ background: 'rgba(255,255,255,0.01)', borderColor: 'rgba(255,255,255,0.1)' }}>
+              
               <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
                 <UploadCloud size={32} />
               </div>
@@ -449,6 +512,115 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                   'Select Local Files'
                 )}
               </label>
+
+              {/* INVENTORY PANEL (SLIDE-OVER) */}
+              {showInventory && (
+                <div className="absolute inset-0 z-50 bg-zinc-950 rounded-[2.5rem] p-8 animate-in fade-in duration-300 flex flex-col border border-white/5">
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                      <Database className="text-indigo-400" size={24} />
+                      <h3 className="text-lg font-black text-white uppercase italic">Dataset Inventory</h3>
+                    </div>
+                    <button 
+                      onClick={() => setShowInventory(false)}
+                      className="p-2 rounded-xl bg-white/5 text-zinc-500 hover:text-white transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                    {datasets.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                        <EyeOff size={48} />
+                        <p className="text-[10px] font-black uppercase tracking-widest">No Datasets Available</p>
+                      </div>
+                    ) : (
+                      datasets.map(ds => (
+                        <div key={ds.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col group hover:border-white/10 transition-colors text-left">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="min-w-0 flex-1">
+                              {editingId === ds.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs font-black text-white uppercase outline-none focus:border-indigo-500 w-full"
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    autoFocus
+                                  />
+                                  <button onClick={() => saveTitle(ds.id)} className="text-emerald-400 hover:text-emerald-300 p-1 transition-colors"><Save size={14}/></button>
+                                  <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1 transition-colors"><X size={14}/></button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-black text-white uppercase truncate">{ds.title}</p>
+                                  <button onClick={() => startEditing(ds)} className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-white transition-opacity"><Edit3 size={10}/></button>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest flex items-center gap-1">
+                                  <Database size={8} /> {(ds.row_count || 0).toLocaleString()} ROWS
+                                </span>
+                                <span className="w-1 h-1 rounded-full bg-zinc-800" />
+                                <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest flex items-center gap-1" title="Uploaded At">
+                                  <Calendar size={8} /> {new Date(ds.created_at).toLocaleString()}
+                                </span>
+                                {ds.last_edited_at && (
+                                  <>
+                                    <span className="w-1 h-1 rounded-full bg-zinc-800" />
+                                    <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1" title="Last Modified">
+                                      <Edit3 size={8} /> {new Date(ds.last_edited_at).toLocaleString()}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleTogglePrivacy(ds.id, ds.is_private)}
+                                className={`p-2 rounded-lg transition-all ${ds.is_private ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'} hover:scale-110`}
+                                title={ds.is_private ? "Private Dataset" : "Public Dataset"}
+                              >
+                                {ds.is_private ? <Lock size={14} /> : <Globe size={14} />}
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteDataset(ds.id)}
+                                className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                title="Purge Dataset"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => { setShowInventory(false); openViewer(ds.id, 1); }}
+                              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all"
+                            >
+                              <Eye size={12} /> Explorer
+                            </button>
+                            <button 
+                              onClick={() => { setShowInventory(false); openConfigModal([ds.id]); }}
+                              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-widest transition-all"
+                            >
+                              <Package size={12} /> Configure
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  <div className="mt-8 pt-8 border-t border-white/5 text-center">
+                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
+                      Strategic Hub Active • {datasets.length} total repositories
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : step === 2 ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -471,7 +643,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                         <div className="flex items-center gap-3 bg-black/40 p-1.5 rounded-2xl border border-white/5">
                           <span className={`text-[8px] font-black uppercase tracking-widest px-2 ${isAvailable ? 'text-zinc-600' : 'text-rose-400'}`}>Unavailable</span>
                           <button
-                            onClick={() => updateItemConfig(item, 'available', !isAvailable)}
+                            onClick={() => updateItemConfig(item, 'availability', isAvailable ? 'discontinued' : 'available')}
                             className={`relative w-12 h-6 rounded-full transition-all duration-300 ${isAvailable ? 'bg-indigo-600 shadow-lg shadow-indigo-600/40' : 'bg-zinc-800'}`}
                           >
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${isAvailable ? 'left-7' : 'left-1'}`} />
@@ -595,22 +767,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                         ))}
                       </div>
                     </div>
-
-                    <div className="pt-4 border-t border-white/5 space-y-2">
-                      <p className="text-[9px] font-bold text-zinc-600 uppercase ml-1">Data Inventory</p>
-                      <div className="grid grid-cols-1 gap-2">
-                        {datasets.map(ds => (
-                          <div key={ds.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between group">
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase truncate max-w-[120px]">{ds.title}</span>
-                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => handleDeleteDataset(ds.id)} className="text-rose-500/50 hover:text-rose-500 transition-colors">
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    
+                    <button 
+                      onClick={() => openConfigModal(selectedDatasetIds)}
+                      disabled={selectedDatasetIds.length === 0}
+                      className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 disabled:opacity-20"
+                    >
+                      <Package size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Configure Selections</span>
+                    </button>
                   </div>
                 </div>
 
@@ -763,6 +928,29 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                             ))}
                           </select>
                         </div>
+
+                        <div className="space-y-2 py-2">
+                          <label className="text-[9px] font-bold text-zinc-600 uppercase ml-1 flex items-center gap-2">
+                            Bundler Persistence
+                            <Info size={10} className="text-zinc-500" />
+                          </label>
+                          {trainForecast ? (
+                            <div className="px-4 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black text-emerald-200">
+                              Bundler results are automatically saved when Forecast training is enabled.
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setPersistBundler(!persistBundler)}
+                              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${persistBundler ? 'bg-emerald-500/10 border-emerald-500 text-emerald-200' : 'bg-black/20 border-white/10 text-zinc-400 hover:border-white/20'}`}
+                            >
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Save Bundler Run</span>
+                              <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${persistBundler ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-white/20 bg-transparent text-transparent'}`}>
+                                <Check size={12} />
+                              </span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -867,86 +1055,119 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               </div>
             </div>
           )}
-        </div>
-      ) : (
-        <div className="rounded-3xl p-10 flex flex-col items-center justify-center text-center" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="p-4 rounded-full mb-5" style={{ background: 'rgba(255,255,255,0.05)' }}>
-            <Lock size={28} className="text-zinc-500" />
+      </div>
+
+      {/* ITEM CONFIGURATION MODAL */}
+      {showConfigModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl" style={{ background: 'var(--modal-bg)' }}>
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-xl font-black text-white flex items-center gap-2 uppercase italic tracking-tight">
+                  <Package className="text-indigo-400" /> Item Configuration Override
+                </h3>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
+                  Fine-tune product properties for this analysis run
+                </p>
+              </div>
+              <button onClick={() => setShowConfigModal(false)} className="p-3 rounded-2xl bg-white/5 text-zinc-500 hover:text-white transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            {configLoading ? (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-50">
+                <Loader2 size={40} className="animate-spin text-indigo-500" />
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Syncing Metadata Vault...</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-4">
+                  {Object.keys(localItemConfigs).length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-30 space-y-4">
+                      <ShieldOff size={48} />
+                      <p className="text-xs font-black uppercase tracking-widest">No metadata found for selection</p>
+                    </div>
+                  ) : (
+                    Object.entries(localItemConfigs).map(([item, config]) => {
+                      const isAvailable = config.availability !== 'discontinued' && config.availability !== 'stockout';
+                      const isModified = JSON.stringify(config) !== JSON.stringify(defaultItemConfigs[item]);
+
+                      return (
+                        <div key={item} className={`p-6 rounded-3xl transition-all border ${isModified ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-white/[0.03] border-white/5'}`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-white text-sm truncate uppercase tracking-tight">{item}</h4>
+                              {isModified && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Modified Run Value</span>}
+                            </div>
+                            <div className="flex items-center gap-4">
+                              {isModified && (
+                                <button 
+                                  onClick={() => resetToDefault(item)}
+                                  className="text-[9px] font-black text-zinc-600 hover:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
+                                >
+                                  <Zap size={10} /> Return to Default
+                                </button>
+                              )}
+                              <div className="flex items-center gap-3 bg-black/40 p-1.5 rounded-2xl border border-white/5">
+                                <button
+                                  onClick={() => updateLocalConfig(item, 'availability', isAvailable ? 'discontinued' : 'available')}
+                                  className={`relative w-12 h-6 rounded-full transition-all duration-300 ${isAvailable ? 'bg-indigo-600 shadow-lg shadow-indigo-600/40' : 'bg-zinc-800'}`}
+                                >
+                                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${isAvailable ? 'left-7' : 'left-1'}`} />
+                                </button>
+                                <span className={`text-[8px] font-black uppercase tracking-widest px-2 ${isAvailable ? 'text-indigo-400' : 'text-zinc-600'}`}>
+                                  {isAvailable ? 'Active' : 'Bypassed'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest block ml-1">Logic Pattern</label>
+                              <div className="flex gap-2">
+                                {['always', 'seasonal'].map(type => (
+                                  <button
+                                    key={type}
+                                    onClick={() => updateLocalConfig(item, 'availability_type', type)}
+                                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${config.availability_type === type ? 'bg-white/10 text-white border border-white/20' : 'bg-black/20 text-zinc-600 border border-transparent hover:bg-white/5'}`}
+                                  >
+                                    {type}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest block ml-1">Strategic Tags</label>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => updateLocalConfig(item, 'bundle', !config.bundle)}
+                                  className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${config.bundle ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-black/20 text-zinc-600 border border-transparent hover:bg-white/5'}`}
+                                >
+                                  Bundle Candidate
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="mt-8 flex justify-end">
+                  <button 
+                    onClick={() => setShowConfigModal(false)}
+                    className="px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-indigo-50 transition-all"
+                  >
+                    Lock Configuration
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-          <h3 className="text-xl font-black text-zinc-200 mb-2">Dataset Browser</h3>
-          <p className="text-zinc-500 text-sm max-w-md">You are viewing the shared dataset inventory. Administrators manage data ingestion.</p>
         </div>
       )}
-
-      {/* DATASET INVENTORY */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-black text-white flex items-center gap-2">
-            <Database size={16} className="text-indigo-400" /> Dataset Inventory
-            {loadingDatasets && <Loader2 className="animate-spin text-zinc-600" size={16} />}
-          </h3>
-          <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">{datasets.length} datasets</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Array.isArray(datasets) && datasets.map((ds) => (
-            <div key={ds.id} className="rounded-2xl p-5 flex items-center gap-4 hover:bg-white/5 transition-all" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <div className="p-3 rounded-xl flex-shrink-0" style={{ background: 'rgba(99,102,241,0.1)' }}>
-                <FileSpreadsheet size={22} className="text-indigo-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                {editingId === ds.id ? (
-                  <div className="flex items-center gap-2">
-                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                      className="font-bold text-white rounded-lg px-2 py-1 outline-none w-full text-sm"
-                      style={inputStyle} autoFocus />
-                    <button onClick={() => saveTitle(ds.id)} className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-400/10"><Save size={16} /></button>
-                    <button onClick={() => setEditingId(null)} className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-400/10"><X size={16} /></button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-white text-sm truncate">{ds.title}</h4>
-                      {ds.is_active && <span className="text-[9px] font-black text-emerald-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(52,211,153,0.1)' }}>● Active</span>}
-                      {ds.is_private
-                        ? <span className="text-[9px] font-black text-amber-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(251,191,36,0.1)' }}><EyeOff size={8} className="inline mr-0.5" />Private</span>
-                        : <span className="text-[9px] font-black text-emerald-400 px-2 py-0.5 rounded-full uppercase" style={{ background: 'rgba(52,211,153,0.08)' }}><Globe size={8} className="inline mr-0.5" />Public</span>}
-                    </div>
-                    <div className="flex flex-wrap gap-3 mt-1 text-[10px] text-zinc-600 font-medium items-center">
-                      <span className="flex items-center gap-1"><Database size={10} />{(ds.row_count || 0).toLocaleString()} rows</span>
-                      <span className="flex items-center gap-1"><Calendar size={10} />{ds.upload_date ? new Date(ds.upload_date).toLocaleDateString() : 'N/A'}</span>
-                      <span className="flex items-center gap-1"><User size={10} />{ds.uploader || 'System'}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button onClick={() => openViewer(ds.id, 1)} className="p-2 rounded-lg text-zinc-600 hover:text-indigo-400 hover:bg-indigo-400/10 transition-all" title="View Data"><Eye size={15} /></button>
-                {role === 'ADMIN' && (
-                  <>
-                    <button onClick={() => startEditing(ds)} className="p-2 rounded-lg text-zinc-600 hover:text-indigo-400 hover:bg-indigo-400/10 transition-all" title="Rename"><Edit3 size={15} /></button>
-                    <button onClick={() => handleTogglePrivacy(ds.id, ds.is_private)} className={`p-2 rounded-lg transition-all ${ds.is_private ? 'text-amber-400 hover:bg-amber-400/10' : 'text-zinc-600 hover:text-emerald-400 hover:bg-emerald-400/10'}`}>{ds.is_private ? <EyeOff size={15} /> : <Globe size={15} />}</button>
-                    {deleteConfirmId === ds.id ? (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => { handleDeleteDataset(ds.id); setDeleteConfirmId(null); }} className="p-2 rounded-lg text-rose-400 bg-rose-400/10 hover:bg-rose-400/20 transition-all"><Check size={14} /></button>
-                        <button onClick={() => setDeleteConfirmId(null)} className="p-2 rounded-lg text-zinc-600 hover:bg-white/5 transition-all"><X size={14} /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setDeleteConfirmId(ds.id)} className="p-2 rounded-lg text-zinc-600 hover:text-rose-400 hover:bg-rose-400/10 transition-all"><Trash2 size={15} /></button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-          {datasets.length === 0 && !loadingDatasets && (
-            <div className="col-span-full py-16 rounded-2xl border-2 border-dashed text-center" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-              <Database className="mx-auto text-zinc-700 mb-3" size={40} />
-              <p className="text-zinc-600 font-bold text-sm">No datasets uploaded yet.</p>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* VIEWER MODAL */}
       {showViewer && (

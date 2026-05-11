@@ -11,9 +11,10 @@ import jwt
 import datetime
 import bcrypt
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import bindparam, create_engine, inspect, text
 import holidays as ph_holidays_lib
 import logging
+import os
 
 # ==========================================
 # CUSTOM MODULE IMPORTS
@@ -32,17 +33,47 @@ class PollingFilter(logging.Filter):
 
 logging.getLogger("uvicorn.access").addFilter(PollingFilter())
 
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optima.db")
+IS_POSTGRES = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+
+def _csv_origins(value: str):
+    return [origin.strip() for origin in value.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_csv_origins(os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-import os
+def _insert_and_get_id(conn, sql: str, params: dict):
+    """Insert a row and return its id on both SQLite and PostgreSQL."""
+    statement = sql
+    if IS_POSTGRES and "returning" not in sql.lower():
+        statement = f"{sql} RETURNING id"
+    result = conn.execute(text(statement), params)
+    if IS_POSTGRES:
+        return result.scalar_one()
+    return result.lastrowid
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optima.db")
-engine = create_engine(DATABASE_URL)
+def _read_sql(sql: str, params: Optional[dict] = None):
+    return pd.read_sql(text(sql), engine, params=params)
+
+def _read_sql_in(sql: str, param_name: str, values: List[int]):
+    stmt = text(sql).bindparams(bindparam(param_name, expanding=True))
+    return pd.read_sql(stmt, engine, params={param_name: values})
+
+def _parse_id_csv(value: str) -> List[int]:
+    try:
+        return [int(v.strip()) for v in value.split(",") if v.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dataset IDs must be comma-separated integers")
+
+def _year_expr(column: str) -> str:
+    if IS_POSTGRES:
+        return f"TO_CHAR({column}::timestamp, 'YYYY')"
+    return f"strftime('%Y', {column})"
 
 # ==========================================
 # QUALITATIVE CACHE (Apriori + RF results)
@@ -67,14 +98,13 @@ def _get_active_dataset_df():
     active_id = _get_active_dataset_id()
     if active_id is None:
         raise HTTPException(status_code=400, detail="No active dataset selected. Please select a dataset from the sidebar.")
-    return pd.read_sql(f"SELECT * FROM sales_transactions WHERE dataset_id = {active_id}", engine), active_id
+    return _read_sql("SELECT * FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": active_id}), active_id
 
 # --- DATABASE INITIALIZATION & SEEDING ---
 @app.on_event("startup")
 def setup_db():
     """Ensure table exists and pre-fill with PH holidays if empty."""
-    is_postgres = "postgres" in DATABASE_URL.lower()
-    pk_syntax = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    pk_syntax = "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
     
     with engine.connect() as conn:
         conn.execute(text(f"""
@@ -114,7 +144,8 @@ def setup_db():
                 upload_date TEXT NOT NULL,
                 uploader TEXT NOT NULL,
                 row_count INTEGER NOT NULL,
-                is_private INTEGER DEFAULT 0
+                is_private INTEGER DEFAULT 0,
+                last_edited_at TEXT
             )
         """))
         conn.commit()
@@ -131,6 +162,13 @@ def setup_db():
             conn.commit()
         except Exception:
             pass
+        
+        try:
+            conn.execute(text("ALTER TABLE datasets ADD COLUMN last_edited_at TEXT"))
+            conn.commit()
+        except Exception:
+            pass
+
 
         try:
             conn.execute(text("ALTER TABLE datasets ADD COLUMN date_range_start TEXT"))
@@ -251,7 +289,10 @@ def setup_db():
         admin_exists = conn.execute(text("SELECT COUNT(*) FROM users WHERE username='admin'")).fetchone()[0]
         if admin_exists == 0:
             print("OPTIMA: Seeding default admin account...")
-            admin_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            admin_password = os.getenv("OPTIMA_ADMIN_PASSWORD")
+            if IS_POSTGRES and not admin_password:
+                raise RuntimeError("OPTIMA_ADMIN_PASSWORD must be set before the first production startup")
+            admin_hash = bcrypt.hashpw((admin_password or "admin123").encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             conn.execute(
                 text("INSERT INTO users (username, password_hash, role, status) VALUES (:u, :p, :r, :s)"),
                 {"u": "admin", "p": admin_hash, "r": "ADMIN", "s": "approved"}
@@ -263,7 +304,11 @@ def setup_db():
 # ==========================================
 # AUTHENTICATION HELPERS & LOGGING
 # ==========================================
-SECRET_KEY = "optima_secret_thesis_key_2026_secure_32"
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if IS_POSTGRES:
+        raise RuntimeError("SECRET_KEY must be set when using PostgreSQL/production DATABASE_URL")
+    SECRET_KEY = "dev_only_optima_secret_change_me"
 
 def get_current_user(authorization: str = Header(None, alias="Authorization")):
     if not authorization or not authorization.startswith("Bearer "):
@@ -312,8 +357,98 @@ class LoginModel(BaseModel):
     username: str
     password: str
 
+class ProfileUpdateModel(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+
+class PasswordChangeModel(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+
 class AdminActionModel(BaseModel):
     username: str
+
+@app.get("/api/auth/profile")
+async def get_profile(user=Depends(get_current_user)):
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT username, role, first_name, last_name, middle_name, email, phone_number FROM users WHERE username = :u"),
+                {"u": user.get("username")}
+            ).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="User not found")
+            return {
+                "profile": {
+                    "username": row[0],
+                    "role": row[1],
+                    "first_name": row[2] or "",
+                    "last_name": row[3] or "",
+                    "middle_name": row[4] or "",
+                    "email": row[5] or "",
+                    "phone_number": row[6] or ""
+                }
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/api/auth/profile")
+async def update_profile(data: ProfileUpdateModel, user=Depends(get_current_user)):
+    try:
+        updates = {}
+        if data.first_name is not None:
+            updates['first_name'] = data.first_name
+        if data.last_name is not None:
+            updates['last_name'] = data.last_name
+        if data.middle_name is not None:
+            updates['middle_name'] = data.middle_name
+        if data.email is not None:
+            updates['email'] = data.email
+        if data.phone_number is not None:
+            updates['phone_number'] = data.phone_number
+
+        if not updates:
+            return {"status": "success", "message": "No changes made"}
+
+        with engine.connect() as conn:
+            set_clause = ", ".join([f"{field} = :{field}" for field in updates.keys()])
+            params = {**updates, "u": user.get("username")}
+            conn.execute(text(f"UPDATE users SET {set_clause} WHERE username = :u"), params)
+            conn.commit()
+        return {"status": "success", "message": "Profile updated"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/api/auth/profile/password")
+async def change_password(data: PasswordChangeModel, user=Depends(get_current_user)):
+    try:
+        if data.new_password != data.confirm_password:
+            raise HTTPException(status_code=400, detail="New password and confirmation must match")
+
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT password_hash FROM users WHERE username = :u"),
+                {"u": user.get("username")}
+            ).fetchone()
+            if not row or not bcrypt.checkpw(data.current_password.encode('utf-8'), row[0].encode('utf-8')):
+                raise HTTPException(status_code=401, detail="Current password is incorrect")
+            new_hash = bcrypt.hashpw(data.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            conn.execute(
+                text("UPDATE users SET password_hash = :ph WHERE username = :u"),
+                {"ph": new_hash, "u": user.get("username")}
+            )
+            conn.commit()
+        return {"status": "success", "message": "Password updated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/auth/register")
 async def register_user(data: RegisterModel):
@@ -440,7 +575,27 @@ async def get_session_logs(user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/datasets/{dataset_id}/metadata")
+async def get_dataset_metadata(dataset_id: int, user=Depends(get_current_user)):
+    try:
+        with engine.connect() as conn:
+            res = conn.execute(
+                text("SELECT ItemDescription, availability_status, availability_type, is_bundle FROM item_metadata WHERE dataset_id = :dataset_id"),
+                {"dataset_id": dataset_id}
+            ).fetchall()
+            meta = {}
+            for r in res:
+                meta[r[0]] = {
+                    "availability": r[1],
+                    "availability_type": r[2],
+                    "bundle": bool(r[3])
+                }
+            return {"metadata": meta}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/auth/session-status")
+
 async def get_session_status(user=Depends(get_current_user)):
     """Polled by the frontend to check if this session has been force-ended."""
     session_id = user.get("session_id")
@@ -702,11 +857,11 @@ async def process_sales_data(
 
         with engine.connect() as conn:
             now = datetime.datetime.utcnow().isoformat()
-            cursor = conn.execute(
-                text("INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 0, :dt, :drs, :dre, :gap)"),
+            dataset_id = _insert_and_get_id(
+                conn,
+                "INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 0, :dt, :drs, :dre, :gap)",
                 {"t": title, "f": combined_filename, "d": now, "u": user['username'], "rc": len(valid_sales), "dt": dataset_type, "drs": dr_start, "dre": dr_end, "gap": gap_info_str}
             )
-            dataset_id = cursor.lastrowid
 
             # Save Item Metadata
             for item, meta in configs.items():
@@ -768,10 +923,12 @@ async def get_datasets(user=Depends(get_current_user)):
     try:
         with engine.connect() as conn:
             if user.get("role") == "ADMIN":
-                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active, dataset_type, date_range_start, date_range_end, gap_info FROM datasets ORDER BY id DESC"
+                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active, dataset_type, date_range_start, date_range_end, gap_info, last_edited_at FROM datasets ORDER BY id DESC"
+
                 res = conn.execute(text(query)).fetchall()
             else:
-                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active, dataset_type, date_range_start, date_range_end, gap_info FROM datasets WHERE is_private = 0 ORDER BY id DESC"
+                query = "SELECT id, title, filename, upload_date, uploader, row_count, is_private, is_active, dataset_type, date_range_start, date_range_end, gap_info, last_edited_at FROM datasets WHERE is_private = 0 ORDER BY id DESC"
+
                 res = conn.execute(text(query)).fetchall()
             
             datasets = []
@@ -792,7 +949,8 @@ async def get_datasets(user=Depends(get_current_user)):
                     "dataset_type": dt,
                     "date_range_start": drs,
                     "date_range_end": dre,
-                    "gap_info": gap
+                    "gap_info": gap,
+                    "last_edited_at": r[12] if len(r) > 12 else None
                 })
             return {"datasets": datasets}
     except Exception as e:
@@ -812,7 +970,7 @@ async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
                 res = conn.execute(text("SELECT filename FROM datasets WHERE id = :id"), {"id": d_id}).fetchone()
                 if res:
                     filenames.append(res[0])
-            df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE dataset_id={d_id}", engine)
+            df = _read_sql("SELECT * FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": d_id})
             if not df.empty:
                 df_list.append(df)
                 
@@ -828,12 +986,12 @@ async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
         
         with engine.connect() as conn:
             now = datetime.datetime.utcnow().isoformat()
-            cursor = conn.execute(
-                text("INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 1, 'MASTER', :drs, :dre, :gap)"),
+            new_dataset_id = _insert_and_get_id(
+                conn,
+                "INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 1, 'MASTER', :drs, :dre, :gap)",
                 {"t": req.title, "f": combined_filename, "d": now, "u": user['username'], "rc": len(combined_df), "drs": dr_start, "dre": dr_end, "gap": gap_info_str}
             )
             conn.commit()
-            new_dataset_id = cursor.lastrowid
             
             combined_df['dataset_id'] = new_dataset_id
             combined_df.to_sql("sales_transactions", engine, if_exists="append", index=False)
@@ -850,20 +1008,22 @@ async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
 async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, year: str = None, sort_by: str = "OrderID", sort_dir: str = "DESC", user=Depends(get_current_user)):
     try:
         offset = (page - 1) * limit
-        where_clause = f"dataset_id={dataset_id}"
+        where_clause = "dataset_id = :dataset_id"
+        params = {"dataset_id": dataset_id, "limit": limit, "offset": offset}
         if year:
-            where_clause += f" AND strftime('%Y', OrderDate) = '{year}'"
+            where_clause += f" AND {_year_expr('OrderDate')} = :year"
+            params["year"] = year
         
         # Validate sort_by to prevent SQL injection
         allowed_cols = ["OrderID", "ItemDescription", "OrderDate", "Quantity", "Total"]
         if sort_by not in allowed_cols: sort_by = "OrderID"
         direction = "DESC" if sort_dir.upper() == "DESC" else "ASC"
             
-        df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE {where_clause} ORDER BY {sort_by} {direction} LIMIT {limit} OFFSET {offset}", engine)
+        df = _read_sql(f"SELECT * FROM sales_transactions WHERE {where_clause} ORDER BY {sort_by} {direction} LIMIT :limit OFFSET :offset", params)
         
         with engine.connect() as conn:
             if year:
-                total_rows_res = conn.execute(text(f"SELECT COUNT(*) FROM sales_transactions WHERE {where_clause}")).fetchone()
+                total_rows_res = conn.execute(text(f"SELECT COUNT(*) FROM sales_transactions WHERE {where_clause}"), params).fetchone()
                 total_rows = total_rows_res[0] if total_rows_res else 0
             else:
                 total_rows_res = conn.execute(text("SELECT row_count FROM datasets WHERE id=:id"), {"id": dataset_id}).fetchone()
@@ -891,7 +1051,8 @@ async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, year
 async def get_dataset_years(dataset_id: int, user=Depends(get_current_user)):
     try:
         with engine.connect() as conn:
-            res = conn.execute(text("SELECT DISTINCT strftime('%Y', OrderDate) as yr FROM sales_transactions WHERE dataset_id=:id AND yr IS NOT NULL ORDER BY yr ASC"), {"id": dataset_id}).fetchall()
+            year_expr = _year_expr("OrderDate")
+            res = conn.execute(text(f"SELECT DISTINCT {year_expr} as yr FROM sales_transactions WHERE dataset_id=:id AND {year_expr} IS NOT NULL ORDER BY yr ASC"), {"id": dataset_id}).fetchall()
             years = [r[0] for r in res if r[0]]
         return {"status": "success", "years": years}
     except Exception as e:
@@ -908,7 +1069,7 @@ async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int
             exists = conn.execute(text("SELECT 1 FROM aggregated_sales WHERE dataset_id=:id LIMIT 1"), {"id": dataset_id}).fetchone()
             if not exists:
                 print(f"OPTIMA: Retro-aggregating dataset {dataset_id}...")
-                raw_df = pd.read_sql(f"SELECT ItemDescription, OrderDate, Quantity FROM sales_transactions WHERE dataset_id={dataset_id}", engine)
+                raw_df = _read_sql("SELECT ItemDescription, OrderDate, Quantity FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": dataset_id})
                 if not raw_df.empty:
                     raw_df['OrderDate'] = pd.to_datetime(raw_df['OrderDate'])
                     raw_df['ds'] = raw_df['OrderDate'].dt.to_period('M').dt.to_timestamp()
@@ -924,7 +1085,7 @@ async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int
         if sort_by not in allowed_cols: sort_by = "ds"
         direction = "DESC" if sort_dir.upper() == "DESC" else "ASC"
 
-        df = pd.read_sql(f"SELECT * FROM aggregated_sales WHERE dataset_id={dataset_id} ORDER BY {sort_by} {direction} LIMIT {limit} OFFSET {offset}", engine)
+        df = _read_sql(f"SELECT * FROM aggregated_sales WHERE dataset_id = :dataset_id ORDER BY {sort_by} {direction} LIMIT :limit OFFSET :offset", {"dataset_id": dataset_id, "limit": limit, "offset": offset})
         
         with engine.connect() as conn:
             total_rows_res = conn.execute(text("SELECT COUNT(*) FROM aggregated_sales WHERE dataset_id=:id"), {"id": dataset_id}).fetchone()
@@ -946,7 +1107,7 @@ async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int
 async def get_dataset_global_aggregated_data(dataset_id: int, user=Depends(get_current_user)):
     try:
         # SUM all items per month for this dataset
-        df = pd.read_sql(f"SELECT ds, SUM(y) as total_quantity FROM aggregated_sales WHERE dataset_id={dataset_id} GROUP BY ds ORDER BY ds ASC", engine)
+        df = _read_sql("SELECT ds, SUM(y) as total_quantity FROM aggregated_sales WHERE dataset_id = :dataset_id GROUP BY ds ORDER BY ds ASC", {"dataset_id": dataset_id})
         data = df.to_dict(orient="records")
         return {
             "status": "success",
@@ -1025,10 +1186,13 @@ async def patch_dataset(dataset_id: int, data: DatasetPatchModel, user=Depends(g
         raise HTTPException(status_code=403, detail="Admin access required")
     try:
         with engine.connect() as conn:
+            now = datetime.datetime.utcnow().isoformat()
             if data.title is not None:
-                conn.execute(text("UPDATE datasets SET title = :t WHERE id = :id"), {"t": data.title, "id": dataset_id})
+
+                conn.execute(text("UPDATE datasets SET title = :t, last_edited_at = :now WHERE id = :id"), {"t": data.title, "id": dataset_id, "now": now}
+)
             if data.is_private is not None:
-                conn.execute(text("UPDATE datasets SET is_private = :p WHERE id = :id"), {"p": 1 if data.is_private else 0, "id": dataset_id})
+                conn.execute(text("UPDATE datasets SET is_private = :p, last_edited_at = :now WHERE id = :id"), {"p": 1 if data.is_private else 0, "id": dataset_id, "now": now})
             conn.commit()
             log_audit(conn, user['username'], "PATCH_DATASET", f"Updated dataset ID {dataset_id}")
         return {"status": "success"}
@@ -1051,9 +1215,11 @@ async def get_all_items(dataset_ids: Optional[str] = Query(None), user=Depends(g
                 return {"items": []}
             ids_str = str(target_id)
         else:
-            ids_str = dataset_ids # Expecting "1,2,3"
+            ids = _parse_id_csv(dataset_ids)
 
-        raw_df = pd.read_sql(f"SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN ({ids_str}) ORDER BY ItemDescription", engine)
+        if not dataset_ids:
+            ids = [int(ids_str)]
+        raw_df = _read_sql_in("SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN :dataset_ids ORDER BY ItemDescription", "dataset_ids", ids)
         return {"items": raw_df['ItemDescription'].tolist()}
     except Exception as e:
         traceback.print_exc()
@@ -1068,8 +1234,7 @@ async def get_items_from_multiple_datasets(req: ItemsRequest, user=Depends(get_c
     try:
         if not req.dataset_ids:
             return {"items": []}
-        ids_str = ",".join(map(str, req.dataset_ids))
-        df = pd.read_sql(f"SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN ({ids_str}) ORDER BY ItemDescription", engine)
+        df = _read_sql_in("SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN :dataset_ids ORDER BY ItemDescription", "dataset_ids", req.dataset_ids)
         return {"items": df['ItemDescription'].tolist()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1105,13 +1270,18 @@ async def trigger_optima_pipeline(
 # PERSISTENT FORECASTING SYSTEM
 # ==========================================
 class ForecastTrainRequest(BaseModel):
+
     dataset_ids: List[int]
     run_name: str
+    items: Optional[List[str]] = None
     train_forecast: bool = False
     train_bundler: bool = False
+    save_bundler: bool = False
     ref_forecast_id: Optional[Union[int, str]] = "none"
     min_support: float = 0.01
     end_date: Optional[str] = None
+    item_configs: Optional[dict] = None
+
 
 class CommitBundlerRequest(BaseModel):
     name: str
@@ -1154,8 +1324,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
         
     try:
         # 1. Fetch PRE-AGGREGATED Data
-        ids_str = ",".join(map(str, req.dataset_ids))
-        raw_df = pd.read_sql(f"SELECT ItemDescription, ds, y FROM aggregated_sales WHERE dataset_id IN ({ids_str})", engine)
+        raw_df = _read_sql_in("SELECT ItemDescription, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
         if raw_df.empty:
             raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated.")
 
@@ -1211,16 +1380,29 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
             with engine.connect() as conn:
                 # We take metadata from the latest dataset for labeling
                 latest_id = max(req.dataset_ids)
-                res = conn.execute(text(f"SELECT ItemDescription, availability_status, availability_type FROM item_metadata WHERE dataset_id = {latest_id}")).fetchall()
+                res = conn.execute(
+                    text("SELECT ItemDescription, availability_status, availability_type, is_bundle FROM item_metadata WHERE dataset_id = :dataset_id"),
+                    {"dataset_id": latest_id}
+                ).fetchall()
                 for r in res:
-                    item_meta_map[r[0]] = {"status": r[1], "type": r[2]}
+                    item_meta_map[r[0]] = {"status": r[1], "type": r[2], "is_bundle": bool(r[3]) if len(r) > 3 else False}
+            
+            # Apply local overrides from the request if present
+            if req.item_configs:
+                for item, config in req.item_configs.items():
+                    item_meta_map[item] = {
+                        "status": config.get('availability', 'available'),
+                        "type": config.get('availability_type', 'always'),
+                        "is_bundle": config.get('bundle_is_set', False)
+                    }
 
             def process_item(item):
                 meta = item_meta_map.get(item, {"status": "available", "type": "always"})
                 if meta["status"] == 'discontinued': return None
                 
                 item_df = raw_df[raw_df['ItemDescription'] == item].copy()
-                forecast = preprocess_and_forecast_item(item_df, target_end_date, item)
+                # Pass the configuration to the forecaster
+                forecast = preprocess_and_forecast_item(item_df, target_end_date, item, config=meta)
                 
                 if not forecast.empty:
                     forecast['ItemDescription'] = item
@@ -1261,11 +1443,11 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
             # 2. Persist to Database
             with engine.connect() as conn:
                 now = datetime.datetime.utcnow().isoformat()
-                cursor = conn.execute(
-                    text("INSERT INTO forecast_runs (name, dataset_id, created_at, config_json) VALUES (:n, :d, :c, :cj)"),
+                run_id = _insert_and_get_id(
+                    conn,
+                    "INSERT INTO forecast_runs (name, dataset_id, created_at, config_json) VALUES (:n, :d, :c, :cj)",
                     {"n": req.run_name, "d": req.dataset_ids[0], "c": now, "cj": json.dumps({"end_date": target_end_date, "item_count": len(all_results), "dataset_ids": req.dataset_ids})}
                 )
-                run_id = cursor.lastrowid
                 
                 for item, df in all_results:
                     res_json = df.to_json(orient="records")
@@ -1298,18 +1480,21 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
 
             from bundler import generate_strategic_bundles
             
-            # AUTO-SAVE logic: If both engines ran, or user requested it, persist immediately
+            # AUTO-SAVE logic: If both engines ran, persist automatically.
+            # If bundler runs standalone, only save when explicitly requested.
             bundler_run_id = None
-            if req.train_forecast and req.train_bundler:
+            should_save_bundler = req.train_bundler and (req.train_forecast or req.save_bundler)
+            if should_save_bundler:
                 with engine.connect() as conn:
                     now = datetime.datetime.utcnow().isoformat()
                     # Resolve ref_id
-                    ref_id = run_id
-                    cursor = conn.execute(
-                        text("INSERT INTO bundler_runs (dataset_id, name, timestamp, forecast_ref_id) VALUES (:d, :n, :t, :f)"),
+                    if req.train_forecast:
+                        ref_id = run_id
+                    bundler_run_id = _insert_and_get_id(
+                        conn,
+                        "INSERT INTO bundler_runs (dataset_id, name, created_at, forecast_run_id) VALUES (:d, :n, :t, :f)",
                         {"d": dataset_id, "n": req.run_name, "t": now, "f": ref_id}
                     )
-                    bundler_run_id = cursor.lastrowid
                     conn.commit()
 
             # Run engine
@@ -1324,6 +1509,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
         return {
             "status": "success", 
             "run_id": run_id if req.train_forecast else None, 
+            "bundler_run_id": bundler_run_id,
             "item_count": len(all_results),
             "bundles": ranked_bundles,
             "auto_saved": bundler_run_id is not None
@@ -1338,10 +1524,34 @@ async def get_forecast_runs(dataset_id: int = None, user=Depends(get_current_use
     try:
         with engine.connect() as conn:
             query = "SELECT id, name, dataset_id, created_at, status, config_json FROM forecast_runs"
+            params = {}
             if dataset_id:
-                query += f" WHERE dataset_id = {dataset_id}"
+                query += " WHERE dataset_id = :dataset_id"
+                params["dataset_id"] = dataset_id
             query += " ORDER BY id DESC"
-            res = conn.execute(text(query)).fetchall()
+            res = conn.execute(text(query), params).fetchall()
+            
+            runs = []
+            for r in res:
+                runs.append({
+                    "id": r[0],
+                    "name": r[1],
+                    "dataset_id": r[2],
+                    "created_at": r[3],
+                    "status": r[4],
+                    "config": json.loads(r[5]) if r[5] else {}
+                })
+            return {"runs": runs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/datasets/{dataset_id}/forecast-runs")
+async def get_dataset_forecast_runs(dataset_id: int, user=Depends(get_current_user)):
+    """Fetch forecast runs for a specific dataset"""
+    try:
+        with engine.connect() as conn:
+            query = "SELECT id, name, dataset_id, created_at, status, config_json FROM forecast_runs WHERE dataset_id = :d ORDER BY id DESC"
+            res = conn.execute(text(query), {"d": dataset_id}).fetchall()
             
             runs = []
             for r in res:
@@ -1405,10 +1615,34 @@ async def get_bundler_runs(dataset_id: int = None, user=Depends(get_current_user
     try:
         with engine.connect() as conn:
             query = "SELECT id, name, dataset_id, forecast_run_id, created_at, status FROM bundler_runs"
+            params = {}
             if dataset_id:
-                query += f" WHERE dataset_id = {dataset_id}"
+                query += " WHERE dataset_id = :dataset_id"
+                params["dataset_id"] = dataset_id
             query += " ORDER BY id DESC"
-            res = conn.execute(text(query)).fetchall()
+            res = conn.execute(text(query), params).fetchall()
+            
+            runs = []
+            for r in res:
+                runs.append({
+                    "id": r[0],
+                    "name": r[1],
+                    "dataset_id": r[2],
+                    "forecast_run_id": r[3],
+                    "created_at": r[4],
+                    "status": r[5]
+                })
+            return {"runs": runs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/datasets/{dataset_id}/bundler-runs")
+async def get_dataset_bundler_runs(dataset_id: int, user=Depends(get_current_user)):
+    """Fetch bundler runs for a specific dataset"""
+    try:
+        with engine.connect() as conn:
+            query = "SELECT id, name, dataset_id, forecast_run_id, created_at, status FROM bundler_runs WHERE dataset_id = :d ORDER BY id DESC"
+            res = conn.execute(text(query), {"d": dataset_id}).fetchall()
             
             runs = []
             for r in res:
@@ -1551,11 +1785,11 @@ async def commit_bundler_run(req: CommitBundlerRequest, user=Depends(get_current
                 except (ValueError, TypeError):
                     ref_id = None
 
-            cursor = conn.execute(
-                text("INSERT INTO bundler_runs (dataset_id, name, created_at, forecast_run_id) VALUES (:d, :n, :t, :f)"),
+            run_id = _insert_and_get_id(
+                conn,
+                "INSERT INTO bundler_runs (dataset_id, name, created_at, forecast_run_id) VALUES (:d, :n, :t, :f)",
                 {"d": req.dataset_id, "n": req.name, "t": now, "f": ref_id}
             )
-            run_id = cursor.lastrowid
             
             for b in req.bundles:
                 conn.execute(

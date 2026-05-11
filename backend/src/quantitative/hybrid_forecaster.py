@@ -61,11 +61,24 @@ def detect_zombies(monthly_series):
         pass
     return False
 
-def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
+def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", config=None):
     """
     Main entry point for the Hybrid Forecaster (Phase 2).
+    
+    Args:
+        item_df: Transaction data for the item
+        forecast_end: End date for forecast
+        item_name: Item description/name
+        config: Dictionary with keys:
+            - type: 'seasonal', 'high_velocity', or 'always'
+            - status: 'available' or 'discontinued'
+            - bundle_is_set: bool, whether this item is a bundle/set
     """
-    print(f"OPTIMA: Analyzing {item_name}...")
+    if config is None:
+        config = {}
+    
+    availability_type = config.get('type', 'always')
+    print(f"OPTIMA: Analyzing {item_name}... [Strategy: {availability_type}]")
     
     # 1. Aggregate
     monthly = aggregate_monthly(item_df)
@@ -101,12 +114,27 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
     # Remove timezone if any
     prophet_df['ds'] = prophet_df['ds'].dt.tz_localize(None)
     
-    m = Prophet(
-        yearly_seasonality=True,
-        weekly_seasonality=False,
-        daily_seasonality=False,
-        interval_width=0.95
-    )
+    # 4a. Configure Prophet based on availability strategy
+    prophet_config = {
+        'yearly_seasonality': True,
+        'weekly_seasonality': False,
+        'daily_seasonality': False,
+        'interval_width': 0.95
+    }
+    
+    if availability_type == 'seasonal':
+        # Seasonal items: amplify seasonality detection
+        prophet_config['seasonality_prior_scale'] = 20  # Default is 10
+        prophet_config['seasonality_mode'] = 'multiplicative'  # Capture % swings
+        print(f"OPTIMA: [{item_name}] Applied SEASONAL tuning (seasonality_prior_scale=20, multiplicative mode)")
+    
+    elif availability_type == 'high_velocity':
+        # High velocity items: respond faster to trend shifts
+        prophet_config['changepoint_prior_scale'] = 0.10  # Default is 0.05
+        prophet_config['seasonality_prior_scale'] = 5  # Reduce seasonality to emphasize trend
+        print(f"OPTIMA: [{item_name}] Applied HIGH VELOCITY tuning (changepoint_prior_scale=0.10)")
+    
+    m = Prophet(**prophet_config)
     m.fit(prophet_df)
     
     # 5. Residual Extraction
@@ -117,15 +145,28 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
     try:
         # Use residuals as input for SARIMA
         try:
-            # Tier 1: Full Seasonal SARIMA (Requires 24+ months for stability)
-            resid_model = auto_arima(
-                residuals, 
-                seasonal=True, 
-                m=12, 
-                error_action='ignore', 
-                suppress_warnings=True,
-                stepwise=True
-            )
+            # For seasonal items, force seasonal differencing (D=1)
+            if availability_type == 'seasonal':
+                resid_model = auto_arima(
+                    residuals, 
+                    seasonal=True, 
+                    m=12,
+                    D=1,  # Force seasonal differencing for seasonal items
+                    error_action='ignore', 
+                    suppress_warnings=True,
+                    stepwise=True
+                )
+                print(f"OPTIMA: [{item_name}] Applied SEASONAL ARIMA with D=1")
+            else:
+                # Tier 1: Full Seasonal SARIMA (Requires 24+ months for stability)
+                resid_model = auto_arima(
+                    residuals, 
+                    seasonal=True, 
+                    m=12, 
+                    error_action='ignore', 
+                    suppress_warnings=True,
+                    stepwise=True
+                )
         except Exception as e:
             print(f"OPTIMA: [{item_name}] Full SARIMA failed: {e}. Attempting SARIMA without seasonal differencing (D=0).")
             try:
@@ -186,7 +227,7 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
         # Attach STL and Metrics as attributes
         final_forecast.attrs['stl'] = stl_data
         final_forecast.attrs['metrics'] = {
-            'mape_pct': calculate_mape(prophet_df['y'], forecast_prophet['yhat']),
+            **calculate_metrics(prophet_df['y'], forecast_prophet['yhat']),
             'status': 'optimal'
         }
         
@@ -211,11 +252,19 @@ def generate_dummy_forecast(monthly, forecast_end, item_name, status):
     df['predicted_quantity'] = 0.0
     df['type'] = df['actual_quantity'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
     df['forecast_date'] = df['forecast_date'].dt.strftime('%Y-%m-%d')
-    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A'}
+    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A'}
     return df
 
-def calculate_mape(actual, predicted):
+def calculate_metrics(actual, predicted):
     actual, predicted = np.array(actual), np.array(predicted)
+    mae = np.mean(np.abs(actual - predicted))
+    rmse = np.sqrt(np.mean((actual - predicted)**2))
+    
     mask = actual != 0
-    if not np.any(mask): return 0
-    return np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100
+    mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if np.any(mask) else 0
+    
+    return {
+        'mape_pct': mape,
+        'mae': float(mae),
+        'rmse': float(rmse)
+    }

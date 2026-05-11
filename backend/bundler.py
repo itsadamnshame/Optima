@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import json
 import traceback
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from mlxtend.frequent_patterns import apriori, association_rules
 from sklearn.ensemble import RandomForestClassifier
 
@@ -23,6 +23,21 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         df_raw = pd.read_sql(query, engine, params={"d": dataset_id})
         
         if df_raw.empty:
+            return []
+        
+        # Load Metadata early to filter discontinued items
+        query_meta = text("SELECT ItemDescription, availability_status, availability_type, is_bundle FROM item_metadata WHERE dataset_id = :d")
+        with engine.connect() as conn:
+            meta_rows = conn.execute(query_meta, {"d": dataset_id}).fetchall()
+        
+        item_meta = {r[0]: {"status": r[1], "type": r[2], "is_bundle": bool(r[3]) if len(r) > 3 else False} for r in meta_rows}
+        
+        # Filter out discontinued items from transactions
+        available_items = {item for item, meta in item_meta.items() if meta['status'] != 'discontinued'}
+        df_raw = df_raw[df_raw['ItemDescription'].isin(available_items)].copy()
+        
+        if df_raw.empty:
+            print("BUNDLER: No available items after filtering discontinued products.")
             return []
 
         # Group by CustomerID to create baskets (Customer Affinity Analysis)
@@ -90,25 +105,22 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         else:
             print("BUNDLER: No forecast reference provided. Skipping Phase 2 metrics.")
 
-        # Load Metadata
-        query_meta = text("SELECT ItemDescription, availability_status, availability_type FROM item_metadata WHERE dataset_id = :d")
-        with engine.connect() as conn:
-            meta_rows = conn.execute(query_meta, {"d": dataset_id}).fetchall()
-        
-        item_meta = {r[0]: {"status": r[1], "type": r[2]} for r in meta_rows}
-
         # Build Bundle Features
         candidates = []
         for _, row in rules.iterrows():
             item_a = row['antecedents']
             item_b = row['consequents']
             
+            # Exclude bundles from being bundled (circular prevention)
+            meta_a = item_meta.get(item_a, {})
+            meta_b = item_meta.get(item_b, {})
+            
+            if meta_a.get('is_bundle') or meta_b.get('is_bundle'):
+                continue  # Skip this pair if either is a bundle/set
+            
             # Check if both items exist in metrics
             m_a = item_metrics.get(item_a, {"forecast_score": 0, "trend_slope": 0, "seasonal_weight": 0})
             m_b = item_metrics.get(item_b, {"forecast_score": 0, "trend_slope": 0, "seasonal_weight": 0})
-            
-            meta_a = item_meta.get(item_a, {})
-            meta_b = item_meta.get(item_b, {})
 
             # Combined Score Features
             avg_forecast = (m_a['forecast_score'] + m_b['forecast_score']) / 2
@@ -190,13 +202,19 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
                 "pair": f"{row['item_a']} + {row['item_b']}",
                 "lift": round(row['lift'], 2),
                 "confidence": round(row['confidence'], 2),
+                "support": round(row['support'], 4),
+                "forecast_score": round(row['forecast_score'], 2),
+                "trend_slope": round(row['trend_slope'], 3),
+                "seasonal_weight": round(row['seasonal_weight'], 2),
+                "is_available": bool(row['is_available']),
+                "is_always": bool(row['is_always']),
                 "probability": round(row['probability'] * 100, 1),
                 "badge": badge,
                 "why": reason
             })
 
         # Save to DB if requested
-        if bundler_run_id:
+        if bundler_run_id is not None:
             with engine.connect() as conn:
                 for b in results:
                     conn.execute(
@@ -218,24 +236,25 @@ def score_single_pair(engine, dataset_ids, item_a: str, item_b: str, forecast_ru
     if isinstance(dataset_ids, int):
         dataset_ids = [dataset_ids]
     
-    ids_str = ",".join(map(str, dataset_ids))
+    dataset_ids = [int(d) for d in dataset_ids]
 
     try:
         # 1. Quick Stats (Lift/Confidence)
-        query = text(f"""
+        query = text("""
             SELECT CustomerID, ItemDescription 
             FROM sales_transactions 
-            WHERE dataset_id IN ({ids_str}) 
+            WHERE dataset_id IN :dataset_ids
             AND ItemDescription IN (:ia, :ib)
-        """)
-        df_raw = pd.read_sql(query, engine, params={"ia": item_a, "ib": item_b})
+        """).bindparams(bindparam("dataset_ids", expanding=True))
+        df_raw = pd.read_sql(query, engine, params={"dataset_ids": dataset_ids, "ia": item_a, "ib": item_b})
         
         if df_raw.empty:
             return {"pair": f"{item_a} + {item_b}", "probability": 0, "badge": "NONE", "why": "No transaction history found."}
 
         # Basic Affinity Calculation
         baskets = df_raw.groupby('CustomerID')['ItemDescription'].apply(set)
-        total_tx = pd.read_sql(text(f"SELECT COUNT(DISTINCT CustomerID) FROM sales_transactions WHERE dataset_id IN ({ids_str})"), engine).iloc[0,0]
+        total_query = text("SELECT COUNT(DISTINCT CustomerID) FROM sales_transactions WHERE dataset_id IN :dataset_ids").bindparams(bindparam("dataset_ids", expanding=True))
+        total_tx = pd.read_sql(total_query, engine, params={"dataset_ids": dataset_ids}).iloc[0,0]
         
         count_a = sum(1 for b in baskets if item_a in b)
         count_b = sum(1 for b in baskets if item_b in b)

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2, Sun, Moon } from 'lucide-react';
 
 import DataManagement from './pages/DataManagement';
 import Analytics from './pages/Analytics';
 import Qualitative from './pages/Qualitative';
+import BundlerDetail from './pages/BundlerDetail';
 import Playbook from './pages/Playbook';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -17,7 +18,8 @@ const PAGE_TITLES = {
   '/': 'Data & Models — Optima',
   '/analytics': 'Analytics — Optima',
   '/qualitative': 'Product Bundler — Optima',
-  '/playbook': 'Strategic Playbook — Optima',
+  '/executive-output': 'Executive Output — Optima',
+  '/account-settings': 'Account Settings — Optima',
   '/admin': 'Admin Panel — Optima',
   '/login': 'Sign In — Optima',
   '/register': 'Register — Optima',
@@ -60,10 +62,133 @@ const AdminRoute = ({ children }) => {
 };
 
 function AppContent() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const previousPathRef = React.useRef('/');
   const { token, role, actualRole, username, logout, isNonAdminView, setIsNonAdminView } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(location.pathname === '/account-settings');
+  const [accountProfile, setAccountProfile] = useState({
+    first_name: '',
+    last_name: '',
+    middle_name: '',
+    email: '',
+    phone_number: ''
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState(null);
+  const [settingsSuccess, setSettingsSuccess] = useState(null);
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
   const profileMenuRef = React.useRef(null);
+
+  const fetchAccountProfile = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to load account data');
+      const data = await res.json();
+      setAccountProfile({
+        first_name: data.profile.first_name || '',
+        last_name: data.profile.last_name || '',
+        middle_name: data.profile.middle_name || '',
+        email: data.profile.email || '',
+        phone_number: data.profile.phone_number || ''
+      });
+      setSettingsError(null);
+    } catch (err) {
+      console.error(err);
+      setSettingsError('Unable to load account settings.');
+    }
+  };
+
+  const openSettingsModal = () => {
+    setShowProfileMenu(false);
+    if (location.pathname !== '/account-settings') {
+      previousPathRef.current = location.pathname;
+      navigate('/account-settings');
+    } else {
+      setShowSettingsModal(true);
+    }
+  };
+
+  const closeSettingsModal = () => {
+    setShowSettingsModal(false);
+    if (location.pathname === '/account-settings') {
+      navigate(previousPathRef.current || '/');
+    }
+  };
+
+  const handleSaveAccountProfile = async () => {
+    setSettingsError(null);
+    setSettingsSuccess(null);
+    setSettingsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(accountProfile)
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to update account');
+      }
+      setSettingsSuccess('Account details updated successfully.');
+    } catch (err) {
+      console.error(err);
+      setSettingsError(err.message || 'Unable to update account.');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setSettingsError(null);
+    setSettingsSuccess(null);
+    setSettingsLoading(true);
+    try {
+      if (passwordForm.new_password !== passwordForm.confirm_password) {
+        throw new Error('New password and confirmation do not match.');
+      }
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/profile/password', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(passwordForm)
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Password change failed');
+      }
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+      setSettingsSuccess('Password changed successfully.');
+    } catch (err) {
+      console.error(err);
+      setSettingsError(err.message || 'Unable to change password.');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const isAccountSettings = location.pathname === '/account-settings';
+    setShowSettingsModal(isAccountSettings);
+    if (isAccountSettings) fetchAccountProfile();
+  }, [location.pathname]);
 
   // Click-away listener for profile menu
   useEffect(() => {
@@ -234,11 +359,6 @@ function AppContent() {
             <NavLink to="/analytics" icon={BarChart2}>Forecasting</NavLink>
             <NavLink to="/qualitative" icon={Brain}>Product Bundler</NavLink>
 
-            <div className="pt-4 mt-4" style={{ borderTop: `1px solid var(--border-subtle)` }}>
-              <p className="px-4 text-[9px] font-black text-indigo-500 uppercase tracking-[0.25em] mb-3">Executive Output</p>
-              <NavLink to="/playbook" icon={Sparkles}>Strategic Playbook</NavLink>
-            </div>
-
             {role === 'ADMIN' && (
               <div className="pt-4 mt-4" style={{ borderTop: `1px solid var(--border-subtle)` }}>
                 <p className="px-4 text-[9px] font-black text-rose-500 uppercase tracking-[0.25em] mb-3">System</p>
@@ -252,7 +372,7 @@ function AppContent() {
             {showProfileMenu && (
               <div className="absolute bottom-full mb-2 left-4 right-4 rounded-2xl p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2 z-50"
                 style={{ background: 'var(--profile-menu-bg)', border: `1px solid var(--border-strong)` }}>
-                <button onClick={() => alert("Account Settings page coming soon!")} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
+<button onClick={openSettingsModal} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
                   <Settings size={16} className="text-zinc-500" /> Account Settings
                 </button>
 
@@ -349,7 +469,18 @@ function AppContent() {
               />
             </ProtectedRoute>
           } />
-          <Route path="/playbook" element={
+          <Route path="/bundler/runs/:runId" element={
+            <ProtectedRoute>
+              <BundlerDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/playbook" element={<Navigate to="/executive-output" replace />} />
+          <Route path="/account-settings" element={
+            <ProtectedRoute>
+              <div className="min-h-full" />
+            </ProtectedRoute>
+          } />
+          <Route path="/executive-output" element={
             <ProtectedRoute>
               <Playbook
                 recommendations={getValidData(recommendations, {})}
@@ -363,6 +494,130 @@ function AppContent() {
       </main>
 
       {/* COMBINE MODAL */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-[2.5rem] p-8 bg-[#0f172a] border border-white/10 shadow-2xl overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-emerald-400">Account Settings</p>
+                <h2 className="text-3xl font-black text-white mt-2">Manage your account</h2>
+                <p className="text-sm text-zinc-500 mt-2 max-w-2xl">Update your profile details and change your password securely.</p>
+              </div>
+              <button
+                onClick={closeSettingsModal}
+                className="rounded-2xl bg-white/5 p-3 text-zinc-300 hover:bg-white/10 transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {settingsError && (
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-rose-200 mb-4">
+                {settingsError}
+              </div>
+            )}
+            {settingsSuccess && (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-200 mb-4">
+                {settingsSuccess}
+              </div>
+            )}
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-4">
+                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">First Name</label>
+                <input
+                  value={accountProfile.first_name}
+                  onChange={(e) => setAccountProfile(prev => ({ ...prev, first_name: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Last Name</label>
+                <input
+                  value={accountProfile.last_name}
+                  onChange={(e) => setAccountProfile(prev => ({ ...prev, last_name: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Email</label>
+                <input
+                  type="email"
+                  value={accountProfile.email}
+                  onChange={(e) => setAccountProfile(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Phone Number</label>
+                <input
+                  value={accountProfile.phone_number}
+                  onChange={(e) => setAccountProfile(prev => ({ ...prev, phone_number: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="space-y-4 md:col-span-2">
+                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Middle Name</label>
+                <input
+                  value={accountProfile.middle_name}
+                  onChange={(e) => setAccountProfile(prev => ({ ...prev, middle_name: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={handleSaveAccountProfile}
+                disabled={settingsLoading}
+                className="w-full sm:w-auto px-8 py-4 rounded-3xl bg-emerald-500 text-white font-black uppercase tracking-[0.2em] hover:bg-emerald-400 transition-all disabled:opacity-50"
+              >
+                {settingsLoading ? 'Saving...' : 'Save Profile'}
+              </button>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="w-full sm:w-auto px-8 py-4 rounded-3xl border border-white/10 text-white uppercase tracking-[0.2em] hover:bg-white/5 transition-all"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-12 rounded-[2rem] border border-white/10 bg-black/20 p-6">
+              <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500 mb-3">Change Password</p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <input
+                  type="password"
+                  placeholder="Current password"
+                  value={passwordForm.current_password}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+                <input
+                  type="password"
+                  placeholder="New password"
+                  value={passwordForm.new_password}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={passwordForm.confirm_password}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
+                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+              <button
+                onClick={handleChangePassword}
+                disabled={settingsLoading}
+                className="mt-6 w-full sm:w-auto px-8 py-4 rounded-3xl bg-indigo-500 text-white font-black uppercase tracking-[0.2em] hover:bg-indigo-400 transition-all disabled:opacity-50"
+              >
+                {settingsLoading ? 'Updating...' : 'Change Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showCombineModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in" style={{ background: 'var(--overlay-bg)' }}>
           <div className="w-full max-w-lg rounded-3xl p-8" style={{ background: 'var(--modal-bg)', border: `1px solid var(--border-strong)` }}>
