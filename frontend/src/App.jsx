@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2, Sun, Moon } from 'lucide-react';
 
-import DataIngestion from './pages/DataIngestion';
+import DataManagement from './pages/DataManagement';
 import Analytics from './pages/Analytics';
 import Qualitative from './pages/Qualitative';
 import Playbook from './pages/Playbook';
@@ -14,8 +14,8 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
 // Dynamic page titles
 const PAGE_TITLES = {
-  '/': 'Data Ingestion — Optima',
-  '/analytics': 'Forecasting — Optima',
+  '/': 'Data & Models — Optima',
+  '/analytics': 'Analytics — Optima',
   '/qualitative': 'Product Bundler — Optima',
   '/playbook': 'Strategic Playbook — Optima',
   '/admin': 'Admin Panel — Optima',
@@ -63,6 +63,18 @@ function AppContent() {
   const { token, role, actualRole, username, logout, isNonAdminView, setIsNonAdminView } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = React.useRef(null);
+
+  // Click-away listener for profile menu
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [profileMenuRef]);
 
   const [recommendations, setRecommendations] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -118,8 +130,15 @@ function AppContent() {
         ]);
         const dsData = await dsRes.json();
         const activeData = await activeRes.json();
-        setSidebarDatasets(dsData.datasets || []);
-        if (activeData.active) setActiveDatasetId(activeData.active.id);
+        const datasets = dsData.datasets || [];
+        setSidebarDatasets(datasets);
+        
+        if (activeData.active) {
+          setActiveDatasetId(activeData.active.id);
+        } else if (datasets.length > 0) {
+          // Auto-activate the first dataset if none is active
+          handleActivateDataset(datasets[0].id);
+        }
       } catch (e) { console.error(e); }
     };
     fetchSidebarData();
@@ -211,7 +230,7 @@ function AppContent() {
           {/* Nav */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             <p className="px-4 text-[9px] font-black text-zinc-600 uppercase tracking-[0.25em] mb-3 mt-1">Analytical Pipeline</p>
-            <NavLink to="/" icon={Database}>Data Ingestion</NavLink>
+            <NavLink to="/" icon={Database}>Management Hub</NavLink>
             <NavLink to="/analytics" icon={BarChart2}>Forecasting</NavLink>
             <NavLink to="/qualitative" icon={Brain}>Product Bundler</NavLink>
 
@@ -228,57 +247,8 @@ function AppContent() {
             )}
           </nav>
 
-          {/* Dataset selector */}
-          <div className="px-4 py-4" style={{ borderTop: `1px solid var(--border)` }}>
-            <p className="px-2 text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-              <Database size={11} /> Active Source
-            </p>
-            <div className="relative">
-              {(() => {
-                const masterDatasets = sidebarDatasets.filter(ds => ds.dataset_type === 'MASTER' || !ds.dataset_type);
-                const yearlyDatasets = sidebarDatasets.filter(ds => ds.dataset_type === 'YEARLY');
-                return (
-                  <>
-                    <select
-                      value={activeDatasetId || ''}
-                      onChange={(e) => handleActivateDataset(parseInt(e.target.value))}
-                      disabled={activatingDataset || masterDatasets.length === 0}
-                      className="w-full appearance-none rounded-xl px-4 py-3 pr-10 text-xs font-bold outline-none transition-all disabled:opacity-50 cursor-pointer"
-                      style={{ background: 'var(--input-bg)', border: `1px solid var(--input-border)`, color: 'var(--text-primary)' }}
-                    >
-                      {masterDatasets.length === 0 ? <option value="">No datasets</option>
-                        : !activeDatasetId ? <option value="">Select dataset...</option> : null}
-                      {masterDatasets.map(ds => (
-                        <option key={ds.id} value={ds.id} style={{ background: 'var(--option-bg)' }}>
-                          {ds.title} ({ds.row_count.toLocaleString()})
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-3 top-9 -translate-y-1/2 text-zinc-600 pointer-events-none" />
-
-                    {activeDatasetId && (
-                      <p className="text-[9px] font-bold text-emerald-500 mt-2 px-2 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse inline-block" />
-                        Connected
-                      </p>
-                    )}
-
-                    <button
-                      onClick={() => setShowCombineModal(true)}
-                      disabled={yearlyDatasets.length === 0}
-                      className="mt-4 w-full px-3 py-2.5 text-[10px] font-black text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all border border-indigo-500/20 uppercase tracking-wider"
-                    >
-                      + Assemble Yearly Datasets
-                    </button>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-
           {/* Account Profile Card */}
-          <div className="p-4 relative" style={{ borderTop: `1px solid var(--border)` }}>
+          <div ref={profileMenuRef} className="p-4 relative" style={{ borderTop: `1px solid var(--border)` }}>
             {showProfileMenu && (
               <div className="absolute bottom-full mb-2 left-4 right-4 rounded-2xl p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2 z-50"
                 style={{ background: 'var(--profile-menu-bg)', border: `1px solid var(--border-strong)` }}>
@@ -335,7 +305,17 @@ function AppContent() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<ProtectedRoute><DataIngestion onDatasetChange={refreshSidebarDatasets} /></ProtectedRoute>} />
+          <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute>
+                    <DataManagement 
+                      onDatasetChange={refreshSidebarDatasets} 
+                      onActivate={handleActivateDataset}
+                    />
+                  </ProtectedRoute>
+                } 
+              />
           <Route path="/analytics" element={
             <ProtectedRoute>
               <Analytics
@@ -363,7 +343,10 @@ function AppContent() {
           } />
           <Route path="/qualitative" element={
             <ProtectedRoute>
-              <Qualitative recommendations={getValidData(recommendations, {})} isGenerating={isGenerating} />
+              <Qualitative 
+                activeDatasetId={activeDatasetId} 
+                sidebarDatasets={sidebarDatasets}
+              />
             </ProtectedRoute>
           } />
           <Route path="/playbook" element={

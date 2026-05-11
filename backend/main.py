@@ -4,8 +4,8 @@ import pandas as pd
 import io
 import traceback
 import json
-from typing import List
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends, Header, Form
+from typing import List, Optional, Union
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends, Header, Form, Body
 from pydantic import BaseModel
 import jwt
 import datetime
@@ -21,6 +21,7 @@ import logging
 from src.quantitative.hybrid_forecaster import preprocess_and_forecast_item
 from src.qualitative.bundle_analyzer import create_cart_matrix, generate_bundle_rules, analyze_custom_bundle
 from src.decision.rule_engine import generate_categorized_recommendations
+from bundler import generate_strategic_bundles
 
 app = FastAPI(title="OPTIMA Engine API - Unified Calendar Build")
 
@@ -50,6 +51,7 @@ _qualitative_cache = {
     "dataset_id": None,
     "rules_df": None
 }
+cancelled_runs = set()
 
 def _get_active_dataset_id():
     """Returns the currently active dataset_id, or None."""
@@ -75,13 +77,6 @@ def setup_db():
     pk_syntax = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
     
     with engine.connect() as conn:
-        conn.execute(text(f"""
-            CREATE TABLE IF NOT EXISTS custom_events (
-                id {pk_syntax},
-                event_name TEXT NOT NULL,
-                event_date TEXT NOT NULL UNIQUE
-            )
-        """))
         conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS users (
                 id {pk_syntax},
@@ -145,6 +140,52 @@ def setup_db():
         except Exception:
             pass
 
+        # [NEW] CREATE FORECAST TABLES
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS forecast_runs (
+                id {pk_syntax},
+                name TEXT NOT NULL,
+                dataset_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                config_json TEXT,
+                status TEXT DEFAULT 'completed',
+                FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS forecast_results (
+                id {pk_syntax},
+                run_id INTEGER NOT NULL,
+                item_description TEXT NOT NULL,
+                result_json TEXT NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES forecast_runs(id) ON DELETE CASCADE
+            )
+        """))
+        
+        # [NEW] CREATE BUNDLER TABLES
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS bundler_runs (
+                id {pk_syntax},
+                name TEXT NOT NULL,
+                dataset_id INTEGER NOT NULL,
+                forecast_run_id INTEGER,
+                created_at TEXT NOT NULL,
+                status TEXT DEFAULT 'completed',
+                FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE,
+                FOREIGN KEY (forecast_run_id) REFERENCES forecast_runs(id) ON DELETE SET NULL
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS bundler_results (
+                id {pk_syntax},
+                run_id INTEGER NOT NULL,
+                bundle_pair TEXT NOT NULL,
+                result_json TEXT NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES bundler_runs(id) ON DELETE CASCADE
+            )
+        """))
+        conn.commit()
+
         # SCHEMA MIGRATION: ADD NEW COLUMNS IF THEY DON'T EXIST
         try:
             conn.execute(text("ALTER TABLE users ADD COLUMN full_name TEXT"))
@@ -177,15 +218,31 @@ def setup_db():
         except Exception:
             pass
         
-        # CREATE blocked_items TABLE
-        is_postgres = "postgres" in DATABASE_URL.lower()
-        pk_syntax = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+        # [NEW] CREATE aggregated_sales TABLE
         conn.execute(text(f"""
-            CREATE TABLE IF NOT EXISTS blocked_items (
+            CREATE TABLE IF NOT EXISTS aggregated_sales (
                 id {pk_syntax},
-                item_description TEXT NOT NULL UNIQUE,
-                block_bundling INTEGER DEFAULT 1,
-                block_forecasting INTEGER DEFAULT 0
+                dataset_id INTEGER NOT NULL,
+                ItemDescription TEXT NOT NULL,
+                ds TEXT NOT NULL,
+                y REAL NOT NULL,
+                FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
+            )
+        """))
+        conn.commit()
+
+        # [NEW] CREATE item_metadata TABLE
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS item_metadata (
+                id {pk_syntax},
+                dataset_id INTEGER NOT NULL,
+                ItemDescription TEXT NOT NULL,
+                availability_status TEXT DEFAULT 'available',
+                availability_type TEXT DEFAULT 'always',
+                is_special_item INTEGER DEFAULT 0,
+                is_bundle INTEGER DEFAULT 0,
+                other_notes TEXT,
+                FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
             )
         """))
         conn.commit()
@@ -201,28 +258,12 @@ def setup_db():
             )
             conn.commit()
 
-        # CHECK IF WE NEED TO SEED THE CALENDAR
-        res = conn.execute(text("SELECT COUNT(*) FROM custom_events")).fetchone()
-        if res[0] == 0:
-            print("OPTIMA: Seeding database with official PH Holidays...")
-            # We seed 2026 and 2027
-            ph_holidays = ph_holidays_lib.Philippines(years=[2026, 2027])
-            
-            for date, name in ph_holidays.items():
-                try:
-                    conn.execute(
-                        text("INSERT INTO custom_events (event_name, event_date) VALUES (:name, :date)"),
-                        {"name": name, "date": date.strftime('%Y-%m-%d')}
-                    )
-                except:
-                    pass # Skip any accidental duplicates
-            conn.commit()
-            print("OPTIMA: Seeding complete.")
+        conn.commit()
 
 # ==========================================
 # AUTHENTICATION HELPERS & LOGGING
 # ==========================================
-SECRET_KEY = "optima_secret_thesis_key"
+SECRET_KEY = "optima_secret_thesis_key_2026_secure_32"
 
 def get_current_user(authorization: str = Header(None, alias="Authorization")):
     if not authorization or not authorization.startswith("Bearer "):
@@ -248,50 +289,7 @@ def log_audit(conn, username: str, action: str, details: str):
     except Exception as e:
         print("Audit logging failed:", e)
 
-# ==========================================
-# SPECIAL DAYS MANAGER ENDPOINTS
-# ==========================================
-@app.get("/api/get-events")
-async def get_custom_events(user=Depends(get_current_user)):
-    try:
-        with engine.connect() as conn:
-            # We sort by date so the UI list is chronological
-            res = conn.execute(text("SELECT event_name, event_date FROM custom_events ORDER BY event_date ASC")).fetchall()
-            return {"events": [{"name": r[0], "date": r[1]} for r in res]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/add-event")
-async def add_custom_event(data: dict, user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    try:
-        with engine.connect() as conn:
-            conn.execute(
-                text("INSERT INTO custom_events (event_name, event_date) VALUES (:name, :date)"),
-                {"name": data['name'], "date": data['date']}
-            )
-            conn.commit()
-            log_audit(conn, user['username'], "ADD_EVENT", f"Added {data['name']} on {data['date']}")
-        return {"status": "success"}
-    except Exception:
-        raise HTTPException(status_code=400, detail="An event already exists on this date.")
-
-@app.delete("/api/delete-event/{event_date}")
-async def delete_custom_event(event_date: str, user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    try:
-        with engine.connect() as conn:
-            conn.execute(
-                text("DELETE FROM custom_events WHERE event_date = :date"),
-                {"date": event_date}
-            )
-            conn.commit()
-            log_audit(conn, user['username'], "DELETE_EVENT", f"Deleted event on {event_date}")
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# --- SPECIAL DAYS MANAGER ENDPOINTS REMOVED ---
 
 # ==========================================
 # PRODUCT SELECTOR ENDPOINT
@@ -550,24 +548,24 @@ async def get_audit_logs(user=Depends(get_current_user)):
 # DATA INGESTION
 # ==========================================
 def analyze_dataset_gaps(df):
-    if df.empty or 'order_date' not in df.columns:
+    if df.empty or 'OrderDate' not in df.columns:
         return None, None, "Continuous"
         
-    start_date = df['order_date'].min()
-    end_date = df['order_date'].max()
+    start_date = df['OrderDate'].min()
+    end_date = df['OrderDate'].max()
     dr_start = start_date.strftime('%Y-%m-%d') if pd.notnull(start_date) else None
     dr_end = end_date.strftime('%Y-%m-%d') if pd.notnull(end_date) else None
 
     gap_str = "Continuous"
     if pd.notnull(start_date) and pd.notnull(end_date):
-        unique_years = df['order_date'].dt.year.dropna().unique()
+        unique_years = df['OrderDate'].dt.year.dropna().unique()
         if len(unique_years) > 0:
             expected_years = list(range(int(start_date.year), int(end_date.year) + 1))
             missing_years = [y for y in expected_years if y not in unique_years]
             if missing_years:
                 gap_str = "Missing Years: " + ", ".join(map(str, missing_years))
             else:
-                unique_months = df['order_date'].dt.to_period('M').unique()
+                unique_months = df['OrderDate'].dt.to_period('M').unique()
                 expected_months = pd.period_range(start=start_date, end=end_date, freq='M')
                 missing_months = expected_months.difference(unique_months)
                 if not missing_months.empty:
@@ -577,24 +575,64 @@ def analyze_dataset_gaps(df):
                         gap_str = "Missing Months: " + ", ".join(missing_months.strftime('%b %Y'))
     return dr_start, dr_end, gap_str
 
+@app.post("/api/ingest/scan")
+async def scan_file_for_items(
+    files: List[UploadFile] = File(...),
+    user=Depends(get_current_user)
+):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        unique_items = set()
+        COLUMN_ALIASES = {
+            'itemdescription': 'ItemDescription', 'item description': 'ItemDescription', 'item': 'ItemDescription',
+        }
+
+        for file in files:
+            contents = await file.read()
+            if file.filename.endswith('.xlsx') or file.filename.endswith('.xls'):
+                xl = pd.ExcelFile(io.BytesIO(contents))
+                for sheet in xl.sheet_names:
+                    sheet_df = xl.parse(sheet)
+                    sheet_df.columns = sheet_df.columns.str.strip().str.lower().str.replace(' ', '').str.replace('_', '')
+                    sheet_df = sheet_df.rename(columns=COLUMN_ALIASES)
+                    if 'ItemDescription' in sheet_df.columns:
+                        unique_items.update(sheet_df['ItemDescription'].dropna().unique().tolist())
+            else:
+                csv_df = pd.read_csv(io.BytesIO(contents))
+                csv_df.columns = csv_df.columns.str.strip().str.lower().str.replace(' ', '').str.replace('_', '')
+                csv_df = csv_df.rename(columns=COLUMN_ALIASES)
+                if 'ItemDescription' in csv_df.columns:
+                    unique_items.update(csv_df['ItemDescription'].dropna().unique().tolist())
+
+        return {"items": sorted(list(unique_items))}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/upload-data")
 async def process_sales_data(
     title: str = Form(...),
     dataset_type: str = Form("MASTER"),
+    item_configs: str = Form(...), # JSON string mapping ItemDescription to settings
     files: List[UploadFile] = File(...),
     user=Depends(get_current_user)
 ):
     if user.get("role") != "ADMIN":
         raise HTTPException(status_code=403, detail="Admin access required to upload data")
     try:
+        configs = json.loads(item_configs)
         all_frames = []
         filenames = []
 
+        # STRICT COLUMN MAPPING
         COLUMN_ALIASES = {
-            'orderdate': 'order_date', 'order date': 'order_date',
-            'itemdescription': 'item_description', 'item description': 'item_description', 'item': 'item_description',
-            'customerid': 'customer_id', 'customer id': 'customer_id',
-            'orderid': 'order_id', 'order id': 'order_id',
+            'itemdescription': 'ItemDescription', 'item description': 'ItemDescription', 'item': 'ItemDescription',
+                'orderid': 'OrderID', 'order id': 'OrderID',
+            'orderdate': 'OrderDate', 'order date': 'OrderDate',
+            'quantity': 'Quantity',
+            'total': 'Total',
+            'customerid': 'CustomerID', 'customer id': 'CustomerID', 'customer': 'CustomerID'
         }
 
         for file in files:
@@ -602,26 +640,18 @@ async def process_sales_data(
             filenames.append(file.filename)
 
             if file.filename.endswith('.xlsx') or file.filename.endswith('.xls'):
-                # Read ALL sheets and concatenate them
                 xl = pd.ExcelFile(io.BytesIO(contents))
                 for sheet in xl.sheet_names:
                     try:
                         sheet_df = xl.parse(sheet)
-                        sheet_df.columns = (
-                            sheet_df.columns.str.strip().str.lower()
-                            .str.replace(' ', '_').str.replace(r'[\(\)]', '', regex=True)
-                        )
+                        sheet_df.columns = sheet_df.columns.str.strip().str.lower().str.replace(' ', '').str.replace('_', '')
                         sheet_df = sheet_df.rename(columns=COLUMN_ALIASES)
                         all_frames.append(sheet_df)
                     except Exception:
-                        continue  # skip unparseable sheets silently
+                        continue
             else:
-                # CSV
                 csv_df = pd.read_csv(io.BytesIO(contents))
-                csv_df.columns = (
-                    csv_df.columns.str.strip().str.lower()
-                    .str.replace(' ', '_').str.replace(r'[\(\)]', '', regex=True)
-                )
+                csv_df.columns = csv_df.columns.str.strip().str.lower().str.replace(' ', '').str.replace('_', '')
                 csv_df = csv_df.rename(columns=COLUMN_ALIASES)
                 all_frames.append(csv_df)
 
@@ -629,13 +659,45 @@ async def process_sales_data(
             raise HTTPException(status_code=400, detail="No readable data found in uploaded files.")
 
         df = pd.concat(all_frames, ignore_index=True)
-        df['order_date'] = pd.to_datetime(df['order_date'], dayfirst=True, errors='coerce')
-        df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce')
-        valid_sales = df.dropna(subset=['item_description', 'order_id', 'order_date']).copy()
-        # Remove duplicate order rows that may appear across year-split files
-        valid_sales = valid_sales.drop_duplicates(subset=['order_id', 'item_description', 'order_date'])
+        
+        # STRICT CLEANING: KEEP ONLY 5 COLUMNS
+        REQUIRED_COLUMNS = ['ItemDescription', 'OrderID', 'OrderDate', 'Quantity', 'Total', 'CustomerID']
+        # Check if all required columns exist after mapping
+        missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Missing required columns after mapping: {', '.join(missing)}")
+        
+        df = df[REQUIRED_COLUMNS].copy()
+
+        # ROBUST DATE PARSING
+        # Formats: DD/MM/YYYY HH:MM:SS AM/PM and D/MM/YYYY HH:MM:SS AM/PM
+        def parse_custom_date(date_str):
+            if pd.isna(date_str): return pd.NaT
+            date_str = str(date_str).strip()
+            for fmt in ["%d/%m/%Y %I:%M:%S %p", "%e/%m/%Y %I:%M:%S %p", "%d/%m/%Y", "%Y-%m-%d"]:
+                try:
+                    return pd.to_datetime(date_str, format=fmt)
+                except:
+                    continue
+            return pd.to_datetime(date_str, errors='coerce')
+
+        df['OrderDate'] = df['OrderDate'].apply(parse_custom_date)
+        df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce')
+        df['Total'] = pd.to_numeric(df['Total'], errors='coerce')
+        
+        # [CLEANING] Filter out invalid records: missing essential fields, non-positive quantity/total, or empty strings
+        valid_sales = df.dropna(subset=['ItemDescription', 'OrderID', 'OrderDate', 'CustomerID']).copy()
+        
+        # Ensure ItemDescription is not just whitespace
+        valid_sales = valid_sales[valid_sales['ItemDescription'].astype(str).str.strip().str.len() > 0]
+        
+        # Filter out 0 or NaN/negative values for Quantity and Total
+        valid_sales = valid_sales[(valid_sales['Quantity'] > 0) & (valid_sales['Total'] > 0)]
+        
+        valid_sales = valid_sales.drop_duplicates(subset=['OrderID', 'ItemDescription', 'OrderDate'])
 
         combined_filename = ", ".join(filenames)
+        
         dr_start, dr_end, gap_info_str = analyze_dataset_gaps(valid_sales)
 
         with engine.connect() as conn:
@@ -644,23 +706,54 @@ async def process_sales_data(
                 text("INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 0, :dt, :drs, :dre, :gap)"),
                 {"t": title, "f": combined_filename, "d": now, "u": user['username'], "rc": len(valid_sales), "dt": dataset_type, "drs": dr_start, "dre": dr_end, "gap": gap_info_str}
             )
-            conn.commit()
             dataset_id = cursor.lastrowid
+
+            # Save Item Metadata
+            for item, meta in configs.items():
+                conn.execute(
+                    text("""INSERT INTO item_metadata 
+                            (dataset_id, ItemDescription, availability_status, availability_type, is_bundle) 
+                            VALUES (:d, :item, :status, :type, :bundle)"""),
+                    {
+                        "d": dataset_id,
+                        "item": item,
+                        "status": meta.get('availability', 'available'),
+                        "type": meta.get('availability_type', 'always'),
+                        "bundle": 1 if meta.get('bundle') else 0
+                    }
+                )
+
+            conn.commit()
 
             valid_sales['dataset_id'] = dataset_id
             valid_sales.to_sql("sales_transactions", engine, if_exists="append", index=False)
-
-            log_audit(conn, user['username'], "UPLOAD_DATA",
-                      f"Uploaded dataset '{title}' from {len(files)} file(s), {len(all_frames)} sheet(s), {len(valid_sales)} rows")
             conn.commit()
 
-        return {
-            "status": "success",
-            "total_rows": len(valid_sales),
-            "dataset_id": dataset_id,
-            "files_processed": len(files),
-            "sheets_processed": len(all_frames)
-        }
+            # [PERFORMANCE] Pre-aggregate data for faster training
+            print(f"OPTIMA: Pre-aggregating data for dataset {dataset_id}...")
+            agg_df = valid_sales.copy()
+            agg_df['OrderDate'] = pd.to_datetime(agg_df['OrderDate'])
+            agg_df['ds'] = agg_df['OrderDate'].dt.to_period('M').dt.to_timestamp()
+            
+            # Count months per item
+            item_counts = agg_df.groupby('ItemDescription')['ds'].nunique()
+            eligible_items = item_counts[item_counts >= 12].index.tolist()
+            print(f"OPTIMA: {len(eligible_items)} items meet 12-month threshold for aggregation.")
+
+            # Filter only eligible items for the aggregated table
+            filtered_agg = agg_df[agg_df['ItemDescription'].isin(eligible_items)]
+            monthly_agg = filtered_agg.groupby(['ItemDescription', 'ds'])['Quantity'].sum().reset_index()
+            
+            for _, row in monthly_agg.iterrows():
+                conn.execute(
+                    text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y) VALUES (:d, :item, :ds, :y)"),
+                    {"d": dataset_id, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row['Quantity'])}
+                )
+            conn.commit()
+
+            log_audit(conn, user['username'], "UPLOAD_DATA", f"Uploaded dataset '{title}' ({len(valid_sales)} rows, {len(monthly_agg)} aggregated)")
+            return {"status": "success", "dataset_id": dataset_id, "rows": len(valid_sales)}
+            
     except HTTPException:
         raise
     except Exception as e:
@@ -728,7 +821,7 @@ async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
             
         combined_df = pd.concat(df_list, ignore_index=True)
         # Drop duplicates across combined years
-        combined_df = combined_df.drop_duplicates(subset=['order_id', 'item_description', 'order_date'])
+        combined_df = combined_df.drop_duplicates(subset=['OrderID', 'ItemDescription', 'OrderDate'])
         
         combined_filename = "COMBINED: " + ", ".join(filenames)[:200]
         dr_start, dr_end, gap_info_str = analyze_dataset_gaps(combined_df)
@@ -754,14 +847,19 @@ async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/datasets/{dataset_id}/data")
-async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, year: str = None, user=Depends(get_current_user)):
+async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, year: str = None, sort_by: str = "OrderID", sort_dir: str = "DESC", user=Depends(get_current_user)):
     try:
         offset = (page - 1) * limit
         where_clause = f"dataset_id={dataset_id}"
         if year:
-            where_clause += f" AND strftime('%Y', order_date) = '{year}'"
+            where_clause += f" AND strftime('%Y', OrderDate) = '{year}'"
+        
+        # Validate sort_by to prevent SQL injection
+        allowed_cols = ["OrderID", "ItemDescription", "OrderDate", "Quantity", "Total"]
+        if sort_by not in allowed_cols: sort_by = "OrderID"
+        direction = "DESC" if sort_dir.upper() == "DESC" else "ASC"
             
-        df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE {where_clause} LIMIT {limit} OFFSET {offset}", engine)
+        df = pd.read_sql(f"SELECT * FROM sales_transactions WHERE {where_clause} ORDER BY {sort_by} {direction} LIMIT {limit} OFFSET {offset}", engine)
         
         with engine.connect() as conn:
             if year:
@@ -785,13 +883,76 @@ async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, year
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/datasets/{dataset_id}/years")
 async def get_dataset_years(dataset_id: int, user=Depends(get_current_user)):
     try:
         with engine.connect() as conn:
-            res = conn.execute(text("SELECT DISTINCT strftime('%Y', order_date) as yr FROM sales_transactions WHERE dataset_id=:id AND yr IS NOT NULL ORDER BY yr ASC"), {"id": dataset_id}).fetchall()
+            res = conn.execute(text("SELECT DISTINCT strftime('%Y', OrderDate) as yr FROM sales_transactions WHERE dataset_id=:id AND yr IS NOT NULL ORDER BY yr ASC"), {"id": dataset_id}).fetchall()
             years = [r[0] for r in res if r[0]]
         return {"status": "success", "years": years}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/datasets/{dataset_id}/aggregated")
+async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int = 50, sort_by: str = "ds", sort_dir: str = "ASC", user=Depends(get_current_user)):
+    try:
+        offset = (page - 1) * limit
+        
+        # [FAIL-SAFE] If this is an old dataset, aggregate it now
+        with engine.connect() as conn:
+            exists = conn.execute(text("SELECT 1 FROM aggregated_sales WHERE dataset_id=:id LIMIT 1"), {"id": dataset_id}).fetchone()
+            if not exists:
+                print(f"OPTIMA: Retro-aggregating dataset {dataset_id}...")
+                raw_df = pd.read_sql(f"SELECT ItemDescription, OrderDate, Quantity FROM sales_transactions WHERE dataset_id={dataset_id}", engine)
+                if not raw_df.empty:
+                    raw_df['OrderDate'] = pd.to_datetime(raw_df['OrderDate'])
+                    raw_df['ds'] = raw_df['OrderDate'].dt.to_period('M').dt.to_timestamp()
+                    agg = raw_df.groupby(['ItemDescription', 'ds'])['Quantity'].sum().reset_index()
+                    for _, row in agg.iterrows():
+                        conn.execute(
+                            text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y) VALUES (:d, :item, :ds, :y)"),
+                            {"d": dataset_id, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row['Quantity'])}
+                        )
+                    conn.commit()
+
+        allowed_cols = ["ds", "ItemDescription", "y"]
+        if sort_by not in allowed_cols: sort_by = "ds"
+        direction = "DESC" if sort_dir.upper() == "DESC" else "ASC"
+
+        df = pd.read_sql(f"SELECT * FROM aggregated_sales WHERE dataset_id={dataset_id} ORDER BY {sort_by} {direction} LIMIT {limit} OFFSET {offset}", engine)
+        
+        with engine.connect() as conn:
+            total_rows_res = conn.execute(text("SELECT COUNT(*) FROM aggregated_sales WHERE dataset_id=:id"), {"id": dataset_id}).fetchone()
+            total_rows = total_rows_res[0] if total_rows_res else 0
+            
+        data = df.to_dict(orient="records")
+        return {
+            "status": "success",
+            "data": data,
+            "page": page,
+            "limit": limit,
+            "total_rows": total_rows
+        }
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/datasets/{dataset_id}/aggregated/global")
+async def get_dataset_global_aggregated_data(dataset_id: int, user=Depends(get_current_user)):
+    try:
+        # SUM all items per month for this dataset
+        df = pd.read_sql(f"SELECT ds, SUM(y) as total_quantity FROM aggregated_sales WHERE dataset_id={dataset_id} GROUP BY ds ORDER BY ds ASC", engine)
+        data = df.to_dict(orient="records")
+        return {
+            "status": "success",
+            "data": data,
+            "total_rows": len(data)
+        }
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -874,70 +1035,7 @@ async def patch_dataset(dataset_id: int, data: DatasetPatchModel, user=Depends(g
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==========================================
-# BLOCKED ITEMS MANAGEMENT
-# ==========================================
-class BlockedItemModel(BaseModel):
-    item_description: str
-    block_bundling: bool = True
-    block_forecasting: bool = False
-
-def _get_blocked_items():
-    """Returns two sets: items blocked from bundling and items blocked from forecasting."""
-    try:
-        with engine.connect() as conn:
-            rows = conn.execute(text("SELECT item_description, block_bundling, block_forecasting FROM blocked_items")).fetchall()
-            bundling_blocked = {r[0] for r in rows if r[1]}
-            forecasting_blocked = {r[0] for r in rows if r[2]}
-            return bundling_blocked, forecasting_blocked
-    except:
-        return set(), set()
-
-@app.get("/api/blocked-items")
-async def get_blocked_items(user=Depends(get_current_user)):
-    try:
-        with engine.connect() as conn:
-            rows = conn.execute(text("SELECT id, item_description, block_bundling, block_forecasting FROM blocked_items ORDER BY item_description")).fetchall()
-            items = [{
-                "id": r[0],
-                "item_description": r[1],
-                "block_bundling": bool(r[2]),
-                "block_forecasting": bool(r[3])
-            } for r in rows]
-            return {"blocked_items": items}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/blocked-items")
-async def add_blocked_item(data: BlockedItemModel, user=Depends(get_current_user)):
-    global _qualitative_cache
-    try:
-        with engine.connect() as conn:
-            conn.execute(text(
-                "INSERT OR REPLACE INTO blocked_items (item_description, block_bundling, block_forecasting) VALUES (:item, :bb, :bf)"
-            ), {"item": data.item_description, "bb": 1 if data.block_bundling else 0, "bf": 1 if data.block_forecasting else 0})
-            conn.commit()
-            log_audit(conn, user['username'], "BLOCK_ITEM", f"Blocked '{data.item_description}' (bundling={data.block_bundling}, forecasting={data.block_forecasting})")
-            conn.commit()
-        # Invalidate qualitative cache since blocked items changed
-        _qualitative_cache = {"dataset_id": None, "rules_df": None}
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/blocked-items/{item_description}")
-async def remove_blocked_item(item_description: str, user=Depends(get_current_user)):
-    global _qualitative_cache
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("DELETE FROM blocked_items WHERE item_description = :item"), {"item": item_description})
-            conn.commit()
-            log_audit(conn, user['username'], "UNBLOCK_ITEM", f"Unblocked '{item_description}'")
-            conn.commit()
-        _qualitative_cache = {"dataset_id": None, "rules_df": None}
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# --- BLOCKED ITEMS ENDPOINTS REMOVED ---
 
 # ==========================================
 # CUSTOM BUNDLE ANALYSIS
@@ -945,14 +1043,34 @@ async def remove_blocked_item(item_description: str, user=Depends(get_current_us
 class BundleAnalysisRequest(BaseModel):
     items: list
 @app.get("/api/get-items")
-async def get_all_items(user=Depends(get_current_user)):
+async def get_all_items(dataset_ids: Optional[str] = Query(None), user=Depends(get_current_user)):
     try:
-        active_id = _get_active_dataset_id()
-        if active_id is None:
+        if not dataset_ids:
+            target_id = _get_active_dataset_id()
+            if target_id is None:
+                return {"items": []}
+            ids_str = str(target_id)
+        else:
+            ids_str = dataset_ids # Expecting "1,2,3"
+
+        raw_df = pd.read_sql(f"SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN ({ids_str}) ORDER BY ItemDescription", engine)
+        return {"items": raw_df['ItemDescription'].tolist()}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ItemsRequest(BaseModel):
+    dataset_ids: List[int]
+
+@app.post("/api/datasets/items")
+async def get_items_from_multiple_datasets(req: ItemsRequest, user=Depends(get_current_user)):
+    """Returns a unique list of items found across the selected datasets."""
+    try:
+        if not req.dataset_ids:
             return {"items": []}
-        
-        raw_df = pd.read_sql(f"SELECT DISTINCT item_description FROM sales_transactions WHERE dataset_id = {active_id} ORDER BY item_description", engine)
-        return {"items": raw_df['item_description'].tolist()}
+        ids_str = ",".join(map(str, req.dataset_ids))
+        df = pd.read_sql(f"SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN ({ids_str}) ORDER BY ItemDescription", engine)
+        return {"items": df['ItemDescription'].tolist()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -983,92 +1101,509 @@ async def trigger_optima_pipeline(
     user=Depends(get_current_user)
 ):
     global _qualitative_cache
+# ==========================================
+# PERSISTENT FORECASTING SYSTEM
+# ==========================================
+class ForecastTrainRequest(BaseModel):
+    dataset_ids: List[int]
+    run_name: str
+    train_forecast: bool = False
+    train_bundler: bool = False
+    ref_forecast_id: Optional[Union[int, str]] = "none"
+    min_support: float = 0.01
+    end_date: Optional[str] = None
+
+class CommitBundlerRequest(BaseModel):
+    name: str
+    dataset_id: int
+    forecast_ref_id: Optional[Union[int, str]] = "none"
+    bundles: List[dict]
+
+@app.post("/api/forecast/cancel/{run_id}")
+async def cancel_forecast_run(run_id: str, user=Depends(get_current_user)):
+    cancelled_runs.add(run_id)
+    print(f"OPTIMA: Received cancellation signal for run {run_id}")
+    return {"status": "cancelled"}
+
+def get_unique_run_name(conn, dataset_id, base_name, table="forecast_runs"):
+    """
+    Recursively finds a unique name for a run within a dataset.
+    e.g. "Run" -> "Run (2)"
+    """
+    query = text(f"SELECT id FROM {table} WHERE dataset_id = :d AND name = :n")
+    res = conn.execute(query, {"d": dataset_id, "n": base_name}).fetchone()
+    if not res:
+        return base_name
+    
+    # Try with suffixes
+    count = 2
+    while True:
+        new_name = f"{base_name} ({count})"
+        res = conn.execute(query, {"d": dataset_id, "n": new_name}).fetchone()
+        if not res:
+            return new_name
+        count += 1
+
+@app.post("/api/forecast/train")
+async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_current_user)):
+    """
+    Executes the full forecasting pipeline and saves results persistently.
+    """
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+        
     try:
-        raw_df, active_id = _get_active_dataset_df()
+        # 1. Fetch PRE-AGGREGATED Data
+        ids_str = ",".join(map(str, req.dataset_ids))
+        raw_df = pd.read_sql(f"SELECT ItemDescription, ds, y FROM aggregated_sales WHERE dataset_id IN ({ids_str})", engine)
+        if raw_df.empty:
+            raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated.")
+
+        # Ensure types
+        raw_df['ds'] = pd.to_datetime(raw_df['ds'])
         
-        # Fetch blocked items
-        bundling_blocked, forecasting_blocked = _get_blocked_items()
-        
-        if mode == "manual" and selected_items:
-            items_to_forecast = [i.strip() for i in selected_items.split(',') if i.strip() not in forecasting_blocked]
-        else:
-            candidates = raw_df[~raw_df['item_description'].isin(forecasting_blocked)]['item_description'].value_counts().head(top_n).index.tolist()
-            items_to_forecast = candidates
-        
-        # Filter raw_df for bundling (remove bundling-blocked items)
-        bundling_df = raw_df[~raw_df['item_description'].isin(bundling_blocked)].copy()
+        # Determine target end_date if missing (12 months ahead)
+        target_end_date = req.end_date
+        if not target_end_date:
+            last_dt = raw_df['ds'].max()
+            target_end_date = (last_dt + pd.DateOffset(months=12)).strftime('%Y-%m-%d')
 
         performance_metrics = {}
+        all_results = [] # To be saved in DB
+        run_id = None
+        
+        # Ensure unique name for forecast if training
+        with engine.connect() as conn:
+            if req.train_forecast:
+                req.run_name = get_unique_run_name(conn, req.dataset_ids[0], req.run_name, "forecast_runs")
+            elif req.train_bundler:
+                req.run_name = get_unique_run_name(conn, req.dataset_ids[0], req.run_name, "bundler_runs")
 
-        from concurrent.futures import ThreadPoolExecutor
-
-        def run_quantitative_branch():
-            all_forecasts = []
+        if req.train_forecast:
+            # --- CORE PIPELINE (Phase 1 & 2) ---
+            from concurrent.futures import ThreadPoolExecutor
             
-            import time
+            # Phase 1: Global
+            print(f"OPTIMA: Training Global Baseline for '{req.run_name}'...")
+            # Since it's already aggregated by item/month, we sum all items per month
+            global_agg = raw_df.groupby('ds')['y'].sum().reset_index()
+            global_forecast = preprocess_and_forecast_item(global_agg, target_end_date, "GLOBAL_STORE_TOTAL")
+            if not global_forecast.empty:
+                global_forecast['ItemDescription'] = 'GLOBAL_BASELINE'
+                all_results.append(('GLOBAL_BASELINE', global_forecast))
+                
+                # Persist global metrics too
+                metrics = global_forecast.attrs.get('metrics', {})
+                metrics['stl'] = global_forecast.attrs.get('stl', {})
+                performance_metrics['GLOBAL_BASELINE'] = metrics
+
+            # Phase 2: Items
+            target_items = req.items
+            if not target_items:
+                # [PRE-FILTER] Only model items that meet the 12-month threshold
+                print("OPTIMA: Filtering items based on 12-month historical threshold...")
+                count_df = raw_df.groupby('ItemDescription')['ds'].nunique().reset_index()
+                eligible_items = count_df[count_df['ds'] >= 12]['ItemDescription'].tolist()
+                print(f"OPTIMA: {len(eligible_items)} products passed threshold (out of {len(count_df)} total)")
+                target_items = eligible_items
+                
+            item_meta_map = {}
+            with engine.connect() as conn:
+                # We take metadata from the latest dataset for labeling
+                latest_id = max(req.dataset_ids)
+                res = conn.execute(text(f"SELECT ItemDescription, availability_status, availability_type FROM item_metadata WHERE dataset_id = {latest_id}")).fetchall()
+                for r in res:
+                    item_meta_map[r[0]] = {"status": r[1], "type": r[2]}
+
             def process_item(item):
-                start = time.time()
-                item_df = raw_df[raw_df['item_description'] == item].copy()
-                forecast = preprocess_and_forecast_item(item_df, end_date, item)
+                meta = item_meta_map.get(item, {"status": "available", "type": "always"})
+                if meta["status"] == 'discontinued': return None
+                
+                item_df = raw_df[raw_df['ItemDescription'] == item].copy()
+                forecast = preprocess_and_forecast_item(item_df, target_end_date, item)
+                
                 if not forecast.empty:
-                    forecast['item_description'] = item
-                    print(f"OPTIMA: [{item}] Audit Complete ({time.time() - start:.1f}s)")
-                    return item, forecast, forecast.attrs.get('metrics', {})
-                return item, None, None
+                    forecast['ItemDescription'] = item
+                    metrics = forecast.attrs.get('metrics', {})
+                    metrics['stl'] = forecast.attrs.get('stl', {})
+                    
+                    # Attach tags
+                    tags = []
+                    if meta["type"] == 'seasonal': tags.append("Tagged: Seasonal")
+                    if meta["type"] == 'high_velocity': tags.append("High Velocity")
+                    metrics['tags'] = tags
+                    
+                    return item, forecast, metrics
+                return None
 
             import os
-            # Droplet-friendly parallelization: 
-            # We limit to CPU count with a hard cap of 3 to prevent OOM (Out of Memory) 
-            # crashes on 1GB/2GB VPS environments while still providing a 2-3x speedup.
-            max_workers = min(os.cpu_count() or 1, 3)
+            import uuid
+            temp_run_id = str(uuid.uuid4())
             
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                results = list(executor.map(process_item, items_to_forecast))
-
-            for item, forecast, metrics in results:
-                if forecast is not None:
-                    all_forecasts.append(forecast)
-                    if metrics:
-                        performance_metrics[item] = metrics
+            item_results = []
             
-            return pd.concat(all_forecasts, ignore_index=True) if all_forecasts else pd.DataFrame()
+            # We manually iterate to allow checking the cancellation flag
+            for item in target_items:
+                if temp_run_id in cancelled_runs:
+                    print(f"OPTIMA: Run {temp_run_id} was ABORTED by user. Stopping pipeline.")
+                    cancelled_runs.remove(temp_run_id)
+                    return {"status": "aborted"}
+                
+                res = process_item(item)
+                if res:
+                    item_results.append(res)
+                    
+            for res in item_results:
+                item, forecast, metrics = res
+                all_results.append((item, forecast))
+                performance_metrics[item] = metrics
 
-        # --- QUALITATIVE CACHING LOGIC ---
-        if _qualitative_cache["dataset_id"] == active_id and _qualitative_cache["rules_df"] is not None:
-            print("OPTIMA: Using cached qualitative results (Apriori + RF skipped).")
-            rules_df = _qualitative_cache["rules_df"]
-            forecast_df = await asyncio.to_thread(run_quantitative_branch)
-        else:
-            print("OPTIMA: Running full qualitative pipeline (cache miss).")
-            def run_qualitative_branch():
-                cart_matrix = create_cart_matrix(bundling_df)
-                return generate_bundle_rules(cart_matrix, bundling_df, min_support=0.001)
+            # 2. Persist to Database
+            with engine.connect() as conn:
+                now = datetime.datetime.utcnow().isoformat()
+                cursor = conn.execute(
+                    text("INSERT INTO forecast_runs (name, dataset_id, created_at, config_json) VALUES (:n, :d, :c, :cj)"),
+                    {"n": req.run_name, "d": req.dataset_ids[0], "c": now, "cj": json.dumps({"end_date": target_end_date, "item_count": len(all_results), "dataset_ids": req.dataset_ids})}
+                )
+                run_id = cursor.lastrowid
+                
+                for item, df in all_results:
+                    res_json = df.to_json(orient="records")
+                    if item in performance_metrics:
+                        meta = {"metrics": performance_metrics[item]}
+                        res_json = json.dumps({"data": json.loads(res_json), "meta": meta})
+                    else:
+                        res_json = json.dumps({"data": json.loads(res_json), "meta": {}})
 
-            forecast_df, rules_df = await asyncio.gather(
-                asyncio.to_thread(run_quantitative_branch),
-                asyncio.to_thread(run_qualitative_branch)
+                    conn.execute(
+                        text("INSERT INTO forecast_results (run_id, item_description, result_json) VALUES (:rid, :item, :rj)"),
+                        {"rid": run_id, "item": item, "rj": res_json}
+                    )
+                
+                log_audit(conn, user['username'], "TRAIN_FORECAST", f"Saved forecast run '{req.run_name}' (ID: {run_id})")
+                conn.commit()
+
+        # [NEW] PHASE 3: BUNDLER (IF REQUESTED)
+        ranked_bundles = []
+        if req.train_bundler:
+            print(f"OPTIMA: Triggering Bundler Engine for '{req.run_name}'...")
+            dataset_id = req.dataset_ids[0]
+            
+            # Resolve reference ID for the engine logic
+            ref_id = None
+            if req.train_forecast:
+                ref_id = run_id
+            elif req.ref_forecast_id != "none" and req.ref_forecast_id != "auto":
+                ref_id = req.ref_forecast_id
+
+            from bundler import generate_strategic_bundles
+            
+            # AUTO-SAVE logic: If both engines ran, or user requested it, persist immediately
+            bundler_run_id = None
+            if req.train_forecast and req.train_bundler:
+                with engine.connect() as conn:
+                    now = datetime.datetime.utcnow().isoformat()
+                    # Resolve ref_id
+                    ref_id = run_id
+                    cursor = conn.execute(
+                        text("INSERT INTO bundler_runs (dataset_id, name, timestamp, forecast_ref_id) VALUES (:d, :n, :t, :f)"),
+                        {"d": dataset_id, "n": req.run_name, "t": now, "f": ref_id}
+                    )
+                    bundler_run_id = cursor.lastrowid
+                    conn.commit()
+
+            # Run engine
+            ranked_bundles = generate_strategic_bundles(
+                engine, dataset_id, 
+                bundler_run_id=bundler_run_id, 
+                forecast_run_id=run_id if req.train_forecast else (ref_id if ref_id else None), 
+                min_support=req.min_support
             )
-            # Store in cache
-            _qualitative_cache["dataset_id"] = active_id
-            _qualitative_cache["rules_df"] = rules_df
+            print(f"OPTIMA: Discovery complete. Found {len(ranked_bundles)} bundles. Auto-Save: {bundler_run_id is not None}")
 
-        final_advice = generate_categorized_recommendations(forecast_df, rules_df)
-        
-        res_data = {
-            "status": "success",
-            "recommendations": final_advice,
-            "bundles": json.loads(rules_df.to_json(orient="records")),
-            "chart_data": json.loads(forecast_df.to_json(orient="records")),
-            "performance_metrics": performance_metrics
+        return {
+            "status": "success", 
+            "run_id": run_id if req.train_forecast else None, 
+            "item_count": len(all_results),
+            "bundles": ranked_bundles,
+            "auto_saved": bundler_run_id is not None
         }
         
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/forecast/runs")
+async def get_forecast_runs(dataset_id: int = None, user=Depends(get_current_user)):
+    try:
         with engine.connect() as conn:
-            log_audit(conn, user['username'], "GENERATE_FORECAST", f"Forecasted {len(items_to_forecast)} items up to {end_date}")
-            conn.commit()
+            query = "SELECT id, name, dataset_id, created_at, status, config_json FROM forecast_runs"
+            if dataset_id:
+                query += f" WHERE dataset_id = {dataset_id}"
+            query += " ORDER BY id DESC"
+            res = conn.execute(text(query)).fetchall()
             
-        return res_data
-    except HTTPException:
-        raise
+            runs = []
+            for r in res:
+                runs.append({
+                    "id": r[0],
+                    "name": r[1],
+                    "dataset_id": r[2],
+                    "created_at": r[3],
+                    "status": r[4],
+                    "config": json.loads(r[5]) if r[5] else {}
+                })
+            return {"runs": runs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/forecast/runs/{run_id}")
+async def get_forecast_run_details(run_id: int, user=Depends(get_current_user)):
+    try:
+        with engine.connect() as conn:
+            res = conn.execute(
+                text("SELECT item_description, result_json FROM forecast_results WHERE run_id = :rid"),
+                {"rid": run_id}
+            ).fetchall()
+            
+            results = {}
+            for item, rj in res:
+                results[item] = json.loads(rj)
+            
+            return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/forecast/runs/{run_id}")
+async def delete_forecast_run(run_id: int, user=Depends(get_current_user)):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM forecast_runs WHERE id = :id"), {"id": run_id})
+            conn.commit()
+            log_audit(conn, user['username'], "DELETE_FORECAST", f"Deleted forecast run ID {run_id}")
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/forecast/runs/{run_id}/rename")
+async def rename_forecast_run(run_id: int, name: str = Body(..., embed=True), user=Depends(get_current_user)):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE forecast_runs SET name = :n WHERE id = :id"), {"n": name, "id": run_id})
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/bundler/runs")
+async def get_bundler_runs(dataset_id: int = None, user=Depends(get_current_user)):
+    try:
+        with engine.connect() as conn:
+            query = "SELECT id, name, dataset_id, forecast_run_id, created_at, status FROM bundler_runs"
+            if dataset_id:
+                query += f" WHERE dataset_id = {dataset_id}"
+            query += " ORDER BY id DESC"
+            res = conn.execute(text(query)).fetchall()
+            
+            runs = []
+            for r in res:
+                runs.append({
+                    "id": r[0],
+                    "name": r[1],
+                    "dataset_id": r[2],
+                    "forecast_run_id": r[3],
+                    "created_at": r[4],
+                    "status": r[5]
+                })
+            return {"runs": runs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/bundler/runs/{run_id}")
+async def get_bundler_run_details(run_id: int, user=Depends(get_current_user)):
+    try:
+        with engine.connect() as conn:
+            res = conn.execute(
+                text("SELECT bundle_pair, result_json FROM bundler_results WHERE run_id = :rid"),
+                {"rid": run_id}
+            ).fetchall()
+            
+            bundles = []
+            for pair, rj in res:
+                bundles.append(json.loads(rj))
+            
+            return {"bundles": bundles}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/bundler/runs/{run_id}/rename")
+async def rename_bundler_run(run_id: int, name: str = Body(..., embed=True), user=Depends(get_current_user)):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE bundler_runs SET name = :n WHERE id = :id"), {"n": name, "id": run_id})
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/bundler/runs/{run_id}/rename")
+async def rename_bundler_run(run_id: int, name: str = Body(..., embed=True), user=Depends(get_current_user)):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE bundler_runs SET name = :n WHERE id = :id"), {"n": name, "id": run_id})
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/bundler/runs/{run_id}")
+async def delete_bundler_run(run_id: int, user=Depends(get_current_user)):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM bundler_runs WHERE id = :id"), {"id": run_id})
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/bundler/generate")
+async def get_strategic_bundles(dataset_id: int, run_id: int, user=Depends(get_current_user)):
+    try:
+        # Pass the global 'engine' to the bundler
+        bundles = generate_strategic_bundles(engine, dataset_id, run_id)
+        return {"bundles": bundles}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/datasets/{dataset_id}")
+async def delete_dataset(dataset_id: int, user=Depends(get_current_user)):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            # Delete in order of dependencies
+            conn.execute(text("DELETE FROM sales_transactions WHERE dataset_id = :id"), {"id": dataset_id})
+            conn.execute(text("DELETE FROM aggregated_sales WHERE dataset_id = :id"), {"id": dataset_id})
+            conn.execute(text("DELETE FROM item_metadata WHERE dataset_id = :id"), {"id": dataset_id})
+            
+            # Delete associated runs and results
+            conn.execute(text("DELETE FROM forecast_results WHERE run_id IN (SELECT id FROM forecast_runs WHERE dataset_id = :id)"), {"id": dataset_id})
+            conn.execute(text("DELETE FROM forecast_runs WHERE dataset_id = :id"), {"id": dataset_id})
+            
+            conn.execute(text("DELETE FROM bundler_results WHERE run_id IN (SELECT id FROM bundler_runs WHERE dataset_id = :id)"), {"id": dataset_id})
+            conn.execute(text("DELETE FROM bundler_runs WHERE dataset_id = :id"), {"id": dataset_id})
+            
+            # Finally delete the dataset record
+            conn.execute(text("DELETE FROM datasets WHERE id = :id"), {"id": dataset_id})
+            
+            log_audit(conn, user['username'], "DELETE_DATASET", f"Permanently deleted dataset ID {dataset_id}")
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/bundler/preview")
+async def get_bundler_preview(dataset_id: int, min_support: float = 0.01, ref_forecast_id: Optional[Union[int, str]] = "none", user=Depends(get_current_user)):
+    try:
+        # Resolve reference
+        ref_id = None
+        if ref_forecast_id != "none" and ref_forecast_id != "auto":
+            ref_id = int(ref_forecast_id)
+            
+        from bundler import generate_strategic_bundles
+        bundles = generate_strategic_bundles(
+            engine, dataset_id, 
+            bundler_run_id=None, 
+            forecast_run_id=ref_id, 
+            min_support=min_support
+        )
+        return {"bundles": bundles}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/bundler/runs/commit")
+async def commit_bundler_run(req: CommitBundlerRequest, user=Depends(get_current_user)):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            now = datetime.datetime.utcnow().isoformat()
+            
+            # Clean up ref_id
+            ref_id = None
+            if req.forecast_ref_id not in [None, "none", "auto", ""]:
+                try:
+                    ref_id = int(req.forecast_ref_id)
+                except (ValueError, TypeError):
+                    ref_id = None
+
+            cursor = conn.execute(
+                text("INSERT INTO bundler_runs (dataset_id, name, created_at, forecast_run_id) VALUES (:d, :n, :t, :f)"),
+                {"d": req.dataset_id, "n": req.name, "t": now, "f": ref_id}
+            )
+            run_id = cursor.lastrowid
+            
+            for b in req.bundles:
+                conn.execute(
+                    text("INSERT INTO bundler_results (run_id, bundle_pair, result_json) VALUES (:rid, :pair, :rj)"),
+                    {"rid": run_id, "pair": b['pair'], "rj": json.dumps(b)}
+                )
+            log_audit(conn, user['username'], "COMMIT_BUNDLER", f"Officially saved bundling run '{req.name}' (ID: {run_id})")
+            conn.commit()
+        return {"status": "success", "run_id": run_id}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/bundler/simulate")
+async def simulate_bundle(req: dict, user=Depends(get_current_user)):
+    """
+    Evaluates a specific manual pairing against historical and forecast data.
+    """
+    try:
+        dataset_ids = req.get("dataset_ids") # Expecting list
+        if not dataset_ids:
+            did = req.get("dataset_id") or _get_active_dataset_id()
+            dataset_ids = [did] if did else []
+
+        item_a = req.get("item_a")
+        item_b = req.get("item_b")
+        ref_id = req.get("ref_forecast_id")
+        
+        if not dataset_ids:
+            raise HTTPException(status_code=400, detail="No datasets selected for simulation")
+
+        # Clean up ref_id
+        if ref_id in ["none", "auto", ""]:
+            ref_id = None
+        elif ref_id:
+            try:
+                ref_id = int(ref_id)
+            except:
+                ref_id = None
+
+        if not item_a or not item_b:
+            raise HTTPException(status_code=400, detail="Two items required for simulation")
+
+        # Use the specialized simulation scorer
+        from bundler import score_single_pair
+        result = score_single_pair(engine, dataset_ids, item_a, item_b, ref_id)
+        
+        return {"result": result}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Shield, Check, X, Users, Activity, FileText, Clock, LogOut, ShieldOff } from 'lucide-react';
 
-const AdminDashboard = () => {
+export default function AdminDashboard() {
   const { token, username } = useAuth();
   const [pendingUsers, setPendingUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [sessionLogs, setSessionLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('queue');
+  const [activeTab, setActiveTab] = useState('logs');
   const [loading, setLoading] = useState(true);
 
   const fetchPendingUsers = async () => {
@@ -225,5 +225,3 @@ const AdminDashboard = () => {
     </div>
   );
 };
-
-export default AdminDashboard;

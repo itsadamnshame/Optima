@@ -61,6 +61,12 @@ export const AuthProvider = ({ children }) => {
         const res = await fetch('/api/auth/session-status', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (res.status === 401) {
+          clearSession();
+          window.location.href = '/login?session=expired';
+          return;
+        }
+
         if (!res.ok) return;
         const data = await res.json();
 

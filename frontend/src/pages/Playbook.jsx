@@ -81,7 +81,7 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
                   <div className="mt-1 p-1 rounded-full flex-shrink-0" style={{ background: 'rgba(52,211,153,0.15)' }}>
                     <ArrowRight size={11} className="text-emerald-400" />
                   </div>
-                  <p className="text-sm font-medium text-zinc-400">Execute aggressive bundling for high-affinity pairs to capture predicted demand volume.</p>
+                  <p className="text-sm font-medium text-zinc-400">Consider bundling opportunities for high-affinity pairs to capture potential demand volume.</p>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="mt-1 p-1 rounded-full flex-shrink-0" style={{ background: 'rgba(52,211,153,0.15)' }}>
@@ -102,8 +102,7 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
                 <AlertTriangle size={14} className="text-amber-500" /> Risk Assessment
               </h3>
               <p className="text-sm font-bold text-amber-300/70 leading-relaxed italic">
-                "The primary risk for this cycle is under-utilizing detected cross-sell patterns. We advise monitoring
-                holiday-related surges to prevent stockouts on forecasted Leaders."
+                "The primary risk for this cycle involves the potential under-utilization of detected cross-sell patterns. Monitoring holiday-related surges may help prevent stockouts on forecasted Leaders."
               </p>
             </div>
           </div>
