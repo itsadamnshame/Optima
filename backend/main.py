@@ -34,7 +34,7 @@ class PollingFilter(logging.Filter):
 logging.getLogger("uvicorn.access").addFilter(PollingFilter())
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./optima.db")
-IS_POSTGRES = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
+IS_POSTGRES = DATABASE_URL.lower().startswith(("postgresql", "postgres"))
 engine_kwargs = {"pool_pre_ping": True}
 if IS_POSTGRES:
     engine_kwargs["isolation_level"] = "AUTOCOMMIT"
@@ -73,9 +73,12 @@ def _parse_id_csv(value: str) -> List[int]:
     except ValueError:
         raise HTTPException(status_code=400, detail="Dataset IDs must be comma-separated integers")
 
+def _ident(column: str) -> str:
+    return f'"{column}"' if IS_POSTGRES else column
+
 def _year_expr(column: str) -> str:
     if IS_POSTGRES:
-        return f"TO_CHAR({column}::timestamp, 'YYYY')"
+        return f"TO_CHAR({_ident(column)}::timestamp, 'YYYY')"
     return f"strftime('%Y', {column})"
 
 def _ignore_schema_error(conn):
@@ -1045,7 +1048,7 @@ async def get_dataset_data(dataset_id: int, page: int = 1, limit: int = 50, year
         if sort_by not in allowed_cols: sort_by = "OrderID"
         direction = "DESC" if sort_dir.upper() == "DESC" else "ASC"
             
-        df = _read_sql(f"SELECT * FROM sales_transactions WHERE {where_clause} ORDER BY {sort_by} {direction} LIMIT :limit OFFSET :offset", params)
+        df = _read_sql(f"SELECT * FROM sales_transactions WHERE {where_clause} ORDER BY {_ident(sort_by)} {direction} LIMIT :limit OFFSET :offset", params)
         
         with engine.connect() as conn:
             if year:
@@ -1095,7 +1098,7 @@ async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int
             exists = conn.execute(text("SELECT 1 FROM aggregated_sales WHERE dataset_id=:id LIMIT 1"), {"id": dataset_id}).fetchone()
             if not exists:
                 print(f"OPTIMA: Retro-aggregating dataset {dataset_id}...")
-                raw_df = _read_sql("SELECT ItemDescription, OrderDate, Quantity FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": dataset_id})
+                raw_df = _read_sql(f"SELECT {_ident('ItemDescription')}, {_ident('OrderDate')}, {_ident('Quantity')} FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": dataset_id})
                 if not raw_df.empty:
                     raw_df['OrderDate'] = pd.to_datetime(raw_df['OrderDate'])
                     raw_df['ds'] = raw_df['OrderDate'].dt.to_period('M').dt.to_timestamp()
@@ -1245,7 +1248,7 @@ async def get_all_items(dataset_ids: Optional[str] = Query(None), user=Depends(g
 
         if not dataset_ids:
             ids = [int(ids_str)]
-        raw_df = _read_sql_in("SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN :dataset_ids ORDER BY ItemDescription", "dataset_ids", ids)
+        raw_df = _read_sql_in(f"SELECT DISTINCT {_ident('ItemDescription')} FROM sales_transactions WHERE dataset_id IN :dataset_ids ORDER BY {_ident('ItemDescription')}", "dataset_ids", ids)
         return {"items": raw_df['ItemDescription'].tolist()}
     except Exception as e:
         traceback.print_exc()
@@ -1260,7 +1263,7 @@ async def get_items_from_multiple_datasets(req: ItemsRequest, user=Depends(get_c
     try:
         if not req.dataset_ids:
             return {"items": []}
-        df = _read_sql_in("SELECT DISTINCT ItemDescription FROM sales_transactions WHERE dataset_id IN :dataset_ids ORDER BY ItemDescription", "dataset_ids", req.dataset_ids)
+        df = _read_sql_in(f"SELECT DISTINCT {_ident('ItemDescription')} FROM sales_transactions WHERE dataset_id IN :dataset_ids ORDER BY {_ident('ItemDescription')}", "dataset_ids", req.dataset_ids)
         return {"items": df['ItemDescription'].tolist()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

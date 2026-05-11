@@ -19,7 +19,7 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         print(f"BUNDLER: Starting Phase 1 (Apriori) for dataset {dataset_id} (Support: {min_support})...")
         
         # Load raw transactions
-        query = text("SELECT CustomerID, ItemDescription FROM sales_transactions WHERE dataset_id = :d")
+        query = text('SELECT "CustomerID", "ItemDescription" FROM sales_transactions WHERE dataset_id = :d')
         df_raw = pd.read_sql(query, engine, params={"d": dataset_id})
         
         if df_raw.empty:
@@ -241,10 +241,10 @@ def score_single_pair(engine, dataset_ids, item_a: str, item_b: str, forecast_ru
     try:
         # 1. Quick Stats (Lift/Confidence)
         query = text("""
-            SELECT CustomerID, ItemDescription 
+            SELECT "CustomerID", "ItemDescription" 
             FROM sales_transactions 
             WHERE dataset_id IN :dataset_ids
-            AND ItemDescription IN (:ia, :ib)
+            AND "ItemDescription" IN (:ia, :ib)
         """).bindparams(bindparam("dataset_ids", expanding=True))
         df_raw = pd.read_sql(query, engine, params={"dataset_ids": dataset_ids, "ia": item_a, "ib": item_b})
         
@@ -253,7 +253,7 @@ def score_single_pair(engine, dataset_ids, item_a: str, item_b: str, forecast_ru
 
         # Basic Affinity Calculation
         baskets = df_raw.groupby('CustomerID')['ItemDescription'].apply(set)
-        total_query = text("SELECT COUNT(DISTINCT CustomerID) FROM sales_transactions WHERE dataset_id IN :dataset_ids").bindparams(bindparam("dataset_ids", expanding=True))
+        total_query = text('SELECT COUNT(DISTINCT "CustomerID") FROM sales_transactions WHERE dataset_id IN :dataset_ids').bindparams(bindparam("dataset_ids", expanding=True))
         total_tx = pd.read_sql(total_query, engine, params={"dataset_ids": dataset_ids}).iloc[0,0]
         
         count_a = sum(1 for b in baskets if item_a in b)
