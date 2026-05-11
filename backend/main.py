@@ -76,6 +76,9 @@ def _parse_id_csv(value: str) -> List[int]:
 def _ident(column: str) -> str:
     return f'"{column}"' if IS_POSTGRES else column
 
+def _agg_item_select() -> str:
+    return 'itemdescription AS "ItemDescription"' if IS_POSTGRES else "ItemDescription"
+
 def _year_expr(column: str) -> str:
     if IS_POSTGRES:
         return f"TO_CHAR({_ident(column)}::timestamp, 'YYYY')"
@@ -1353,7 +1356,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
         
     try:
         # 1. Fetch PRE-AGGREGATED Data
-        raw_df = _read_sql_in("SELECT ItemDescription, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
+        raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
         if raw_df.empty:
             raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated.")
 
