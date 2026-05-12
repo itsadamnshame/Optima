@@ -52,7 +52,7 @@
   --chart-label: #a1a1aa;
   --chart-line-actual: #ffffff;
   --chart-line-forecast: #818cf8;
-  --chart-area-fill: rgba(99,102,241,0.15);
+  --chart-area-fill: rgba(99,102,241,0.2);
   --chart-tooltip-bg: #18181b;
   --chart-tooltip-border: rgba(255,255,255,0.1);
   --chart-tooltip-text: #f4f4f5;
@@ -143,7 +143,7 @@
   --chart-label: #64748b;
   --chart-line-actual: #94a3b8; /* Professional Slate for history */
   --chart-line-forecast: #3b82f6; /* Vibrant Blue for prediction */
-  --chart-area-fill: rgba(59,130,246,0.08); 
+  --chart-area-fill: rgba(59,130,246,0.15); 
   --chart-tooltip-bg: #ffffff;
   --chart-tooltip-border: rgba(0,0,0,0.08);
   --chart-tooltip-text: #0f172a;
