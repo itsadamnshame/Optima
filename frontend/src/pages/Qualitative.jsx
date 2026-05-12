@@ -48,11 +48,12 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
   }, [selectedDatasetIds]);
 
   const fetchCatalog = async () => {
-    if (selectedDatasetIds.length === 0) return;
+    if (selectedDatasetIds.length === 0 || selectedDatasetIds.includes(null) || selectedDatasetIds.includes('null')) return;
 
     try {
       const token = localStorage.getItem('token');
-      const ids = selectedDatasetIds.join(',');
+      const ids = selectedDatasetIds.filter(id => id && id !== 'null').join(',');
+      if (!ids) return;
       const res = await axios.get(`/api/get-items?dataset_ids=${ids}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -63,7 +64,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
   };
 
   const runSimulation = async () => {
-    if (!simItemA || !simItemB) return;
+    if (!simItemA || !simItemB || selectedDatasetIds.length === 0) return;
     setSimLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -132,14 +133,16 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
   };
 
   const fetchBundlerRuns = async () => {
+    if (!activeDatasetId || activeDatasetId === 'null') return;
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`/api/datasets/${activeDatasetId}/bundler-runs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setBundlerRuns(res.data.runs);
-      if (res.data.runs.length > 0 && !selectedRunId) {
-        setSelectedRunId(res.data.runs[0].id.toString());
+      const runs = res.data.runs || [];
+      setBundlerRuns(runs);
+      if (runs.length > 0 && (!selectedRunId || selectedRunId === 'null')) {
+        setSelectedRunId(runs[0].id.toString());
       }
     } catch (err) {
       console.error("Failed to fetch bundler runs", err);
@@ -147,6 +150,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
   };
 
   const fetchBundlerResults = async (runId) => {
+    if (!runId || runId === 'null' || runId === 'sandbox' || runId === 'undefined') return;
     setLoading(true);
     setError(null);
     try {
@@ -265,7 +269,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               >
                 {isSandbox && <option value="sandbox">Sandbox: {stagedInfo?.name || 'New Result'}</option>}
                 {bundlerRuns.map(run => (
-                  <option key={run.id} value={run.id.toString()}>{run.name.toUpperCase()}</option>
+                  <option key={run.id} value={run.id.toString()}>{(run.name || 'Unnamed Run').toUpperCase()}</option>
                 ))}
               </select>
             </div>
@@ -282,7 +286,17 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
       {/* MAIN CONTENT AREA */}
       <div className="max-w-6xl mx-auto">
-        {viewMode === 'discovery' ? (
+        {!activeDatasetId && viewMode === 'discovery' ? (
+          <div className="py-32 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="p-6 rounded-full" style={{ background: 'var(--input-bg)', color: 'var(--text-faint)', opacity: 0.2 }}>
+              <Database size={40} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>No Dataset Active</h3>
+              <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>Please activate a dataset in the Management Hub to view its strategy vault.</p>
+            </div>
+          </div>
+        ) : viewMode === 'discovery' ? (
           <>
             {!loading && bundles.length > 0 ? (
               <div className="rounded-[2.5rem] border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700" style={cardStyle}>
@@ -300,7 +314,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8">
-                  {bundles.map((bundle, idx) => (
+                  {bundles.map((bundle, idx) => bundle && (
                     <div key={idx} className="p-6 rounded-3xl border flex flex-col gap-6" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
                       <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -321,7 +335,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
                         <div className="space-y-4">
                           <div className="flex flex-wrap gap-2">
-                            {bundle.items.map(item => (
+                            {bundle.items && bundle.items.map(item => (
                               <span key={item} className="px-3 py-1 rounded-lg border text-[10px] font-bold"
                                 style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                                 {item}
@@ -332,11 +346,11 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                           <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                               <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Confidence</p>
-                              <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{(bundle.confidence * 100).toFixed(1)}%</p>
+                              <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.confidence || 0) * 100).toFixed(1)}%</p>
                             </div>
                             <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                               <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Support</p>
-                              <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{(bundle.support * 100).toFixed(2)}%</p>
+                              <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.support || 0) * 100).toFixed(2)}%</p>
                             </div>
                           </div>
                         </div>
@@ -482,7 +496,12 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 <div className="flex-1 rounded-[2.5rem] overflow-hidden flex flex-col border shadow-2xl animate-in zoom-in-95 duration-500" style={cardStyle}>
                   <div className="p-8 bg-gradient-to-br from-emerald-500/20 to-transparent border-b border-white/5 space-y-6">
                     <div className="flex justify-between items-start">
-                      <span className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${getBadgeStyle(simResult.badge)}`}>
+                      <span className="px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border"
+                        style={{ 
+                          background: getBadgeStyle(simResult.badge).background,
+                          color: getBadgeStyle(simResult.badge).color,
+                          borderColor: getBadgeStyle(simResult.badge).borderColor
+                        }}>
                         {simResult.badge}
                       </span>
                        <div className="text-right">
