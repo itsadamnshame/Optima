@@ -9,6 +9,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends, He
 from pydantic import BaseModel
 import jwt
 import datetime
+import re
 import bcrypt
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import bindparam, create_engine, inspect, text
@@ -348,13 +349,41 @@ def get_current_user(authorization: str = Header(None, alias="Authorization")):
     token = authorization.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        username = payload.get("username")
+        if username:
+            with engine.connect() as conn:
+                row = conn.execute(
+                    text("SELECT role, status FROM users WHERE username = :u"),
+                    {"u": username}
+                ).fetchone()
+            if not row:
+                raise HTTPException(status_code=401, detail="Account no longer exists")
+            if row[1] != "approved":
+                raise HTTPException(status_code=401, detail="Account is not active")
+            payload["role"] = row[0]
         return payload
+    except HTTPException:
+        raise
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
     except:
         raise HTTPException(status_code=401, detail="Authentication failed")
+
+def _validate_password(password: str):
+    if not password or len(password) < 8:
+        return "Password must be at least 8 characters long."
+    if not re.search(r"[A-Z]", password):
+        return "Password must contain at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return "Password must contain at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return "Password must contain at least one number."
+    if not re.search(r"[!@#$%^&*()_+\-=[\]{};':\"\\|,.<>/?]", password):
+        return "Password must contain at least one special character."
+    return None
+
 
 def log_audit(conn, username: str, action: str, details: str):
     try:
@@ -403,6 +432,22 @@ class PasswordChangeModel(BaseModel):
 
 class AdminActionModel(BaseModel):
     username: str
+
+class AccountUpdateModel(BaseModel):
+    role: Optional[str] = None
+    status: Optional[str] = None
+
+def _require_admin(user):
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+def _terminate_user_sessions(conn, username: str, reason: str):
+    now = datetime.datetime.utcnow().isoformat()
+    conn.execute(
+        text("UPDATE session_logs SET logout_time = :lt, force_end_at = :lt WHERE username = :u AND logout_time IS NULL"),
+        {"lt": now, "u": username}
+    )
+    log_audit(conn, "system", "TERMINATE_SESSIONS", f"{reason}: active sessions ended for {username}")
 
 @app.get("/api/auth/profile")
 async def get_profile(user=Depends(get_current_user)):
@@ -462,6 +507,9 @@ async def change_password(data: PasswordChangeModel, user=Depends(get_current_us
     try:
         if data.new_password != data.confirm_password:
             raise HTTPException(status_code=400, detail="New password and confirmation must match")
+        password_error = _validate_password(data.new_password)
+        if password_error:
+            raise HTTPException(status_code=400, detail=password_error)
 
         with engine.connect() as conn:
             row = conn.execute(
@@ -485,6 +533,10 @@ async def change_password(data: PasswordChangeModel, user=Depends(get_current_us
 @app.post("/api/auth/register")
 async def register_user(data: RegisterModel):
     try:
+        password_error = _validate_password(data.password)
+        if password_error:
+            raise HTTPException(status_code=400, detail=password_error)
+
         with engine.connect() as conn:
             user_exists = conn.execute(text("SELECT * FROM users WHERE username=:u"), {"u": data.username}).fetchone()
             if user_exists:
@@ -519,6 +571,8 @@ async def login_user(data: LoginModel):
                 raise HTTPException(status_code=403, detail="Account is pending admin approval")
             elif user[4] == 'denied':
                 raise HTTPException(status_code=403, detail="Account registration was denied")
+            elif user[4] == 'banned':
+                raise HTTPException(status_code=403, detail="Account has been banned")
 
             # Check login lock (set by admin force-end)
             locked_until_raw = conn.execute(
@@ -552,7 +606,15 @@ async def login_user(data: LoginModel):
             log_audit(conn, user[1], "LOGIN", "User logged in successfully")
             conn.commit()
             
-            return {"status": "success", "token": token, "role": user[3], "username": user[1], "session_id": session_id}
+            return {
+                "status": "success",
+                "token": token,
+                "role": user[3],
+                "username": user[1],
+                "first_name": user[5] if len(user) > 5 else "",
+                "last_name": user[6] if len(user) > 6 else "",
+                "session_id": session_id
+            }
     except HTTPException:
         raise
     except Exception as e:
@@ -578,8 +640,7 @@ async def logout_user(user=Depends(get_current_user)):
 
 @app.get("/api/admin/session-logs")
 async def get_session_logs(user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin(user)
     try:
         with engine.connect() as conn:
             res = conn.execute(text(
@@ -650,8 +711,7 @@ class ForceEndModel(BaseModel):
 
 @app.post("/api/admin/force-end-session")
 async def force_end_session(data: ForceEndModel, user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin(user)
     try:
         now = datetime.datetime.utcnow()
         locked_until = (now + datetime.timedelta(minutes=10)).isoformat()
@@ -685,8 +745,7 @@ async def force_end_session(data: ForceEndModel, user=Depends(get_current_user))
 
 @app.get("/api/admin/pending-users")
 async def get_pending_users(user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin(user)
     try:
         with engine.connect() as conn:
             res = conn.execute(text("SELECT username, status FROM users WHERE status='under_review' AND role='USER'")).fetchall()
@@ -696,11 +755,11 @@ async def get_pending_users(user=Depends(get_current_user)):
 
 @app.post("/api/admin/approve")
 async def approve_user(data: AdminActionModel, user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin(user)
     try:
         with engine.connect() as conn:
             conn.execute(text("UPDATE users SET status='approved' WHERE username=:u"), {"u": data.username})
+            log_audit(conn, user['username'], "APPROVE_USER", f"Approved account for {data.username}")
             conn.commit()
         return {"status": "success"}
     except Exception as e:
@@ -708,21 +767,162 @@ async def approve_user(data: AdminActionModel, user=Depends(get_current_user)):
 
 @app.post("/api/admin/deny")
 async def deny_user(data: AdminActionModel, user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _require_admin(user)
     try:
         with engine.connect() as conn:
             conn.execute(text("UPDATE users SET status='denied' WHERE username=:u"), {"u": data.username})
+            _terminate_user_sessions(conn, data.username, "Account denied")
             log_audit(conn, user['username'], "DENY_USER", f"Denied registration for {data.username}")
             conn.commit()
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/admin/audit-logs")
-async def get_audit_logs(user=Depends(get_current_user)):
-    if user.get("role") != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin access required")
+@app.get("/api/admin/accounts")
+async def get_accounts(user=Depends(get_current_user)):
+    _require_admin(user)
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text("""
+                SELECT
+                    u.username, u.role, u.status,
+                    u.first_name, u.last_name, u.middle_name,
+                    u.email, u.phone_number, u.login_locked_until,
+                    COALESCE((SELECT COUNT(*) FROM session_logs s WHERE s.username = u.username), 0) AS session_count,
+                    COALESCE((SELECT COUNT(*) FROM session_logs s WHERE s.username = u.username AND s.logout_time IS NULL), 0) AS active_sessions,
+                    (SELECT MAX(login_time) FROM session_logs s WHERE s.username = u.username) AS last_login
+                FROM users u
+                ORDER BY u.role DESC, u.status ASC, u.username ASC
+            """)).fetchall()
+            accounts = []
+            for r in rows:
+                accounts.append({
+                    "username": r[0],
+                    "role": r[1],
+                    "status": r[2],
+                    "first_name": r[3] or "",
+                    "last_name": r[4] or "",
+                    "middle_name": r[5] or "",
+                    "email": r[6] or "",
+                    "phone_number": r[7] or "",
+                    "login_locked_until": r[8],
+                    "session_count": r[9],
+                    "active_sessions": r[10],
+                    "last_login": r[11],
+                })
+            return {"accounts": accounts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/api/admin/accounts/{target_username}")
+async def update_account(target_username: str, data: AccountUpdateModel, user=Depends(get_current_user)):
+    _require_admin(user)
+    valid_roles = {"ADMIN", "USER"}
+    valid_statuses = {"approved", "under_review", "denied", "banned"}
+    try:
+        with engine.connect() as conn:
+            target = conn.execute(
+                text("SELECT username, role, status FROM users WHERE username = :u"),
+                {"u": target_username}
+            ).fetchone()
+            if not target:
+                raise HTTPException(status_code=404, detail="Account not found")
+
+            updates = {}
+            changes = []
+            if data.role is not None:
+                role = data.role.upper()
+                if role not in valid_roles:
+                    raise HTTPException(status_code=400, detail="Invalid role")
+                if target_username == user.get("username") and role != "ADMIN":
+                    raise HTTPException(status_code=400, detail="You cannot revoke your own admin role")
+                updates["role"] = role
+                changes.append(f"role {target[1]} -> {role}")
+
+            if data.status is not None:
+                status = data.status.lower()
+                if status not in valid_statuses:
+                    raise HTTPException(status_code=400, detail="Invalid status")
+                if target_username == user.get("username") and status != "approved":
+                    raise HTTPException(status_code=400, detail="You cannot disable your own account")
+                updates["status"] = status
+                updates["login_locked_until"] = None
+                changes.append(f"status {target[2]} -> {status}")
+
+            if not updates:
+                return {"status": "success", "message": "No changes made"}
+
+            if "role" in updates and updates["role"] != "ADMIN" and target[1] == "ADMIN":
+                admin_count = conn.execute(
+                    text("SELECT COUNT(*) FROM users WHERE role = 'ADMIN' AND status = 'approved'")
+                ).scalar()
+                if admin_count <= 1:
+                    raise HTTPException(status_code=400, detail="At least one approved admin must remain")
+
+            set_clause = ", ".join([f"{key} = :{key}" for key in updates.keys()])
+            conn.execute(text(f"UPDATE users SET {set_clause} WHERE username = :username"), {**updates, "username": target_username})
+
+            if updates.get("status") in {"banned", "denied", "under_review"} or ("role" in updates and target[1] != updates["role"]):
+                _terminate_user_sessions(conn, target_username, "Account permissions changed")
+
+            log_audit(conn, user['username'], "UPDATE_ACCOUNT", f"Updated {target_username}: {', '.join(changes)}")
+            conn.commit()
+            return {"status": "success"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/accounts/{target_username}/ban")
+async def ban_account(target_username: str, user=Depends(get_current_user)):
+    return await update_account(target_username, AccountUpdateModel(status="banned"), user)
+
+@app.post("/api/admin/accounts/{target_username}/activate")
+async def activate_account(target_username: str, user=Depends(get_current_user)):
+    return await update_account(target_username, AccountUpdateModel(status="approved"), user)
+
+@app.get("/api/auth/account-activity")
+async def get_my_account_activity(user=Depends(get_current_user)):
+    username = user.get("username")
+    try:
+        with engine.connect() as conn:
+            sessions = conn.execute(text("""
+                SELECT id, session_id, role, login_time, logout_time, force_end_at
+                FROM session_logs
+                WHERE username = :u
+                ORDER BY id DESC
+                LIMIT 100
+            """), {"u": username}).fetchall()
+            audits = conn.execute(text("""
+                SELECT timestamp, username, action, details
+                FROM audit_logs
+                WHERE username = :u OR details LIKE :needle
+                ORDER BY id DESC
+                LIMIT 100
+            """), {"u": username, "needle": f"%{username}%"}).fetchall()
+            return {
+                "sessions": [
+                    {
+                        "id": r[0],
+                        "session_id": r[1],
+                        "role": r[2],
+                        "login_time": r[3],
+                        "logout_time": r[4],
+                        "force_end_at": r[5],
+                    }
+                    for r in sessions
+                ],
+                "audit_logs": [
+                    {"timestamp": r[0], "username": r[1], "action": r[2], "details": r[3]}
+                    for r in audits
+                ],
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/accounts/{target_username}/activity")
+async def get_account_activity(target_username: str, user=Depends(get_current_user)):
+    _require_admin(user)
     try:
         with engine.connect() as conn:
             res = conn.execute(text("SELECT timestamp, username, action, details FROM audit_logs ORDER BY id DESC LIMIT 100")).fetchall()

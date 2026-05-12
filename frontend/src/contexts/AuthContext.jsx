@@ -7,20 +7,26 @@ export const AuthProvider = ({ children }) => {
   const [actualRole, setActualRole] = useState(localStorage.getItem('role') || null);
   const [isNonAdminView, setIsNonAdminView] = useState(false);
   const [username, setUsername] = useState(localStorage.getItem('username') || null);
+  const [firstName, setFirstName] = useState(localStorage.getItem('first_name') || '');
+  const [lastName, setLastName] = useState(localStorage.getItem('last_name') || '');
   const [sessionId, setSessionId] = useState(localStorage.getItem('session_id') || null);
   const pollRef = useRef(null);
 
   const role = isNonAdminView ? 'USER' : actualRole;
 
-  const login = (newToken, newRole, newUsername, newSessionId) => {
+  const login = (newToken, newRole, newUsername, newSessionId, newFirstName = '', newLastName = '') => {
     setToken(newToken);
     setActualRole(newRole);
     setIsNonAdminView(false);
     setUsername(newUsername);
+    setFirstName(newFirstName || '');
+    setLastName(newLastName || '');
     setSessionId(newSessionId || null);
     localStorage.setItem('token', newToken);
     localStorage.setItem('role', newRole);
     localStorage.setItem('username', newUsername);
+    localStorage.setItem('first_name', newFirstName || '');
+    localStorage.setItem('last_name', newLastName || '');
     if (newSessionId) localStorage.setItem('session_id', newSessionId);
   };
 
@@ -29,10 +35,14 @@ export const AuthProvider = ({ children }) => {
     setActualRole(null);
     setIsNonAdminView(false);
     setUsername(null);
+    setFirstName('');
+    setLastName('');
     setSessionId(null);
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('username');
+    localStorage.removeItem('first_name');
+    localStorage.removeItem('last_name');
     localStorage.removeItem('session_id');
   }, []);
 
@@ -115,7 +125,7 @@ export const AuthProvider = ({ children }) => {
   }, [token, logout]);
 
   return (
-    <AuthContext.Provider value={{ token, role, actualRole, username, sessionId, login, logout, isNonAdminView, setIsNonAdminView }}>
+    <AuthContext.Provider value={{ token, role, actualRole, username, firstName, lastName, sessionId, login, logout, isNonAdminView, setIsNonAdminView }}>
       {children}
     </AuthContext.Provider>
   );

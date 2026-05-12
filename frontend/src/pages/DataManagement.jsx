@@ -8,8 +8,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const glass = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' };
-const glassHover = 'hover:bg-white/[0.04] transition-all';
+const glass = { background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(12px)' };
+const glassHover = 'hover:bg-[var(--glass-bg-hover)] transition-all';
 
 export default function DataManagement({ onDatasetChange, onActivate }) {
   const { token, role } = useAuth();
@@ -444,23 +444,25 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 pb-20 animate-in fade-in duration-500">
-      <div className="relative rounded-[2rem] p-8 overflow-hidden" style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.12) 0%,rgba(255,255,255,0.02) 100%)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+      <div className="relative rounded-[2rem] p-8 overflow-hidden" style={{ background: 'var(--gradient-hero)', border: '1px solid var(--border)' }}>
+        <h2 className="text-2xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--text-heading)' }}>
           <Database className="text-indigo-400" size={28} /> Strategic Management Hub
         </h2>
-        <p className="text-zinc-500 text-sm mt-1 ml-10">Consolidate historical logs, launch predictive models, and manage product bundling rules.</p>
+        <p className="text-sm mt-1 ml-10" style={{ color: 'var(--text-secondary)' }}>Consolidate historical logs, launch predictive models, and manage product bundling rules.</p>
 
         {/* TAB TOGGLE */}
-        <div className="flex gap-1 bg-black/20 p-1 rounded-2xl border border-white/5 mt-6 w-fit">
+        <div className="flex gap-1 p-1 rounded-2xl border mt-6 w-fit" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
           <button
             onClick={() => setStep(1)}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step < 4 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step < 4 ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+            style={{ background: step < 4 ? 'var(--accent)' : 'transparent', color: step < 4 ? '#fff' : 'var(--text-muted)', boxShadow: step < 4 ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
           >
             <UploadCloud size={14} className="inline mr-2" /> Data Ingestion
           </button>
           <button
             onClick={() => setStep(4)}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step === 4 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step === 4 ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+            style={{ background: step === 4 ? 'var(--accent)' : 'transparent', color: step === 4 ? '#fff' : 'var(--text-muted)', boxShadow: step === 4 ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
           >
             <Sparkles size={14} className="inline mr-2" /> Model Training
           </button>
@@ -472,24 +474,26 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
             <div className="flex items-center gap-4">
               {[1, 2].map(s => (
                 <div key={s} className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${step >= s ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-zinc-800 text-zinc-600'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${step >= s ? 'text-white shadow-lg' : ''}`}
+                    style={{ background: step >= s ? 'var(--accent)' : 'var(--input-bg)', color: step >= s ? '#fff' : 'var(--text-muted)', boxShadow: step >= s ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}>
                     {s}
                   </div>
-                  <span className={`text-[9px] font-black uppercase tracking-widest ${step >= s ? 'text-indigo-400' : 'text-zinc-600'}`}>
+                  <span className={`text-[9px] font-black uppercase tracking-widest`} style={{ color: step >= s ? 'var(--accent)' : 'var(--text-muted)' }}>
                     {s === 1 ? 'Scan File' : 'Configure Items'}
                   </span>
-                  {s === 1 && <div className={`w-8 h-px ${step > 1 ? 'bg-indigo-500' : 'bg-zinc-800'}`} />}
+                  {s === 1 && <div className="w-8 h-px" style={{ background: step > 1 ? 'var(--accent)' : 'var(--border-subtle)' }} />}
                 </div>
               ))}
             </div>
 
             <button 
               onClick={() => setShowInventory(!showInventory)}
-              className={`px-4 py-2 rounded-xl border transition-all group/inv flex items-center gap-2 ${showInventory ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:bg-white/10'}`}
+              className={`px-4 py-2 rounded-xl border transition-all group/inv flex items-center gap-2 ${showInventory ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+              style={{ background: showInventory ? 'var(--accent)' : 'var(--bg-surface)', borderColor: showInventory ? 'transparent' : 'var(--border)', color: showInventory ? '#fff' : 'var(--text-secondary)' }}
               title="Toggle Dataset Inventory"
             >
-              <Database size={14} className="group-hover/inv:scale-110 transition-transform" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Inventory</span>
+              <Database size={14} className={showInventory ? 'text-white' : 'text-indigo-400'} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Inventory</span>
             </button>
           </div>
 
@@ -499,10 +503,11 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
                 <UploadCloud size={32} />
               </div>
-              <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Source Selection</h3>
-              <p className="text-zinc-500 text-sm mt-2 mb-8 max-w-xs">Upload your transaction logs to begin the Optima ingestion pipeline.</p>
+              <h3 className="text-xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Source Selection</h3>
+              <p className="text-sm mt-2 mb-8 max-w-xs" style={{ color: 'var(--text-muted)' }}>Upload your transaction logs to begin the Optima ingestion pipeline.</p>
               <input type="file" multiple id="file-upload" className="hidden" onChange={handleScan} accept=".csv,.xlsx,.xls" disabled={isScanning} />
-              <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer transition-all shadow-xl flex items-center gap-3 ${isScanning ? 'bg-zinc-800 text-zinc-500 cursor-wait' : 'bg-white text-black hover:bg-indigo-50 shadow-white/5'}`}>
+              <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer transition-all shadow-xl flex items-center gap-3 ${isScanning ? 'opacity-50 cursor-wait' : 'hover:scale-[1.02] active:scale-95'}`}
+                style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
                 {isScanning ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
@@ -515,11 +520,12 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
               {/* INVENTORY PANEL (SLIDE-OVER) */}
               {showInventory && (
-                <div className="absolute inset-0 z-50 bg-zinc-950 rounded-[2.5rem] p-8 animate-in fade-in duration-300 flex flex-col border border-white/5">
+                <div className="absolute inset-0 z-50 rounded-[2.5rem] p-8 animate-in fade-in duration-300 flex flex-col border shadow-2xl"
+                  style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                       <Database className="text-indigo-400" size={24} />
-                      <h3 className="text-lg font-black text-white uppercase italic">Dataset Inventory</h3>
+                      <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Dataset Inventory</h3>
                     </div>
                     <button 
                       onClick={() => setShowInventory(false)}
@@ -537,7 +543,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                       </div>
                     ) : (
                       datasets.map(ds => (
-                        <div key={ds.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col group hover:border-white/10 transition-colors text-left">
+                        <div key={ds.id} className="p-4 rounded-2xl border flex flex-col group transition-colors text-left"
+                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="min-w-0 flex-1">
                               {editingId === ds.id ? (
@@ -553,8 +560,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
-                                  <p className="text-xs font-black text-white uppercase truncate">{ds.title}</p>
-                                  <button onClick={() => startEditing(ds)} className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-white transition-opacity"><Edit3 size={10}/></button>
+                                  <p className="text-xs font-black uppercase truncate" style={{ color: 'var(--text-heading)' }}>{ds.title}</p>
+                                  <button onClick={() => startEditing(ds)} className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-indigo-400 transition-opacity"><Edit3 size={10}/></button>
                                 </div>
                               )}
                               
@@ -597,13 +604,13 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                           
                           <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
-                              onClick={() => { setShowInventory(false); openViewer(ds.id, 1); }}
+                              onClick={() => openViewer(ds.id, 1)}
                               className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all"
                             >
                               <Eye size={12} /> Explorer
                             </button>
                             <button 
-                              onClick={() => { setShowInventory(false); openConfigModal([ds.id]); }}
+                              onClick={() => openConfigModal([ds.id])}
                               className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-widest transition-all"
                             >
                               <Package size={12} /> Configure
@@ -659,7 +666,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                               {[
                                 { id: 'always', label: 'Always Available', color: 'emerald' },
                                 { id: 'seasonal', label: 'Seasonal Item', color: 'amber' },
-                                { id: 'high_velocity', label: 'High Velocity', color: 'indigo' }
+                                { id: 'high_velocity', label: 'Rapid Response', color: 'indigo' }
                               ].map(strat => (
                                 <button
                                   key={strat.id}
@@ -700,6 +707,12 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                   placeholder="Dataset Display Title (e.g. Sales Q1 2026)"
                   className="w-full px-5 py-4 rounded-2xl outline-none text-sm font-bold"
                   style={inputStyle} />
+
+                {error && (
+                  <div className="px-4 py-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm font-bold mt-4">
+                    {error}
+                  </div>
+                )}
 
                 {uploading ? (
                   <div className="space-y-4 pt-4">
@@ -792,18 +805,19 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                       className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                         trainForecast 
                           ? 'bg-indigo-600/10 border-indigo-500/40 shadow-[0_0_25px_rgba(99,102,241,0.15)]' 
-                          : 'bg-black/20 border-white/15 hover:border-white/30 hover:bg-white/[0.02]'
+                          : 'border-white/15 hover:border-white/30'
                       }`}
+                      style={{ background: trainForecast ? '' : 'var(--input-bg)', borderColor: trainForecast ? '' : 'var(--border-subtle)' }}
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                          trainForecast ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/40' : 'bg-zinc-800 text-zinc-600'
-                        }`}>
+                          trainForecast ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/40' : 'bg-white/5 opacity-50'
+                        }`} style={{ color: trainForecast ? '#fff' : 'var(--text-muted)' }}>
                           <Brain size={20} />
                         </div>
                         <div className="flex flex-col text-left">
-                          <span className={`text-xs font-black uppercase tracking-widest ${trainForecast ? 'text-white' : 'text-zinc-500'}`}>Forecaster</span>
-                          <span className="text-[9px] font-bold opacity-40 uppercase">Demand Predictions</span>
+                          <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainForecast ? 'var(--accent)' : 'var(--text-muted)' }}>Forecaster</span>
+                          <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Demand Predictions</span>
                         </div>
                       </div>
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -817,10 +831,12 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                       <p className="text-[9px] font-bold text-zinc-600 uppercase ml-1 mb-2">Forecasting Records</p>
                       <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
                         {forecastRuns.map(run => (
-                          <div key={run.id} className="p-4 rounded-2xl bg-black/20 border border-white/5 group hover:border-indigo-500/30 transition-all">
+                          <div key={run.id} className="p-4 rounded-2xl border group hover:border-indigo-500/30 transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
                             <div className="flex items-center justify-between mb-2">
                               <input 
-                                className="bg-transparent border-none outline-none text-[10px] font-black text-white uppercase tracking-tight w-full"
+                                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-tight w-full"
+                                style={{ color: 'var(--text-heading)' }}
                                 value={run.name}
                                 onChange={(e) => handleRenameRun('forecast', run.id, e.target.value)}
                               />
@@ -829,7 +845,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                               </button>
                             </div>
                             <div className="flex justify-between items-center text-[8px] font-bold text-zinc-600 uppercase tracking-widest">
-                              <span>{new Date(run.created_at).toLocaleDateString()}</span>
+                              <span>{new Date(run.created_at).toLocaleString()}</span>
                               <span className="text-emerald-500/60">{run.status}</span>
                             </div>
                           </div>
@@ -858,18 +874,19 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                       className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                         trainBundler 
                           ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.15)]' 
-                          : 'bg-black/20 border-white/15 hover:border-white/30 hover:bg-white/[0.02]'
+                          : 'border-white/15 hover:border-white/30'
                       }`}
+                      style={{ background: trainBundler ? '' : 'var(--input-bg)', borderColor: trainBundler ? '' : 'var(--border-subtle)' }}
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                          trainBundler ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/40' : 'bg-zinc-800 text-zinc-600'
-                        }`}>
+                          trainBundler ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/40' : 'bg-white/5 opacity-50'
+                        }`} style={{ color: trainBundler ? '#fff' : 'var(--text-muted)' }}>
                           <Zap size={20} />
                         </div>
                         <div className="flex flex-col text-left">
-                          <span className={`text-xs font-black uppercase tracking-widest ${trainBundler ? 'text-white' : 'text-zinc-500'}`}>Bundler</span>
-                          <span className="text-[9px] font-bold opacity-40 uppercase">Affinity Logic</span>
+                          <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainBundler ? 'var(--sim-item-checked-bg)' : 'var(--text-muted)' }}>Bundler</span>
+                          <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Affinity Logic</span>
                         </div>
                       </div>
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -903,7 +920,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                             type="range" min="0.1" max="10" step="0.1" 
                             value={minSupport > 10 ? 10 : minSupport} 
                             onChange={(e) => setMinSupport(parseFloat(e.target.value))}
-                            className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-emerald-500" 
+                            className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500" 
+                            style={{ background: 'var(--input-bg)' }}
                           />
                           <div className="flex justify-between text-[8px] font-bold text-zinc-600 uppercase tracking-tighter">
                             <span>Broad Discovery</span>
@@ -919,7 +937,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                           <select 
                             value={refForecastId}
                             onChange={(e) => setRefForecastId(e.target.value)}
-                            className="w-full bg-black/40 border border-white/5 rounded-2xl px-4 py-3 text-[10px] font-black text-white outline-none focus:border-emerald-500/50 transition-all appearance-none cursor-pointer"
+                            className="w-full border rounded-2xl px-4 py-3 text-[10px] font-black outline-none focus:border-emerald-500/50 transition-all appearance-none cursor-pointer"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                           >
                             {trainForecast && <option value="auto">AUTO: CURRENT TRAINING</option>}
                             <option value="none">NONE (HISTORICAL DISCOVERY)</option>
@@ -942,7 +961,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                             <button
                               type="button"
                               onClick={() => setPersistBundler(!persistBundler)}
-                              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${persistBundler ? 'bg-emerald-500/10 border-emerald-500 text-emerald-200' : 'bg-black/20 border-white/10 text-zinc-400 hover:border-white/20'}`}
+                              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${persistBundler ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500' : 'hover:border-white/20'}`}
+                              style={{ background: persistBundler ? '' : 'var(--input-bg)', borderColor: persistBundler ? '' : 'var(--border-subtle)', color: persistBundler ? '' : 'var(--text-muted)' }}
                             >
                               <span className="text-[10px] font-black uppercase tracking-[0.2em]">Save Bundler Run</span>
                               <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${persistBundler ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-white/20 bg-transparent text-transparent'}`}>
@@ -958,10 +978,12 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                       <p className="text-[9px] font-bold text-zinc-600 uppercase ml-1 mb-2">Bundling Records</p>
                       <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
                         {bundlerRuns.map(run => (
-                          <div key={run.id} className="p-4 rounded-2xl bg-black/20 border border-white/5 group hover:border-emerald-500/30 transition-all">
+                          <div key={run.id} className="p-4 rounded-2xl border group hover:border-emerald-500/30 transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
                             <div className="flex items-center justify-between mb-2">
                               <input 
-                                className="bg-transparent border-none outline-none text-[10px] font-black text-white uppercase tracking-tight w-full"
+                                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-tight w-full"
+                                style={{ color: 'var(--text-heading)' }}
                                 value={run.name}
                                 onChange={(e) => handleRenameRun('bundler', run.id, e.target.value)}
                               />
@@ -970,7 +992,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                               </button>
                             </div>
                             <div className="flex justify-between items-center text-[8px] font-bold text-zinc-600 uppercase tracking-widest">
-                              <span>{new Date(run.created_at).toLocaleDateString()}</span>
+                              <span>{new Date(run.created_at).toLocaleString()}</span>
                               <span className="text-indigo-400/60">SESSION</span>
                             </div>
                           </div>
@@ -993,10 +1015,11 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                   <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest ml-1 block">Active Run Title</label>
                   <input
                     type="text"
-                    placeholder="E.G. 2026 STRATEGIC SWEEP"
+                    placeholder="E.g. Yearly Baseline Simulation..."
                     value={runName}
                     onChange={(e) => setRunName(e.target.value)}
-                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-sm font-black text-white outline-none focus:border-indigo-500/50 transition-all uppercase tracking-tight"
+                    className="w-full border rounded-2xl px-6 py-4 text-xs font-black outline-none focus:border-indigo-500/50 transition-all shadow-xl"
+                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                   />
                 </div>
 
@@ -1022,7 +1045,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                     <button
                       onClick={handleTrain}
                       disabled={selectedDatasetIds.length === 0 || !runName || (!trainForecast && !trainBundler)}
-                      className="w-full md:w-80 py-5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:bg-indigo-50 transition-all active:scale-95 disabled:opacity-20 disabled:grayscale"
+                      className="w-full md:w-80 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-20 disabled:grayscale"
+                      style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 20px 50px -10px var(--accent-glow)' }}
                     >
                       Initialize Strategic Run
                     </button>
@@ -1063,14 +1087,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
           <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl" style={{ background: 'var(--modal-bg)' }}>
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h3 className="text-xl font-black text-white flex items-center gap-2 uppercase italic tracking-tight">
+                <h3 className="text-xl font-black flex items-center gap-2 uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>
                   <Package className="text-indigo-400" /> Item Configuration Override
                 </h3>
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: 'var(--text-muted)' }}>
                   Fine-tune product properties for this analysis run
                 </p>
               </div>
-              <button onClick={() => setShowConfigModal(false)} className="p-3 rounded-2xl bg-white/5 text-zinc-500 hover:text-white transition-all">
+              <button onClick={() => setShowConfigModal(false)} className="p-3 rounded-2xl transition-all"
+                style={{ background: 'var(--input-bg)', color: 'var(--text-secondary)' }}>
                 <X size={20} />
               </button>
             </div>
@@ -1158,7 +1183,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 <div className="mt-8 flex justify-end">
                   <button 
                     onClick={() => setShowConfigModal(false)}
-                    className="px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-indigo-50 transition-all"
+                    className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95"
+                    style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
                   >
                     Lock Configuration
                   </button>
@@ -1277,20 +1303,23 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                       className="border text-xs font-bold rounded-xl px-3 py-2 outline-none w-28"
                       style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--input-text)' }}
                     />
-                    <button type="submit" className="text-xs font-bold bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded-xl transition-all">Go</button>
+                    <button type="submit" className="text-xs font-bold px-3 py-2 rounded-xl transition-all"
+                      style={{ background: 'var(--accent)', color: '#fff' }}>Go</button>
                   </form>
                   <div className="flex gap-2">
                     <button
                       disabled={viewerPage === 1 || viewerLoading}
                       onClick={() => openViewer(viewerDatasetId, viewerPage - 1, viewerYearFilter)}
-                      className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
+                      className="px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1 transition-all"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
                     >
                       <ChevronLeft size={16} /> Prev
                     </button>
                     <button
                       disabled={viewerPage >= (Math.ceil(viewerTotalRows / 50) || 1) || viewerLoading}
                       onClick={() => openViewer(viewerDatasetId, viewerPage + 1, viewerYearFilter)}
-                      className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 flex items-center gap-1 transition-all"
+                      className="px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-1 transition-all"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
                     >
                       Next <ChevronRight size={16} />
                     </button>

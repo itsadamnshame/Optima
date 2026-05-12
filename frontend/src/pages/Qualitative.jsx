@@ -217,28 +217,30 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
       {/* HEADER SECTION */}
       <div className="relative rounded-[2.5rem] p-10 overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-8"
         style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-hero)' }} />
         <div className="relative z-10 space-y-4 max-w-xl">
-          <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center gap-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: 'var(--accent)' }}>
             <Sparkles size={14} /> Intelligence Strategy Hub
           </p>
-          <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 w-fit">
+          <div className="flex items-center p-1 rounded-2xl border w-fit" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
             <button 
               onClick={() => setViewMode('discovery')}
-              className={`px-8 py-3 text-2xl font-black tracking-tighter italic transition-all rounded-xl flex items-center gap-2 ${viewMode === 'discovery' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/30 hover:text-white/50 hover:bg-white/5'}`}
+              className={`px-8 py-3 text-2xl font-black tracking-tighter italic transition-all rounded-xl flex items-center gap-2 ${viewMode === 'discovery' ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+              style={{ background: viewMode === 'discovery' ? 'var(--accent)' : 'transparent', color: viewMode === 'discovery' ? '#fff' : 'var(--text-muted)', boxShadow: viewMode === 'discovery' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
               <Sparkles size={20} className={viewMode === 'discovery' ? 'animate-pulse' : ''} />
               Discovery
             </button>
             <button 
               onClick={() => setViewMode('simulator')}
-              className={`px-8 py-3 text-2xl font-black tracking-tighter italic transition-all rounded-xl flex items-center gap-2 ${viewMode === 'simulator' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-white/30 hover:text-white/50 hover:bg-white/5'}`}
+              className={`px-8 py-3 text-2xl font-black tracking-tighter italic transition-all rounded-xl flex items-center gap-2 ${viewMode === 'simulator' ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+              style={{ background: viewMode === 'simulator' ? 'var(--accent)' : 'transparent', color: viewMode === 'simulator' ? '#fff' : 'var(--text-muted)', boxShadow: viewMode === 'simulator' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
               <Sliders size={20} className={viewMode === 'simulator' ? 'animate-bounce' : ''} />
               Simulator
             </button>
           </div>
-          <p className="text-zinc-500 text-sm leading-relaxed">
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {viewMode === 'discovery' 
               ? 'Reviewing association patterns identified via Apriori and ranked by Random Forest logic.'
               : 'Manually test bundling hypotheses against historical affinity and predicted demand alignment.'}
@@ -251,7 +253,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               <button 
                 onClick={handleCommit}
                 disabled={saveLoading}
-                className="w-80 py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center gap-3"
+                className="w-80 py-4 disabled:opacity-50 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3"
+                style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
               >
                 {saveLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 Save Strategy to Vault
@@ -266,18 +269,19 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
             </div>
           ) : (
             <>
-              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Select Analysis Session</label>
+              <label className="text-[9px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>Select Analysis Session</label>
               <select 
                 value={selectedRunId}
                 onChange={(e) => setSelectedRunId(e.target.value)}
-                className="w-full md:w-80 bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all shadow-2xl appearance-none cursor-pointer"
+                className="w-full md:w-80 border rounded-2xl px-5 py-4 text-xs font-bold outline-none transition-all shadow-2xl appearance-none cursor-pointer"
+                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-strong)', color: 'var(--text-heading)' }}
               >
                 {bundlerRuns.map(run => (
                   <option key={run.id} value={run.id}>{run.name} ({new Date(run.created_at).toLocaleDateString()})</option>
                 ))}
                 {bundlerRuns.length === 0 && <option value="">No analysis runs found</option>}
               </select>
-              <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest mt-1 text-right italic">
+              <p className="text-[8px] font-bold uppercase tracking-widest mt-1 text-right italic" style={{ color: 'var(--text-muted)' }}>
                 Models are trained in the Management Hub
               </p>
             </>
@@ -298,10 +302,10 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           <>
             {!loading && bundles.length > 0 ? (
               <div className="rounded-[2.5rem] border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700" style={cardStyle}>
-                <div className="p-8 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
+                <div className="p-8 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--glass-bg-hover)' }}>
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-black text-white uppercase italic tracking-tight">
+                      <h3 className="text-lg font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>
                         {isSandbox ? 'Strategic Discovery Sandbox' : 'Active Strategic Recommendations'}
                       </h3>
                       {isSandbox && (
@@ -315,9 +319,9 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                     </p>
                   </div>
                   <div className="flex gap-4">
-                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center">
-                       <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Pairs Identified</p>
-                       <p className="text-xl font-black text-white italic">{bundles.length}</p>
+                    <div className="px-5 py-3 rounded-2xl border flex flex-col items-center" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                       <p className="text-[8px] font-black uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Pairs Identified</p>
+                       <p className="text-xl font-black italic" style={{ color: 'var(--text-heading)' }}>{bundles.length}</p>
                     </div>
                   </div>
                 </div>
@@ -325,7 +329,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-black/20">
+                      <tr className="text-[10px] font-black uppercase tracking-widest" style={{ background: 'var(--table-header-bg)', color: 'var(--text-muted)' }}>
                         <th className="px-8 py-5">Rank</th>
                         <th className="px-8 py-5">Bundle Pair</th>
                         <th className="px-8 py-5 text-center">Probability of Success</th>
@@ -336,19 +340,19 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                     <tbody className="divide-y divide-white/5">
                       {bundles.map((bundle, idx) => (
                         <tr key={idx} className="group hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => openBundleDetail(selectedRunId, idx)}>
-                          <td className="px-8 py-8 font-black text-zinc-700 italic text-2xl group-hover:text-emerald-500 transition-colors">#{idx + 1}</td>
+                          <td className="px-8 py-8 font-black italic text-2xl group-hover:text-emerald-500 transition-colors" style={{ color: 'var(--text-faint)' }}>#{idx + 1}</td>
                           <td className="px-8 py-8">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                                <Package size={14} className="text-emerald-400" />
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--accent-glow)' }}>
+                                <Package size={14} className="text-indigo-400" />
                               </div>
-                              <span className="text-xs font-black text-white uppercase tracking-tight leading-relaxed max-w-xs">{bundle.pair}</span>
+                              <span className="text-xs font-black uppercase tracking-tight leading-relaxed max-w-xs" style={{ color: 'var(--text-heading)' }}>{bundle.pair}</span>
                             </div>
                           </td>
                           <td className="px-8 py-8">
                             <div className="flex flex-col items-center gap-2">
-                              <span className="text-sm font-black text-emerald-400 italic">{bundle.probability}%</span>
-                              <div className="w-24 h-1 bg-white/5 rounded-full overflow-hidden">
+                              <span className="text-sm font-black italic text-emerald-500">{bundle.probability}%</span>
+                              <div className="w-24 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border-subtle)' }}>
                                 <div className="h-full bg-emerald-500" style={{ width: `${bundle.probability}%` }} />
                               </div>
                             </div>
@@ -362,8 +366,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                           </td>
                           <td className="px-8 py-8">
                             <div className="flex items-start gap-3 group/info">
-                              <Info size={14} className="text-zinc-600 mt-0.5 group-hover/info:text-emerald-400 transition-colors" />
-                              <p className="text-[10px] font-bold text-zinc-500 leading-relaxed italic group-hover/info:text-zinc-300 transition-colors">
+                              <Info size={14} className="mt-0.5 group-hover/info:text-indigo-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
+                              <p className="text-[10px] font-bold leading-relaxed italic transition-colors" style={{ color: 'var(--text-muted)' }}>
                                 "{bundle.why || 'Strong historical affinity combined with emerging market trends.'}"
                               </p>
                             </div>
@@ -387,15 +391,16 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 space-y-6 text-center animate-in fade-in zoom-in duration-500">
-                <div className="p-6 rounded-full bg-zinc-900 border border-white/5">
-                  <Calendar size={48} className="text-zinc-700" />
+                <div className="p-6 rounded-full border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                  <Calendar size={48} className="opacity-20" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-black text-zinc-300 uppercase italic">No Sessions Found</h3>
-                  <p className="text-zinc-600 text-sm max-w-sm">Use the Management Hub to initiate a Product Bundling analysis session for this dataset.</p>
+                  <h3 className="text-2xl font-black uppercase italic" style={{ color: 'var(--text-secondary)' }}>No Sessions Found</h3>
+                  <p className="text-sm max-w-sm" style={{ color: 'var(--text-muted)' }}>Use the Management Hub to initiate a Product Bundling analysis session for this dataset.</p>
                   <button 
                     onClick={() => navigate('/')}
-                    className="px-8 py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all mt-4"
+                    className="px-8 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all mt-4"
+                    style={{ background: 'var(--accent)', color: '#fff', border: 'none', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
                   >
                     Go to Management Hub
                   </button>
@@ -423,7 +428,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 
                 <div className="space-y-2 overflow-y-auto max-h-[200px] pr-2 custom-scrollbar">
                   {sidebarDatasets.map(ds => (
-                    <label key={ds.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${selectedDatasetIds.includes(ds.id) ? 'bg-indigo-500/10 border-indigo-500/30 text-white shadow-lg shadow-indigo-500/10' : 'bg-black/20 border-white/5 text-zinc-500 hover:border-white/10'}`}>
+                    <label key={ds.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${selectedDatasetIds.includes(ds.id) ? 'bg-indigo-500/10 border-indigo-500/30 text-white shadow-lg shadow-indigo-500/10' : 'hover:border-white/10'}`}
+                      style={{ background: selectedDatasetIds.includes(ds.id) ? '' : 'var(--input-bg)', borderColor: selectedDatasetIds.includes(ds.id) ? '' : 'var(--border-subtle)', color: selectedDatasetIds.includes(ds.id) ? '#fff' : 'var(--text-secondary)' }}>
                       <input
                         type="checkbox"
                         checked={selectedDatasetIds.includes(ds.id)}
@@ -477,18 +483,20 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                         value={simItemA || searchA}
                         onChange={(e) => { setSearchA(e.target.value); setSimItemA(''); setShowDropdownA(true); }}
                         onFocus={() => setShowDropdownA(true)}
-                        className="w-full bg-black/40 border border-white/5 rounded-2xl pl-11 pr-4 py-4 text-xs font-bold text-white outline-none focus:border-indigo-500/50 transition-all shadow-xl"
+                        className="w-full rounded-2xl pl-11 pr-4 py-4 text-xs font-bold outline-none focus:border-indigo-500/50 transition-all shadow-xl"
+                        style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)', color: 'var(--sim-text-primary)' }}
                       />
                       {simItemA && <button onClick={() => setSimItemA('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
                     </div>
                     {showDropdownA && !simItemA && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#0c0c0e] border border-white/10 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                      <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2"
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)' }}>
                         {catalog.filter(i => i.toLowerCase().includes(searchA.toLowerCase())).length > 0 ? (
                           catalog.filter(i => i.toLowerCase().includes(searchA.toLowerCase())).slice(0, 50).map(item => (
                             <button 
                               key={item}
                               onClick={() => { setSimItemA(item); setSearchA(item); setShowDropdownA(false); }}
-                              className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 hover:text-white hover:bg-white/5 transition-all uppercase"
+                              className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 hover:text-white hover:bg-indigo-500/10 transition-all uppercase"
                             >
                               {item}
                             </button>
@@ -504,8 +512,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
                   {/* PLUS ICON */}
                   <div className="flex justify-center">
-                    <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                      <PlusCircle size={14} className="text-zinc-600" />
+                    <div className="w-8 h-8 rounded-full border flex items-center justify-center" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                      <PlusCircle size={14} style={{ color: 'var(--text-muted)' }} />
                     </div>
                   </div>
 
@@ -520,18 +528,23 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                         value={simItemB || searchB}
                         onChange={(e) => { setSearchB(e.target.value); setSimItemB(''); setShowDropdownB(true); }}
                         onFocus={() => setShowDropdownB(true)}
-                        className="w-full bg-black/40 border border-white/5 rounded-2xl pl-11 pr-4 py-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all shadow-xl"
+                        className="w-full rounded-2xl pl-11 pr-4 py-4 text-xs font-bold outline-none focus:border-emerald-500/50 transition-all shadow-xl"
+                        style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)', color: 'var(--sim-text-primary)' }}
                       />
                       {simItemB && <button onClick={() => setSimItemB('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
                     </div>
                     {showDropdownB && !simItemB && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#0c0c0e] border border-white/10 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2">
+                      <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2"
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)' }}>
                         {catalog.filter(i => i.toLowerCase().includes(searchB.toLowerCase())).length > 0 ? (
                           catalog.filter(i => i.toLowerCase().includes(searchB.toLowerCase())).slice(0, 50).map(item => (
                             <button 
                               key={item}
                               onClick={() => { setSimItemB(item); setSearchB(item); setShowDropdownB(false); }}
-                              className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 hover:text-white hover:bg-white/5 transition-all uppercase"
+                              className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black transition-all uppercase"
+                              style={{ color: 'var(--sim-text-secondary)', transition: 'all 0.2s' }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--sim-item-hover-bg)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                             >
                               {item}
                             </button>
@@ -558,9 +571,10 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
             {/* RESULTS VIEW */}
             <div className="flex flex-col">
               {simLoading ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-10 rounded-[2.5rem] border border-white/5 bg-white/[0.02] border-dashed">
+                <div className="flex-1 flex flex-col items-center justify-center p-10 rounded-[2.5rem] border border-dashed"
+                  style={{ background: 'var(--sim-item-hover-bg)', borderColor: 'var(--sim-border)' }}>
                   <Loader2 size={48} className="text-emerald-500 animate-spin mb-4" />
-                  <p className="text-xs font-black text-zinc-500 uppercase tracking-widest">Simulating Strategy...</p>
+                  <p className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--sim-text-muted)' }}>Simulating Strategy...</p>
                 </div>
               ) : simResult ? (
                 <div className="flex-1 rounded-[2.5rem] overflow-hidden flex flex-col border shadow-2xl animate-in zoom-in-95 duration-500" style={cardStyle}>
@@ -576,13 +590,13 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                     </div>
                     
                     <div className="flex items-center gap-4 py-4">
-                      <div className="flex-1 text-center px-4 py-3 rounded-2xl bg-white/5 border border-white/5">
-                        <p className="text-[8px] font-bold text-zinc-600 uppercase mb-1">Lift</p>
-                        <p className="text-sm font-black text-white italic">{simResult.lift}</p>
+                      <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
+                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Lift</p>
+                        <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{simResult.lift}</p>
                       </div>
-                      <div className="flex-1 text-center px-4 py-3 rounded-2xl bg-white/5 border border-white/5">
-                        <p className="text-[8px] font-bold text-zinc-600 uppercase mb-1">Confidence</p>
-                        <p className="text-sm font-black text-white italic">{Math.round(simResult.confidence * 100)}%</p>
+                      <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
+                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Confidence</p>
+                        <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{Math.round(simResult.confidence * 100)}%</p>
                       </div>
                     </div>
                   </div>
@@ -592,8 +606,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                         <Brain size={12} className="text-emerald-400" /> Strategic Rationale
                       </label>
-                      <div className="p-6 rounded-3xl bg-black/40 border border-white/5 shadow-inner">
-                        <p className="text-sm font-bold text-zinc-300 leading-relaxed italic">
+                      <div className="p-6 rounded-3xl border shadow-inner" style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)' }}>
+                        <p className="text-sm font-bold leading-relaxed italic" style={{ color: 'var(--sim-text-primary)' }}>
                           "{simResult.why}"
                         </p>
                       </div>
@@ -643,6 +657,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               )}
             </div>
           </div>
+
         )}
       </div>
     </div>

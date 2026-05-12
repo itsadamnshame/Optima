@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2, Sun, Moon } from 'lucide-react';
 
 import DataManagement from './pages/DataManagement';
 import Analytics from './pages/Analytics';
 import Qualitative from './pages/Qualitative';
 import BundlerDetail from './pages/BundlerDetail';
-import Playbook from './pages/Playbook';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
@@ -18,8 +17,6 @@ const PAGE_TITLES = {
   '/': 'Data & Models — Optima',
   '/analytics': 'Analytics — Optima',
   '/qualitative': 'Product Bundler — Optima',
-  '/executive-output': 'Executive Output — Optima',
-  '/account-settings': 'Account Settings — Optima',
   '/admin': 'Admin Panel — Optima',
   '/login': 'Sign In — Optima',
   '/register': 'Register — Optima',
@@ -39,11 +36,15 @@ function NavLink({ to, icon: Icon, children }) {
     <Link
       to={to}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold ${isActive
-        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 glow-pulse'
-        : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-200'
+        ? 'text-white shadow-lg shadow-indigo-500/20 glow-pulse'
+        : 'hover:bg-[var(--glass-bg-hover)]'
         }`}
+      style={{ 
+        background: isActive ? 'var(--accent)' : 'transparent',
+        color: isActive ? '#fff' : 'var(--text-muted)'
+      }}
     >
-      <Icon size={17} className={isActive ? 'text-white' : 'text-zinc-600'} />
+      <Icon size={17} className={isActive ? 'text-white' : ''} style={{ color: isActive ? '#fff' : 'var(--text-faint)' }} />
       {children}
     </Link>
   );
@@ -63,12 +64,10 @@ const AdminRoute = ({ children }) => {
 
 function AppContent() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const previousPathRef = React.useRef('/');
-  const { token, role, actualRole, username, logout, isNonAdminView, setIsNonAdminView } = useAuth();
+  const { token, role, actualRole, username, firstName, lastName, logout, isNonAdminView, setIsNonAdminView } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(location.pathname === '/account-settings');
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [accountProfile, setAccountProfile] = useState({
     first_name: '',
     last_name: '',
@@ -84,7 +83,18 @@ function AppContent() {
     new_password: '',
     confirm_password: ''
   });
+  const [accountLogs, setAccountLogs] = useState({ sessions: [], audit_logs: [] });
+  const [activeSettingsTab, setActiveSettingsTab] = useState('profile');
   const profileMenuRef = React.useRef(null);
+
+  const validatePassword = (password) => {
+    if (password.length < 8) return 'Password must be at least 8 characters.';
+    if (!/[A-Z]/.test(password)) return 'Password must include one uppercase letter.';
+    if (!/[a-z]/.test(password)) return 'Password must include one lowercase letter.';
+    if (!/[0-9]/.test(password)) return 'Password must include one number.';
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) return 'Password must include one special character.';
+    return '';
+  };
 
   const fetchAccountProfile = async () => {
     const token = localStorage.getItem('token');
@@ -109,21 +119,32 @@ function AppContent() {
     }
   };
 
+  const fetchAccountLogs = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/auth/account-activity', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to load account logs');
+      const data = await res.json();
+      setAccountLogs({
+        sessions: data.sessions || [],
+        audit_logs: data.audit_logs || []
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const openSettingsModal = () => {
     setShowProfileMenu(false);
-    if (location.pathname !== '/account-settings') {
-      previousPathRef.current = location.pathname;
-      navigate('/account-settings');
-    } else {
-      setShowSettingsModal(true);
-    }
+    setActiveSettingsTab('profile');
+    setShowSettingsModal(true);
   };
 
   const closeSettingsModal = () => {
     setShowSettingsModal(false);
-    if (location.pathname === '/account-settings') {
-      navigate(previousPathRef.current || '/');
-    }
   };
 
   const handleSaveAccountProfile = async () => {
@@ -161,6 +182,10 @@ function AppContent() {
       if (passwordForm.new_password !== passwordForm.confirm_password) {
         throw new Error('New password and confirmation do not match.');
       }
+      const passwordError = validatePassword(passwordForm.new_password);
+      if (passwordError) {
+        throw new Error(passwordError);
+      }
       const token = localStorage.getItem('token');
       const res = await fetch('/api/auth/profile/password', {
         method: 'PATCH',
@@ -185,10 +210,11 @@ function AppContent() {
   };
 
   useEffect(() => {
-    const isAccountSettings = location.pathname === '/account-settings';
-    setShowSettingsModal(isAccountSettings);
-    if (isAccountSettings) fetchAccountProfile();
-  }, [location.pathname]);
+    if (showSettingsModal) {
+      fetchAccountProfile();
+      fetchAccountLogs();
+    }
+  }, [showSettingsModal]);
 
   // Click-away listener for profile menu
   useEffect(() => {
@@ -346,15 +372,15 @@ function AppContent() {
         <aside className="w-64 flex flex-col border-r" style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}>
           {/* Logo */}
           <div className="p-6 flex items-center gap-3" style={{ borderBottom: `1px solid var(--border)` }}>
-            <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/30 glow-pulse">
+            <div className="p-2 rounded-xl text-white shadow-lg glow-pulse" style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
               <Zap size={20} />
             </div>
-            <h1 className="text-lg font-black text-white tracking-tighter">OPTIMA</h1>
+            <h1 className="text-lg font-black tracking-tighter" style={{ color: 'var(--text-heading)' }}>OPTIMA</h1>
           </div>
 
           {/* Nav */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            <p className="px-4 text-[9px] font-black text-zinc-600 uppercase tracking-[0.25em] mb-3 mt-1">Analytical Pipeline</p>
+            <p className="px-4 text-[9px] font-black uppercase tracking-[0.25em] mb-3 mt-1" style={{ color: 'var(--text-muted)' }}>Analytical Pipeline</p>
             <NavLink to="/" icon={Database}>Management Hub</NavLink>
             <NavLink to="/analytics" icon={BarChart2}>Forecasting</NavLink>
             <NavLink to="/qualitative" icon={Brain}>Product Bundler</NavLink>
@@ -372,12 +398,14 @@ function AppContent() {
             {showProfileMenu && (
               <div className="absolute bottom-full mb-2 left-4 right-4 rounded-2xl p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2 z-50"
                 style={{ background: 'var(--profile-menu-bg)', border: `1px solid var(--border-strong)` }}>
-<button onClick={openSettingsModal} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
-                  <Settings size={16} className="text-zinc-500" /> Account Settings
+                <button onClick={openSettingsModal} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl transition-all text-left"
+                  style={{ color: 'var(--text-secondary)', transition: 'all 0.2s' }}>
+                  <Settings size={16} className="opacity-70" /> Account Settings
                 </button>
 
                 {/* Theme Toggle */}
-                <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
+                <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-bold rounded-xl transition-all text-left"
+                  style={{ color: 'var(--text-secondary)' }}>
                   <span className="flex items-center gap-3">
                     {theme === 'dark' ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-indigo-400" />}
                     {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
@@ -388,8 +416,9 @@ function AppContent() {
                   <div className="my-1 border-t border-white/5" />
                 )}
                 {actualRole === 'ADMIN' && (
-                  <button onClick={() => setIsNonAdminView(!isNonAdminView)} className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-left">
-                    <span className="flex items-center gap-3"><Eye size={16} className={isNonAdminView ? "text-amber-400" : "text-zinc-500"} /> View as User</span>
+                  <button onClick={() => setIsNonAdminView(!isNonAdminView)} className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-bold rounded-xl transition-all text-left"
+                    style={{ color: 'var(--text-secondary)' }}>
+                    <span className="flex items-center gap-3"><Eye size={16} className={isNonAdminView ? "text-amber-400" : "opacity-70"} /> View as User</span>
                     {isNonAdminView && <CheckCircle2 size={14} className="text-amber-400" />}
                   </button>
                 )}
@@ -403,16 +432,16 @@ function AppContent() {
 
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center justify-between w-full p-3 rounded-2xl hover:bg-white/5 transition-all"
+              className="flex items-center justify-between w-full p-3 rounded-2xl transition-all"
               style={{ background: showProfileMenu ? 'var(--glass-bg)' : 'transparent' }}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center border" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--border-strong)' }}>
                   <User size={16} className="text-indigo-400" />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-black text-white leading-none mb-1">{username || 'Account'}</p>
-                  <p className="text-[10px] font-bold text-zinc-500 leading-none uppercase tracking-widest">{role}</p>
+                  <p className="text-sm font-black leading-none mb-1" style={{ color: 'var(--text-heading)' }}>{(firstName || lastName) ? `${firstName || ''}${firstName && lastName ? ' ' : ''}${lastName || ''} (${username})` : (username || 'Account')}</p>
+                  <p className="text-[10px] font-bold leading-none uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{role}</p>
                 </div>
               </div>
               {showProfileMenu ? <ChevronDown size={16} className="text-zinc-500" /> : <ChevronUp size={16} className="text-zinc-500" />}
@@ -474,146 +503,236 @@ function AppContent() {
               <BundlerDetail />
             </ProtectedRoute>
           } />
-          <Route path="/playbook" element={<Navigate to="/executive-output" replace />} />
-          <Route path="/account-settings" element={
-            <ProtectedRoute>
-              <div className="min-h-full" />
-            </ProtectedRoute>
-          } />
-          <Route path="/executive-output" element={
-            <ProtectedRoute>
-              <Playbook
-                recommendations={getValidData(recommendations, {})}
-                forecastMetrics={getValidData(persistedMetrics, {})}
-                isGenerating={isGenerating}
-              />
-            </ProtectedRoute>
-          } />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         </Routes>
       </main>
 
       {/* COMBINE MODAL */}
       {showSettingsModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-[2.5rem] p-8 bg-[#0f172a] border border-white/10 shadow-2xl overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-emerald-400">Account Settings</p>
-                <h2 className="text-3xl font-black text-white mt-2">Manage your account</h2>
-                <p className="text-sm text-zinc-500 mt-2 max-w-2xl">Update your profile details and change your password securely.</p>
+        <div
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeSettingsModal();
+          }}
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in overflow-y-auto"
+          style={{ background: 'var(--overlay-bg)' }}
+        >
+          <div className="w-full max-w-4xl rounded-[2rem] border shadow-2xl overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)', background: 'var(--modal-bg)', borderColor: 'var(--border-strong)' }}>
+            <div className="flex flex-col gap-6 p-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em]" style={{ color: 'var(--accent)' }}>Account Settings</p>
+                  <h2 className="text-3xl font-black mt-2" style={{ color: 'var(--text-heading)' }}>Manage your account</h2>
+                  <p className="text-sm mt-2 max-w-2xl" style={{ color: 'var(--text-secondary)' }}>Choose a tab to update your profile, change your password, or review recent activity.</p>
+                </div>
+                <button
+                  onClick={closeSettingsModal}
+                  className="rounded-2xl p-3 transition-all self-start"
+                  style={{ background: 'var(--input-bg)', color: 'var(--text-secondary)' }}
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <button
-                onClick={closeSettingsModal}
-                className="rounded-2xl bg-white/5 p-3 text-zinc-300 hover:bg-white/10 transition-all"
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            {settingsError && (
-              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-rose-200 mb-4">
-                {settingsError}
-              </div>
-            )}
-            {settingsSuccess && (
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-200 mb-4">
-                {settingsSuccess}
-              </div>
-            )}
+              <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+                <div className="rounded-[1.75rem] border p-4" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                  <div className="space-y-4">
+                    {['profile', 'password', 'activity'].map((tab) => {
+                      const labels = {
+                        profile: 'Profile',
+                        password: 'Password',
+                        activity: 'Activity'
+                      };
+                      const descriptions = {
+                        profile: 'Update your basic account details.',
+                        password: 'Change your password securely.',
+                        activity: 'Review recent sign-ins and actions.'
+                      };
+                      const isActive = activeSettingsTab === tab;
+                      return (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveSettingsTab(tab)}
+                          className={`w-full rounded-3xl px-4 py-4 text-left transition-all ${isActive ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+                          style={{ background: isActive ? 'var(--accent)' : 'transparent', color: isActive ? '#fff' : 'var(--text-muted)', boxShadow: isActive ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
+                        >
+                          <p className="text-sm font-bold uppercase tracking-[0.25em]">{labels[tab]}</p>
+                          <p className="mt-2 text-xs leading-relaxed" style={{ color: isActive ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>{descriptions[tab]}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">First Name</label>
-                <input
-                  value={accountProfile.first_name}
-                  onChange={(e) => setAccountProfile(prev => ({ ...prev, first_name: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div className="space-y-4">
-                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Last Name</label>
-                <input
-                  value={accountProfile.last_name}
-                  onChange={(e) => setAccountProfile(prev => ({ ...prev, last_name: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div className="space-y-4">
-                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Email</label>
-                <input
-                  type="email"
-                  value={accountProfile.email}
-                  onChange={(e) => setAccountProfile(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div className="space-y-4">
-                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Phone Number</label>
-                <input
-                  value={accountProfile.phone_number}
-                  onChange={(e) => setAccountProfile(prev => ({ ...prev, phone_number: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div className="space-y-4 md:col-span-2">
-                <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Middle Name</label>
-                <input
-                  value={accountProfile.middle_name}
-                  onChange={(e) => setAccountProfile(prev => ({ ...prev, middle_name: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+                <div className="rounded-[1.75rem] border p-6" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+                  {(settingsError || settingsSuccess) && (
+                    <div className="mb-6 space-y-3">
+                      {settingsError && (
+                        <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-rose-200">
+                          {settingsError}
+                        </div>
+                      )}
+                      {settingsSuccess && (
+                        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-200">
+                          {settingsSuccess}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-            <div className="mt-6 flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={handleSaveAccountProfile}
-                disabled={settingsLoading}
-                className="w-full sm:w-auto px-8 py-4 rounded-3xl bg-emerald-500 text-white font-black uppercase tracking-[0.2em] hover:bg-emerald-400 transition-all disabled:opacity-50"
-              >
-                {settingsLoading ? 'Saving...' : 'Save Profile'}
-              </button>
-              <button
-                onClick={() => setShowSettingsModal(false)}
-                className="w-full sm:w-auto px-8 py-4 rounded-3xl border border-white/10 text-white uppercase tracking-[0.2em] hover:bg-white/5 transition-all"
-              >
-                Close
-              </button>
-            </div>
+                  {activeSettingsTab === 'profile' && (
+                    <>
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-4">
+                          <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>First Name</label>
+                          <input
+                            value={accountProfile.first_name}
+                            onChange={(e) => setAccountProfile(prev => ({ ...prev, first_name: e.target.value }))}
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Last Name</label>
+                          <input
+                            value={accountProfile.last_name}
+                            onChange={(e) => setAccountProfile(prev => ({ ...prev, last_name: e.target.value }))}
+                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Email</label>
+                          <input
+                            type="email"
+                            value={accountProfile.email}
+                            onChange={(e) => setAccountProfile(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Phone Number</label>
+                          <input
+                            value={accountProfile.phone_number}
+                            onChange={(e) => setAccountProfile(prev => ({ ...prev, phone_number: e.target.value }))}
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--input-text)' }}
+                          />
+                        </div>
+                        <div className="space-y-4 md:col-span-2">
+                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Middle Name</label>
+                          <input
+                            value={accountProfile.middle_name}
+                            onChange={(e) => setAccountProfile(prev => ({ ...prev, middle_name: e.target.value }))}
+                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
 
-            <div className="mt-12 rounded-[2rem] border border-white/10 bg-black/20 p-6">
-              <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500 mb-3">Change Password</p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <input
-                  type="password"
-                  placeholder="Current password"
-                  value={passwordForm.current_password}
-                  onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
-                <input
-                  type="password"
-                  placeholder="New password"
-                  value={passwordForm.new_password}
-                  onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
-                <input
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={passwordForm.confirm_password}
-                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
-                  className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
-                />
+                      <div className="mt-6 flex flex-col sm:flex-row gap-4">
+                        <button
+                          onClick={handleSaveAccountProfile}
+                          disabled={settingsLoading}
+                          className="w-full sm:w-auto px-8 py-4 rounded-3xl text-white font-black uppercase tracking-[0.2em] transition-all disabled:opacity-50"
+                          style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
+                        >
+                          {settingsLoading ? 'Saving...' : 'Save Profile'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {activeSettingsTab === 'password' && (
+                    <>
+                      <div className="space-y-4">
+                        <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Current Password</label>
+                        <input
+                          type="password"
+                          placeholder="Current password"
+                          value={passwordForm.current_password}
+                          onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                          className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 mt-4">
+                        <div className="space-y-4">
+                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">New Password</label>
+                          <input
+                            type="password"
+                            placeholder="New password"
+                            value={passwordForm.new_password}
+                            onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Confirm Password</label>
+                          <input
+                            type="password"
+                            placeholder="Confirm new password"
+                            value={passwordForm.confirm_password}
+                            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
+                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleChangePassword}
+                        disabled={settingsLoading}
+                        className="mt-6 w-full sm:w-auto px-8 py-4 rounded-3xl text-white font-black uppercase tracking-[0.2em] transition-all disabled:opacity-50"
+                        style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
+                      >
+                        {settingsLoading ? 'Updating...' : 'Change Password'}
+                      </button>
+                    </>
+                  )}
+
+                  {activeSettingsTab === 'activity' && (
+                    <div className="space-y-8">
+                      <div>
+                        <div className="flex items-center justify-between gap-4 mb-4">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-[0.35em] text-indigo-400">Account Activity</p>
+                            <h3 className="text-xl font-black" style={{ color: 'var(--text-heading)' }}>Recent activity</h3>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          {accountLogs.audit_logs.length === 0 ? (
+                            <p className="text-sm text-zinc-500">No recent account activity found.</p>
+                          ) : (
+                            accountLogs.audit_logs.slice(0, 5).map((log, index) => (
+                              <div key={index} className="rounded-3xl border p-4" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">{log.action}</span>
+                                  <span className="text-[10px] text-zinc-500">{new Date(log.timestamp).toLocaleString()}</span>
+                                </div>
+                                <p className="mt-3 text-sm text-zinc-400">{log.details}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.35em] text-emerald-400 mb-4">Recent sessions</p>
+                        <div className="space-y-4">
+                          {accountLogs.sessions.length === 0 ? (
+                            <p className="text-sm text-zinc-500">No session history found.</p>
+                          ) : (
+                            accountLogs.sessions.slice(0, 5).map((session) => (
+                              <div key={session.id} className="rounded-3xl border p-4" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-sm font-bold text-white">{session.role} Session</span>
+                                  <span className="text-[10px] text-zinc-500">Login: {new Date(session.login_time).toLocaleString()}</span>
+                                  <span className="text-[10px] text-zinc-500">{session.logout_time ? `Logout: ${new Date(session.logout_time).toLocaleString()}` : 'Active session'}</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <button
-                onClick={handleChangePassword}
-                disabled={settingsLoading}
-                className="mt-6 w-full sm:w-auto px-8 py-4 rounded-3xl bg-indigo-500 text-white font-black uppercase tracking-[0.2em] hover:bg-indigo-400 transition-all disabled:opacity-50"
-              >
-                {settingsLoading ? 'Updating...' : 'Change Password'}
-              </button>
             </div>
           </div>
         </div>
@@ -622,7 +741,7 @@ function AppContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in" style={{ background: 'var(--overlay-bg)' }}>
           <div className="w-full max-w-lg rounded-3xl p-8" style={{ background: 'var(--modal-bg)', border: `1px solid var(--border-strong)` }}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-white">Assemble Master Dataset</h3>
+              <h3 className="text-xl font-black" style={{ color: 'var(--text-heading)' }}>Assemble Master Dataset</h3>
               <button onClick={() => setShowCombineModal(false)} className="text-zinc-500 hover:text-white"><X size={20} /></button>
             </div>
 

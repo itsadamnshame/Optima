@@ -20,7 +20,7 @@ const Login = () => {
         body: JSON.stringify({ username, password })
       });
       const data = await res.json();
-      if (res.ok) { login(data.token, data.role, data.username, data.session_id); navigate('/'); }
+      if (res.ok) { login(data.token, data.role, data.username, data.session_id, data.first_name, data.last_name); navigate('/'); }
       else setError(data.detail || 'Login failed');
     } catch { setError('Network error'); }
   };

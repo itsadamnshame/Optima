@@ -129,10 +129,10 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", con
         print(f"OPTIMA: [{item_name}] Applied SEASONAL tuning (seasonality_prior_scale=20, multiplicative mode)")
     
     elif availability_type == 'high_velocity':
-        # High velocity items: respond faster to trend shifts
+        # Rapid response items: respond faster to trend shifts
         prophet_config['changepoint_prior_scale'] = 0.10  # Default is 0.05
         prophet_config['seasonality_prior_scale'] = 5  # Reduce seasonality to emphasize trend
-        print(f"OPTIMA: [{item_name}] Applied HIGH VELOCITY tuning (changepoint_prior_scale=0.10)")
+        print(f"OPTIMA: [{item_name}] Applied RAPID RESPONSE tuning (changepoint_prior_scale=0.10)")
     
     m = Prophet(**prophet_config)
     m.fit(prophet_df)

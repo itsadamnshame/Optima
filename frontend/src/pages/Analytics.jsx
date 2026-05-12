@@ -12,6 +12,7 @@ import {
   ReferenceLine, ComposedChart, Scatter, Bar
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 // --- UI COMPONENTS ---
 
@@ -49,10 +50,37 @@ const Metric = ({ label, value, sub, trend }) => (
 
 // --- MAIN PAGE ---
 
-export default function Analytics() {
+export default function Analytics({
+  activeDatasetId,
+  isGenerating,
+  setGlobalRecommendations,
+  setGlobalLoading,
+  setPersistedChart,
+  setPersistedMetrics,
+  setLastForecastTime,
+  existingChart,
+  existingMetrics,
+  // Persisted Config
+  endDate,
+  setEndDate,
+  selectionMode,
+  setSelectionMode,
+  topN,
+  setTopN,
+  selectedManualItems,
+  setSelectedManualItems,
+  progress
+}) {
   const { token } = useAuth();
+  const { theme } = useTheme();
+  
+  // States
+  const [recommendations, setRecommendations] = useState(existingMetrics?.recommendations || {});
+  const [loading, setLoading] = useState(false);
+  const [chartData, setChartData] = useState(existingChart || []);
+  const [metrics, setMetrics] = useState(existingMetrics || {});
+  
   const [runs, setRuns] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedRun, setSelectedRun] = useState(null);
   const [runDetails, setRunDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -60,6 +88,25 @@ export default function Analytics() {
   const [activeTab, setActiveTab] = useState('global'); 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Get dynamic colors from CSS variables
+  const getChartColors = () => {
+    return {
+      grid: 'var(--chart-grid)',
+      axis: 'var(--chart-axis)',
+      label: 'var(--chart-label)',
+      actual: 'var(--chart-line-actual)',
+      forecast: 'var(--chart-line-forecast)',
+      area: 'var(--chart-area-fill)',
+      tooltip: {
+        bg: 'var(--chart-tooltip-bg)',
+        border: 'var(--chart-tooltip-border)',
+        text: 'var(--chart-tooltip-text)'
+      }
+    };
+  };
+
+  const chartColors = getChartColors();
 
   useEffect(() => {
     fetchRuns();
@@ -142,6 +189,32 @@ export default function Analytics() {
 
   // --- RENDERERS ---
 
+  if (isGenerating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 space-y-8 animate-in fade-in zoom-in-95 duration-700">
+        <div className="relative">
+          <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full animate-pulse" />
+          <div className="relative w-32 h-32 rounded-full border-4 border-indigo-500/20 flex items-center justify-center">
+            <Brain size={48} className="text-indigo-500 animate-bounce" />
+            <div className="absolute inset-0 rounded-full border-t-4 border-indigo-500 animate-spin" />
+          </div>
+        </div>
+        <div className="text-center space-y-4 max-w-md">
+          <h2 className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: 'var(--text-heading)' }}>Synthesizing Models</h2>
+          <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+            <div className="h-full bg-indigo-500 transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.5)]" style={{ width: `${progress}%` }} />
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>
+            Processing Active Dataset — {Math.round(progress)}%
+          </p>
+          <p className="text-xs font-medium italic" style={{ color: 'var(--text-secondary)' }}>
+            The hybrid model is currently aligning historical seasonal signals with trend-loess decomposition. This may take a moment.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (selectedRun && runDetails) {
     const currentItem = activeTab === 'global' ? 'GLOBAL_BASELINE' : selectedProduct;
     const chartData = getChartData(currentItem);
@@ -158,7 +231,8 @@ export default function Analytics() {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setSelectedRun(null)}
-              className="p-3 rounded-2xl bg-white/5 text-zinc-400 hover:text-white transition-all border border-white/5"
+              className="p-3 rounded-2xl transition-all"
+              style={{ background: 'var(--input-bg)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
             >
               <ArrowLeft size={20} />
             </button>
@@ -166,11 +240,11 @@ export default function Analytics() {
               <div className="flex items-center gap-2 text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">
                 <Clock size={12} /> {new Date(selectedRun.created_at).toLocaleDateString()} Run
               </div>
-              <h2 className="text-3xl font-black text-white tracking-tighter">{selectedRun.name}</h2>
+              <h2 className="text-3xl font-black tracking-tighter" style={{ color: 'var(--text-heading)' }}>{selectedRun.name}</h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-black/20 p-1 rounded-2xl border border-white/5">
+          <div className="flex items-center gap-2 p-1 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
             <button 
               onClick={() => setActiveTab('global')}
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'global' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-zinc-500 hover:text-zinc-300'}`}
@@ -284,30 +358,30 @@ export default function Analytics() {
                   <ComposedChart data={chartData}>
                     <defs>
                       <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        <stop offset="5%" stopColor={chartColors.forecast} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={chartColors.forecast} stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#71717a', fontSize: 10, fontWeight: 700}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#71717a', fontSize: 10, fontWeight: 700}} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 10, fontWeight: 700}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 10, fontWeight: 700}} />
                     <Tooltip 
                       contentStyle={{ 
-                        background: '#18181b', 
-                        border: '1px solid rgba(255,255,255,0.1)', 
+                        background: chartColors.tooltip.bg, 
+                        border: `1px solid ${chartColors.tooltip.border}`, 
                         borderRadius: '16px', 
                         fontSize: '11px',
-                        color: '#f4f4f5',
+                        color: chartColors.tooltip.text,
                         fontWeight: 'bold'
                       }} 
-                      itemStyle={{ color: '#f4f4f5' }}
-                      labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+                      itemStyle={{ color: chartColors.tooltip.text }}
+                      labelStyle={{ color: chartColors.label, marginBottom: '4px' }}
                     />
-                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#a1a1aa' }} />
-                    <Area type="monotone" dataKey="upper" stroke="none" fill="rgba(99,102,241,0.15)" connectNulls name="Confidence Upper" />
-                    <Line type="monotone" dataKey="forecast" stroke="#818cf8" strokeWidth={4} dot={false} name="Hybrid Prediction" />
-                    <Line type="monotone" dataKey="actual" stroke="#ffffff" strokeWidth={4} dot={{ r: 5, fill: '#ffffff' }} name="Historical Actual" />
-                    <ReferenceLine x={chartData.find(d => !d.actual)?.date} stroke="#4f46e5" strokeDasharray="3 3" label={{ value: 'PREDICTION', position: 'insideTopRight', fill: '#6366f1', fontSize: 8, fontWeight: 900 }} />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: chartColors.label }} />
+                    <Area type="monotone" dataKey={['lower', 'upper']} stroke={chartColors.forecast} strokeWidth={0.5} fill={chartColors.area} connectNulls name="Confidence Range" />
+                    <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={false} name="Hybrid Prediction" />
+                    <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={4} dot={{ r: 5, fill: chartColors.actual }} name="Historical Actual" />
+                    <ReferenceLine x={chartData.find(d => !d.actual)?.date} stroke={chartColors.forecast} strokeDasharray="3 3" label={{ value: 'PREDICTION', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -319,21 +393,21 @@ export default function Analytics() {
                 <div className="h-[250px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#71717a', fontSize: 10, fontWeight: 700}} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#71717a', fontSize: 10, fontWeight: 700}} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 10, fontWeight: 700}} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 10, fontWeight: 700}} />
                       <Tooltip 
                         contentStyle={{ 
-                          background: '#18181b', 
-                          border: '1px solid rgba(255,255,255,0.1)', 
+                          background: chartColors.tooltip.bg, 
+                          border: `1px solid ${chartColors.tooltip.border}`, 
                           borderRadius: '16px', 
                           fontSize: '11px',
-                          color: '#f4f4f5'
+                          color: chartColors.tooltip.text
                         }} 
-                        itemStyle={{ color: '#f4f4f5' }}
+                        itemStyle={{ color: chartColors.tooltip.text }}
                       />
-                      <Line type="monotone" dataKey="forecast" stroke="#818cf8" strokeWidth={4} dot={{ r: 5, fill: '#818cf8' }} name="Target" />
-                      <Line type="monotone" dataKey="actual" stroke="#ffffff" strokeWidth={3} dot={{ r: 4, fill: '#ffffff' }} name="History" />
+                      <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={{ r: 5, fill: chartColors.forecast }} name="Target" />
+                      <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={3} dot={{ r: 4, fill: chartColors.actual }} name="History" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -380,17 +454,17 @@ export default function Analytics() {
                               date: d,
                               val: stl[component][i]
                             }))} margin={{ top: 15, right: 15, left: 15, bottom: 5 }}>
-                              <CartesianGrid strokeDasharray="0" stroke="rgba(99,102,241,0.1)" vertical={true} />
-                              <XAxis dataKey="date" hide={idx !== 3} axisLine={false} tickLine={false} tick={{fill: '#71717a', fontSize: 8}} />
+                              <CartesianGrid strokeDasharray="0" stroke={chartColors.grid} vertical={true} />
+                              <XAxis dataKey="date" hide={idx !== 3} axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 8}} />
                               <YAxis hide domain={['auto', 'auto']} />
                               <Tooltip 
-                                contentStyle={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '9px', padding: '8px' }}
-                                itemStyle={{ color: '#fff', padding: 0 }}
+                                contentStyle={{ background: chartColors.tooltip.bg, border: `1px solid ${chartColors.tooltip.border}`, borderRadius: '12px', fontSize: '9px', padding: '8px' }}
+                                itemStyle={{ color: chartColors.tooltip.text, padding: 0 }}
                                 cursor={{ stroke: 'rgba(99,102,241,0.2)', strokeWidth: 1 }}
                               />
                               {component === 'remainder' ? (
                                 <>
-                                  <ReferenceLine y={0} stroke="#52525b" strokeWidth={1} />
+                                  <ReferenceLine y={0} stroke={chartColors.axis} strokeWidth={1} />
                                   <Scatter 
                                     dataKey="val" 
                                     fill="#f59e0b"
@@ -400,7 +474,7 @@ export default function Analytics() {
                                 <Area 
                                   type="monotone" 
                                   dataKey="val" 
-                                  stroke={component === 'observed' ? '#fff' : '#6366f1'} 
+                                  stroke={component === 'observed' ? chartColors.actual : chartColors.forecast} 
                                   fill={component === 'observed' ? 'rgba(255,255,255,0.05)' : 'rgba(99,102,241,0.05)'} 
                                   strokeWidth={2} 
                                   fillOpacity={1}
