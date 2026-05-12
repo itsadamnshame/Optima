@@ -188,11 +188,11 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
   const getBadgeStyle = (badge) => {
     switch (badge) {
-      case 'STRATEGIC': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-      case 'EMERGING': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
-      case 'SEASONAL': return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-      case 'RISK': return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
-      default: return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30';
+      case 'STRATEGIC': return { background: 'var(--success-bg)', color: '#10b981', borderColor: 'var(--success-border)' };
+      case 'EMERGING': return { background: 'var(--card-accent-bg)', color: 'var(--accent)', borderColor: 'var(--border-subtle)' };
+      case 'SEASONAL': return { background: 'var(--badge-yearly-bg)', color: '#fbbf24', borderColor: 'rgba(251,191,36,0.3)' };
+      case 'RISK': return { background: 'var(--error-bg)', color: '#f43f5e', borderColor: 'var(--error-border)' };
+      default: return { background: 'var(--glass-bg)', color: 'var(--text-muted)', borderColor: 'var(--glass-border)' };
     }
   };
 
@@ -200,17 +200,15 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       {/* NOTIFICATION SYSTEM */}
       {notification && (
-        <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md animate-in slide-in-from-top-8 duration-500`}>
-          <div className={`p-4 rounded-2xl border shadow-2xl flex items-center justify-between gap-4 ${notification.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}
-               style={{ backdropFilter: 'blur(12px)' }}>
-            <div className="flex items-center gap-3">
+        <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 animate-in slide-in-from-top-4`}
+          style={{ background: notification.type === 'success' ? 'var(--success-bg)' : 'var(--error-bg)', borderColor: notification.type === 'success' ? 'var(--success-border)' : 'var(--error-border)' }}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl`} style={{ background: notification.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: notification.type === 'success' ? '#10b981' : '#f43f5e' }}>
               {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-              <p className="text-xs font-black uppercase tracking-widest">{notification.message}</p>
             </div>
-            <button onClick={() => setNotification(null)} className="opacity-50 hover:opacity-100 transition-opacity">
-              <X size={14} />
-            </button>
+            <p className="text-xs font-black uppercase tracking-tight" style={{ color: notification.type === 'success' ? '#10b981' : '#f43f5e' }}>{notification.message}</p>
           </div>
+          <button onClick={() => setNotification(null)} className="transition-all hover:opacity-70" style={{ color: notification.type === 'success' ? '#10b981' : '#f43f5e' }}><X size={16} /></button>
         </div>
       )}
 
@@ -222,22 +220,20 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           <p className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: 'var(--accent)' }}>
             <Sparkles size={14} /> Intelligence Strategy Hub
           </p>
-          <div className="flex items-center p-1 rounded-2xl border w-fit" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+          <div className="flex bg-white/5 p-1.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
             <button 
               onClick={() => setViewMode('discovery')}
-              className={`px-8 py-3 text-2xl font-black tracking-tighter italic transition-all rounded-xl flex items-center gap-2 ${viewMode === 'discovery' ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
-              style={{ background: viewMode === 'discovery' ? 'var(--accent)' : 'transparent', color: viewMode === 'discovery' ? '#fff' : 'var(--text-muted)', boxShadow: viewMode === 'discovery' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'discovery' ? 'text-white shadow-lg' : ''}`}
+              style={{ background: viewMode === 'discovery' ? 'var(--accent)' : 'transparent', color: viewMode === 'discovery' ? '#fff' : 'var(--text-faint)', boxShadow: viewMode === 'discovery' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              <Sparkles size={20} className={viewMode === 'discovery' ? 'animate-pulse' : ''} />
-              Discovery
+              Discovery Matrix
             </button>
             <button 
               onClick={() => setViewMode('simulator')}
-              className={`px-8 py-3 text-2xl font-black tracking-tighter italic transition-all rounded-xl flex items-center gap-2 ${viewMode === 'simulator' ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
-              style={{ background: viewMode === 'simulator' ? 'var(--accent)' : 'transparent', color: viewMode === 'simulator' ? '#fff' : 'var(--text-muted)', boxShadow: viewMode === 'simulator' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'simulator' ? 'text-white shadow-lg' : ''}`}
+              style={{ background: viewMode === 'simulator' ? 'var(--accent)' : 'transparent', color: viewMode === 'simulator' ? '#fff' : 'var(--text-faint)', boxShadow: viewMode === 'simulator' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              <Sliders size={20} className={viewMode === 'simulator' ? 'animate-bounce' : ''} />
-              Simulator
+              Affinity Simulator
             </button>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -248,44 +244,32 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
         </div>
 
         <div className="relative z-10 flex flex-col gap-2 w-full md:w-auto">
-          {isSandbox ? (
-            <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            {isSandbox && (
               <button 
                 onClick={handleCommit}
                 disabled={saveLoading}
-                className="w-80 py-4 disabled:opacity-50 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3"
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50"
                 style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
               >
-                {saveLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                Save Strategy to Vault
+                {saveLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Commit Strategy
               </button>
-              <button 
-                onClick={() => { setIsSandbox(false); navigate('/', { replace: true, state: {} }); }}
-                className="w-full text-[9px] font-black text-zinc-600 uppercase tracking-widest hover:text-zinc-400 transition-colors flex items-center justify-center gap-2"
-              >
-                <ChevronLeft size={10} />
-                Return to Model Training
-              </button>
-            </div>
-          ) : (
-            <>
-              <label className="text-[9px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>Select Analysis Session</label>
+            )}
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+              <Database size={14} style={{ color: 'var(--accent)' }} />
               <select 
-                value={selectedRunId}
-                onChange={(e) => setSelectedRunId(e.target.value)}
-                className="w-full md:w-80 border rounded-2xl px-5 py-4 text-xs font-bold outline-none transition-all shadow-2xl appearance-none cursor-pointer"
-                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-strong)', color: 'var(--text-heading)' }}
+                value={selectedRunId} 
+                onChange={(e) => { setSelectedRunId(e.target.value); setIsSandbox(false); }}
+                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest"
+                style={{ color: 'var(--text-primary)' }}
               >
+                {isSandbox && <option value="sandbox">Sandbox: {stagedInfo?.name || 'New Result'}</option>}
                 {bundlerRuns.map(run => (
-                  <option key={run.id} value={run.id}>{run.name} ({new Date(run.created_at).toLocaleDateString()})</option>
+                  <option key={run.id} value={run.id.toString()}>{run.name.toUpperCase()}</option>
                 ))}
-                {bundlerRuns.length === 0 && <option value="">No analysis runs found</option>}
               </select>
-              <p className="text-[8px] font-bold uppercase tracking-widest mt-1 text-right italic" style={{ color: 'var(--text-muted)' }}>
-                Models are trained in the Management Hub
-              </p>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -304,19 +288,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               <div className="rounded-[2.5rem] border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700" style={cardStyle}>
                 <div className="p-8 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--glass-bg-hover)' }}>
                   <div>
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>
-                        {isSandbox ? 'Strategic Discovery Sandbox' : 'Active Strategic Recommendations'}
-                      </h3>
-                      {isSandbox && (
-                        <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[8px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                          <Sparkles size={10} /> Pending Review
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">
-                      {isSandbox ? 'Discovering Emerging Patterns...' : 'Cross-Engine Verification Complete'}
-                    </p>
+                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Discovery Matrix</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Identified Product Affinity Bundles</p>
                   </div>
                   <div className="flex gap-4">
                     <div className="px-5 py-3 rounded-2xl border flex flex-col items-center" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
@@ -326,84 +299,74 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="text-[10px] font-black uppercase tracking-widest" style={{ background: 'var(--table-header-bg)', color: 'var(--text-muted)' }}>
-                        <th className="px-8 py-5">Rank</th>
-                        <th className="px-8 py-5">Bundle Pair</th>
-                        <th className="px-8 py-5 text-center">Probability of Success</th>
-                        <th className="px-8 py-5 text-center">Market Context</th>
-                        <th className="px-8 py-5">Strategic Rationale</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {bundles.map((bundle, idx) => (
-                        <tr key={idx} className="group hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => openBundleDetail(selectedRunId, idx)}>
-                          <td className="px-8 py-8 font-black italic text-2xl group-hover:text-emerald-500 transition-colors" style={{ color: 'var(--text-faint)' }}>#{idx + 1}</td>
-                          <td className="px-8 py-8">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--accent-glow)' }}>
-                                <Package size={14} className="text-indigo-400" />
-                              </div>
-                              <span className="text-xs font-black uppercase tracking-tight leading-relaxed max-w-xs" style={{ color: 'var(--text-heading)' }}>{bundle.pair}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8">
+                  {bundles.map((bundle, idx) => (
+                    <div key={idx} className="p-6 rounded-3xl border flex flex-col gap-6" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+                      <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+                              <Package size={20} />
                             </div>
-                          </td>
-                          <td className="px-8 py-8">
-                            <div className="flex flex-col items-center gap-2">
-                              <span className="text-sm font-black italic text-emerald-500">{bundle.probability}%</span>
-                              <div className="w-24 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border-subtle)' }}>
-                                <div className="h-full bg-emerald-500" style={{ width: `${bundle.probability}%` }} />
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-8">
-                            <div className="flex justify-center">
-                              <span className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${getBadgeStyle(bundle.badge)}`}>
-                                {bundle.badge}
+                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Bundle #{idx + 1}</span>
+                          </div>
+                          <div className="px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest"
+                            style={{ 
+                              background: getBadgeStyle(bundle.badge).background,
+                              color: getBadgeStyle(bundle.badge).color,
+                              borderColor: getBadgeStyle(bundle.badge).borderColor
+                            }}>
+                            {bundle.badge}
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap gap-2">
+                            {bundle.items.map(item => (
+                              <span key={item} className="px-3 py-1 rounded-lg border text-[10px] font-bold"
+                                style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                {item}
                               </span>
+                            ))}
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+                              <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Confidence</p>
+                              <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{(bundle.confidence * 100).toFixed(1)}%</p>
                             </div>
-                          </td>
-                          <td className="px-8 py-8">
-                            <div className="flex items-start gap-3 group/info">
-                              <Info size={14} className="mt-0.5 group-hover/info:text-indigo-400 transition-colors" style={{ color: 'var(--text-muted)' }} />
-                              <p className="text-[10px] font-bold leading-relaxed italic transition-colors" style={{ color: 'var(--text-muted)' }}>
-                                "{bundle.why || 'Strong historical affinity combined with emerging market trends.'}"
-                              </p>
+                            <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+                              <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Support</p>
+                              <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{(bundle.support * 100).toFixed(2)}%</p>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={() => openBundleDetail(selectedRunId, idx)}
+                          className="w-full py-4 rounded-2xl border font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:shadow-lg"
+                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+                        >
+                          Deep Dive Result <ArrowRight size={14} />
+                        </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : loading ? (
-              <div className="rounded-[2.5rem] p-32 border flex flex-col items-center justify-center space-y-8"
-                style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-                <div className="relative">
-                  <div className="w-20 h-20 border-4 border-emerald-900 border-t-emerald-500 rounded-full animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Brain className="text-emerald-400 animate-pulse" size={24} />
-                  </div>
+              <div className="col-span-full py-32 flex flex-col items-center justify-center space-y-6">
+                <div className="p-6 rounded-full" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+                  <Loader2 size={40} className="animate-spin" />
                 </div>
-                <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.3em]">Loading Strategic Matrix...</p>
+                <p className="font-black uppercase tracking-[0.3em] text-xs" style={{ color: 'var(--text-faint)' }}>Assembling Affinity Matrix...</p>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 space-y-6 text-center animate-in fade-in zoom-in duration-500">
-                <div className="p-6 rounded-full border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                  <Calendar size={48} className="opacity-20" />
+              <div className="col-span-full py-32 flex flex-col items-center justify-center text-center space-y-4">
+                <div className="p-6 rounded-full" style={{ background: 'var(--input-bg)', color: 'var(--text-faint)', opacity: 0.2 }}>
+                  <Search size={40} />
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-black uppercase italic" style={{ color: 'var(--text-secondary)' }}>No Sessions Found</h3>
-                  <p className="text-sm max-w-sm" style={{ color: 'var(--text-muted)' }}>Use the Management Hub to initiate a Product Bundling analysis session for this dataset.</p>
-                  <button 
-                    onClick={() => navigate('/')}
-                    className="px-8 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all mt-4"
-                    style={{ background: 'var(--accent)', color: '#fff', border: 'none', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
-                  >
-                    Go to Management Hub
-                  </button>
+                <div>
+                  <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>No Bundles Found</h3>
+                  <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>Lower your discovery sensitivity or ingest more transactional data to identify affinities.</p>
                 </div>
               </div>
             )}
@@ -412,17 +375,16 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* ITEM SELECTORS */}
             <div className="space-y-6">
-              {/* DATA SCOPING (LIKE TRAINING) */}
               <div className="rounded-[2.5rem] p-8 space-y-6" style={cardStyle}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-                      <Database size={20} className="text-indigo-400" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-widest">Strategic Scoping</h4>
-                      <p className="text-[10px] text-zinc-500 font-bold uppercase">Select Year Ranges / Models</p>
-                    </div>
+                     <div className="w-10 h-10 rounded-2xl flex items-center justify-center border" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)' }}>
+                       <Database size={20} style={{ color: 'var(--accent)' }} />
+                     </div>
+                     <div>
+                       <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Strategic Scoping</h4>
+                       <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>Select Year Ranges / Models</p>
+                     </div>
                   </div>
                 </div>
                 
@@ -439,10 +401,10 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                         }}
                         className="w-4 h-4 rounded accent-indigo-500"
                       />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-black truncate uppercase">{ds.title}</p>
-                        <p className="text-[9px] opacity-40 font-bold tracking-wider uppercase">{(ds.row_count || 0).toLocaleString()} Transaction Records</p>
-                      </div>
+                       <div className="min-w-0 flex-1">
+                         <p className="text-[11px] font-black truncate uppercase">{ds.title}</p>
+                         <p className="text-[9px] font-bold tracking-wider uppercase" style={{ color: 'var(--text-faint)' }}>{(ds.row_count || 0).toLocaleString()} Transaction Records</p>
+                       </div>
                     </label>
                   ))}
                   {sidebarDatasets.length === 0 && (
@@ -454,29 +416,21 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               <div className="rounded-[2.5rem] p-8 space-y-8" style={cardStyle}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-                      <Target size={20} className="text-indigo-400" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-widest">Bundle Hypothesis</h4>
-                      <p className="text-[10px] text-zinc-500 font-bold uppercase">Manual Pair Selection</p>
-                    </div>
+                     <div className="w-10 h-10 rounded-2xl flex items-center justify-center border" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)' }}>
+                       <Target size={20} style={{ color: 'var(--accent)' }} />
+                     </div>
+                     <div>
+                       <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Bundle Hypothesis</h4>
+                       <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>Manual Pair Selection</p>
+                     </div>
                   </div>
-                  
-                  {(!stagedInfo?.refId && (!selectedRunId || selectedRunId === 'none' || selectedRunId === '')) && (
-                    <div className="px-3 py-1.5 rounded-xl bg-amber-500/5 border border-amber-500/20 flex items-center gap-2 text-amber-500/60" title="Predictive demand models have not been trained for this session. Simulation uses historical affinity only.">
-                      <Info size={12} />
-                      <span className="text-[8px] font-black uppercase tracking-tighter">Historical Only</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-6">
-                  {/* Item A */}
-                  <div className="relative">
-                    <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1 mb-2 block">Primary Item</label>
-                    <div className="relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
+                   <div className="relative">
+                     <label className="text-[9px] font-black uppercase tracking-widest ml-1 mb-2 block" style={{ color: 'var(--text-muted)' }}>Primary Item</label>
+                     <div className="relative">
+                       <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-faint)' }} />
                       <input 
                         type="text"
                         placeholder="Search primary item..."
@@ -488,40 +442,18 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       />
                       {simItemA && <button onClick={() => setSimItemA('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
                     </div>
-                    {showDropdownA && !simItemA && (
-                      <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2"
-                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)' }}>
-                        {catalog.filter(i => i.toLowerCase().includes(searchA.toLowerCase())).length > 0 ? (
-                          catalog.filter(i => i.toLowerCase().includes(searchA.toLowerCase())).slice(0, 50).map(item => (
-                            <button 
-                              key={item}
-                              onClick={() => { setSimItemA(item); setSearchA(item); setShowDropdownA(false); }}
-                              className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black text-zinc-400 hover:text-white hover:bg-indigo-500/10 transition-all uppercase"
-                            >
-                              {item}
-                            </button>
-                          ))
-                        ) : (
-                          <p className="p-4 text-[10px] font-black text-zinc-600 uppercase italic">
-                            {(!activeDatasetId && !location.state?.stagedDatasetId) ? "Select active dataset in sidebar" : "No items found"}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
 
-                  {/* PLUS ICON */}
                   <div className="flex justify-center">
                     <div className="w-8 h-8 rounded-full border flex items-center justify-center" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
                       <PlusCircle size={14} style={{ color: 'var(--text-muted)' }} />
                     </div>
                   </div>
 
-                  {/* Item B */}
-                  <div className="relative">
-                    <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1 mb-2 block">Secondary Item</label>
-                    <div className="relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
+                   <div className="relative">
+                     <label className="text-[9px] font-black uppercase tracking-widest ml-1 mb-2 block" style={{ color: 'var(--text-muted)' }}>Secondary Item</label>
+                     <div className="relative">
+                       <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-faint)' }} />
                       <input 
                         type="text"
                         placeholder="Search secondary item..."
@@ -533,38 +465,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       />
                       {simItemB && <button onClick={() => setSimItemB('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
                     </div>
-                    {showDropdownB && !simItemB && (
-                      <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar p-2"
-                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)' }}>
-                        {catalog.filter(i => i.toLowerCase().includes(searchB.toLowerCase())).length > 0 ? (
-                          catalog.filter(i => i.toLowerCase().includes(searchB.toLowerCase())).slice(0, 50).map(item => (
-                            <button 
-                              key={item}
-                              onClick={() => { setSimItemB(item); setSearchB(item); setShowDropdownB(false); }}
-                              className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black transition-all uppercase"
-                              style={{ color: 'var(--sim-text-secondary)', transition: 'all 0.2s' }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--sim-item-hover-bg)'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              {item}
-                            </button>
-                          ))
-                        ) : (
-                          <p className="p-4 text-[10px] font-black text-zinc-600 uppercase italic">
-                            {(!activeDatasetId && !location.state?.stagedDatasetId) ? "Select active dataset in sidebar" : "No items found"}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-
-              <div className="p-6 rounded-[2.5rem] bg-indigo-500/5 border border-indigo-500/10 flex items-start gap-4">
-                <Info size={20} className="text-indigo-400 mt-1" />
-                <p className="text-xs text-zinc-500 font-bold leading-relaxed italic">
-                  The simulator cross-references your manual pairing against historical transactional affinity and predicted demand alignment. Scores reflect the probability of this bundle succeeding in the current market window.
-                </p>
               </div>
             </div>
 
@@ -583,10 +485,10 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       <span className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${getBadgeStyle(simResult.badge)}`}>
                         {simResult.badge}
                       </span>
-                      <div className="text-right">
-                        <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-1">Model Score</p>
-                        <p className="text-4xl font-black text-white italic tracking-tighter">{simResult.probability}%</p>
-                      </div>
+                       <div className="text-right">
+                         <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Model Score</p>
+                         <p className="text-4xl font-black italic tracking-tighter" style={{ color: 'var(--text-heading)' }}>{simResult.probability}%</p>
+                       </div>
                     </div>
                     
                     <div className="flex items-center gap-4 py-4">
@@ -602,10 +504,10 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                   </div>
 
                   <div className="p-8 space-y-6 flex-1 bg-white/[0.01]">
-                    <div className="space-y-3">
-                      <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                        <Brain size={12} className="text-emerald-400" /> Strategic Rationale
-                      </label>
+                     <div className="space-y-3">
+                       <label className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
+                         <Brain size={12} style={{ color: 'var(--accent)' }} /> Strategic Rationale
+                       </label>
                       <div className="p-6 rounded-3xl border shadow-inner" style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)' }}>
                         <p className="text-sm font-bold leading-relaxed italic" style={{ color: 'var(--sim-text-primary)' }}>
                           "{simResult.why}"
@@ -613,8 +515,6 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       </div>
                     </div>
                   </div>
-
-
 
                   <div className="p-6 bg-black/40 border-t border-white/5">
                     <button 
@@ -646,13 +546,13 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-10 rounded-[2.5rem] border border-white/5 bg-white/[0.02] border-dashed text-center">
-                  <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mb-6 border border-white/5">
-                    <Sliders size={24} className="text-zinc-700" />
-                  </div>
-                  <h3 className="text-xl font-black text-zinc-500 uppercase italic">Hypothesis Required</h3>
-                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-2 max-w-[240px]">
-                    Select two items from the catalog to begin the predictive simulation.
-                  </p>
+                   <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 border" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)' }}>
+                     <Sliders size={24} style={{ color: 'var(--text-faint)' }} />
+                   </div>
+                   <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-faint)' }}>Hypothesis Required</h3>
+                   <p className="text-[10px] font-bold uppercase tracking-widest mt-2 max-w-[240px]" style={{ color: 'var(--text-faint)' }}>
+                     Select two items from the catalog to begin the predictive simulation.
+                   </p>
                 </div>
               )}
             </div>

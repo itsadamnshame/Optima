@@ -39,23 +39,23 @@ const Login = () => {
       <div className="relative z-10 w-full max-w-sm p-8 rounded-[2rem]" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)`, backdropFilter: 'blur(12px)' }}>
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-500/30 glow-pulse">
+          <div className="p-2.5 rounded-xl text-white shadow-lg glow-pulse" style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
             <Zap size={22} />
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tighter italic">OPTIMA</h1>
+          <h1 className="text-2xl font-black tracking-tighter italic" style={{ color: 'var(--text-heading)' }}>OPTIMA</h1>
         </div>
 
-        <h2 className="text-lg font-bold text-zinc-200 text-center mb-6">Welcome Back</h2>
+        <h2 className="text-lg font-bold text-center mb-6" style={{ color: 'var(--text-primary)' }}>Welcome Back</h2>
 
         {error && (
-          <div className="p-3 rounded-xl mb-4 text-sm font-medium text-rose-300" style={{ background: 'var(--error-bg)', border: `1px solid var(--error-border)` }}>
+          <div className="p-3 rounded-xl mb-4 text-sm font-medium" style={{ background: 'var(--error-bg)', border: `1px solid var(--error-border)`, color: 'var(--sim-error-text)' }}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">Username</label>
+            <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Username</label>
             <input
               type="text"
               className="w-full px-4 py-3 rounded-xl outline-none font-medium text-sm transition-all focus:ring-2 focus:ring-indigo-500/50"
@@ -66,7 +66,7 @@ const Login = () => {
             />
           </div>
           <div>
-            <label className="block text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">Password</label>
+            <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Password</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -76,21 +76,21 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <button type="button" className="absolute right-3 top-3 text-zinc-600 hover:text-zinc-300 transition-colors" onClick={() => setShowPassword(!showPassword)}>
+              <button type="button" className="absolute right-3 top-3 transition-colors" style={{ color: 'var(--text-muted)' }} onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
           <button type="submit"
             className="w-full font-black py-3 rounded-xl transition-all mt-2 text-white text-sm"
-            style={{ background: 'linear-gradient(135deg,#4f46e5,#6366f1)', boxShadow: '0 0 24px rgba(99,102,241,0.3)' }}>
+            style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
             Sign In
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-zinc-600">
+        <p className="mt-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-indigo-400 font-bold hover:text-indigo-300 transition-colors">Register</Link>
+          <Link to="/register" className="font-bold hover:opacity-80 transition-opacity" style={{ color: 'var(--accent)' }}>Register</Link>
         </p>
       </div>
     </div>

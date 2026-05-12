@@ -54,8 +54,8 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
       {isGenerating ? (
         <div className="rounded-[2.5rem] p-24 border flex flex-col items-center justify-center space-y-4"
           style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-          <div className="w-12 h-12 border-4 border-indigo-900 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-zinc-500 font-black uppercase tracking-widest text-[10px]">Synthesizing Executive Narrative...</p>
+          <div className="w-12 h-12 border-4 border-t-indigo-500 rounded-full animate-spin" style={{ borderColor: 'var(--border)' }} />
+          <p className="font-black uppercase tracking-widest text-[10px]" style={{ color: 'var(--text-muted)' }}>Synthesizing Executive Narrative...</p>
         </div>
       ) : hasData ? (
         <div className="space-y-6">
@@ -66,7 +66,7 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
               <FileText size={120} />
             </div>
             <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-6 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-              <TrendingUp size={14} className="text-emerald-500" /> Tactical Narrative
+              <TrendingUp size={14} style={{ color: 'var(--accent)' }} /> Tactical Narrative
             </h3>
             {generateStrategy()}
           </div>
@@ -75,18 +75,18 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="rounded-[2rem] p-8" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
               <h3 className="text-[9px] font-black uppercase tracking-widest mb-6 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-                <CheckCircle2 size={14} className="text-emerald-500" /> Action Directives
+                <CheckCircle2 size={14} style={{ color: 'var(--accent)' }} /> Action Directives
               </h3>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
-                  <div className="mt-1 p-1 rounded-full flex-shrink-0" style={{ background: 'rgba(52,211,153,0.15)' }}>
-                    <ArrowRight size={11} className="text-emerald-400" />
+                  <div className="mt-1 p-1 rounded-full flex-shrink-0" style={{ background: 'var(--card-accent-bg)' }}>
+                    <ArrowRight size={11} style={{ color: 'var(--accent)' }} />
                   </div>
-                  <p className="text-sm font-medium text-zinc-400">Consider bundling opportunities for high-affinity pairs to capture potential demand volume.</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Consider bundling opportunities for high-affinity pairs to capture potential demand volume.</p>
                 </li>
                 <li className="flex items-start gap-3">
-                  <div className="mt-1 p-1 rounded-full flex-shrink-0" style={{ background: 'rgba(52,211,153,0.15)' }}>
-                    <ArrowRight size={11} className="text-emerald-400" />
+                  <div className="mt-1 p-1 rounded-full flex-shrink-0" style={{ background: 'var(--card-accent-bg)' }}>
+                    <ArrowRight size={11} style={{ color: 'var(--accent)' }} />
                   </div>
                   <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Maintain a safety stock buffer of approximately{' '}
@@ -98,11 +98,11 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
               </ul>
             </div>
 
-            <div className="rounded-[2rem] p-8" style={{ background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.15)' }}>
-              <h3 className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-6 flex items-center gap-2">
-                <AlertTriangle size={14} className="text-amber-500" /> Risk Assessment
+            <div className="rounded-[2rem] p-8" style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)' }}>
+              <h3 className="text-[9px] font-black uppercase tracking-widest mb-6 flex items-center gap-2" style={{ color: 'var(--sim-error-text)' }}>
+                <AlertTriangle size={14} /> Risk Assessment
               </h3>
-              <p className="text-sm font-bold text-amber-300/70 leading-relaxed italic">
+              <p className="text-sm font-bold leading-relaxed italic" style={{ color: 'var(--sim-error-text)', opacity: 0.8 }}>
                 "The primary risk for this cycle involves the potential under-utilization of detected cross-sell patterns. Monitoring holiday-related surges may help prevent stockouts on forecasted Leaders."
               </p>
             </div>

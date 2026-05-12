@@ -21,9 +21,13 @@ import os
 # CUSTOM MODULE IMPORTS
 # ==========================================
 from src.quantitative.hybrid_forecaster import preprocess_and_forecast_item
-from src.qualitative.bundle_analyzer import create_cart_matrix, generate_bundle_rules, analyze_custom_bundle
-from src.decision.rule_engine import generate_categorized_recommendations
-from bundler import generate_strategic_bundles
+from src.qualitative.bundle_analyzer import (
+    create_cart_matrix, 
+    generate_bundle_rules, 
+    analyze_custom_bundle,
+    generate_strategic_bundles,
+    score_single_pair
+)
 
 app = FastAPI(title="OPTIMA Engine API - Unified Calendar Build")
 
@@ -530,6 +534,20 @@ async def change_password(data: PasswordChangeModel, user=Depends(get_current_us
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/auth/check-username")
+async def check_username(username: str):
+    try:
+        with engine.connect() as conn:
+            # Only consider accounts that are approved or banned as "taking" the username.
+            # accounts waiting for verification (under_review) or denied accounts should be available.
+            user_exists = conn.execute(
+                text("SELECT id FROM users WHERE username=:u AND status NOT IN ('under_review', 'denied')"), 
+                {"u": username}
+            ).fetchone()
+            return {"exists": bool(user_exists)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/auth/register")
 async def register_user(data: RegisterModel):
     try:
@@ -538,9 +556,20 @@ async def register_user(data: RegisterModel):
             raise HTTPException(status_code=400, detail=password_error)
 
         with engine.connect() as conn:
-            user_exists = conn.execute(text("SELECT * FROM users WHERE username=:u"), {"u": data.username}).fetchone()
-            if user_exists:
-                raise HTTPException(status_code=400, detail="Username already exists")
+            # Check for permanent accounts (approved or banned)
+            permanent_user = conn.execute(
+                text("SELECT id FROM users WHERE username=:u AND status NOT IN ('under_review', 'denied')"), 
+                {"u": data.username}
+            ).fetchone()
+            
+            if permanent_user:
+                raise HTTPException(status_code=400, detail="Username already exists and is active or banned")
+            
+            # If an account exists but is under_review or denied, we delete it to allow the new registration
+            conn.execute(
+                text("DELETE FROM users WHERE username=:u AND status IN ('under_review', 'denied')"),
+                {"u": data.username}
+            )
             
             pwd_hash = bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             conn.execute(
@@ -1709,8 +1738,6 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
                 ref_id = run_id
             elif req.ref_forecast_id != "none" and req.ref_forecast_id != "auto":
                 ref_id = req.ref_forecast_id
-
-            from bundler import generate_strategic_bundles
             
             # AUTO-SAVE logic: If both engines ran, persist automatically.
             # If bundler runs standalone, only save when explicitly requested.

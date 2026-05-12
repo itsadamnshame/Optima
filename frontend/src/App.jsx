@@ -592,37 +592,40 @@ function AppContent() {
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Last Name</label>
+                          <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>Last Name</label>
                           <input
                             value={accountProfile.last_name}
                             onChange={(e) => setAccountProfile(prev => ({ ...prev, last_name: e.target.value }))}
-                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Email</label>
+                          <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>Email</label>
                           <input
                             type="email"
                             value={accountProfile.email}
                             onChange={(e) => setAccountProfile(prev => ({ ...prev, email: e.target.value }))}
-                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Phone Number</label>
+                          <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>Phone Number</label>
                           <input
                             value={accountProfile.phone_number}
                             onChange={(e) => setAccountProfile(prev => ({ ...prev, phone_number: e.target.value }))}
-                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                            style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--input-text)' }}
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                           />
                         </div>
                         <div className="space-y-4 md:col-span-2">
-                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Middle Name</label>
+                          <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>Middle Name</label>
                           <input
                             value={accountProfile.middle_name}
                             onChange={(e) => setAccountProfile(prev => ({ ...prev, middle_name: e.target.value }))}
-                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                           />
                         </div>
                       </div>
@@ -643,34 +646,37 @@ function AppContent() {
                   {activeSettingsTab === 'password' && (
                     <>
                       <div className="space-y-4">
-                        <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Current Password</label>
+                        <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>Current Password</label>
                         <input
                           type="password"
                           placeholder="Current password"
                           value={passwordForm.current_password}
                           onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
-                          className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                          className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                         />
                       </div>
                       <div className="grid gap-4 md:grid-cols-2 mt-4">
                         <div className="space-y-4">
-                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">New Password</label>
+                          <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>New Password</label>
                           <input
                             type="password"
                             placeholder="New password"
                             value={passwordForm.new_password}
                             onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
-                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="block text-[10px] uppercase tracking-[0.35em] text-zinc-500">Confirm Password</label>
+                          <label className="block text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--text-muted)' }}>Confirm Password</label>
                           <input
                             type="password"
                             placeholder="Confirm new password"
                             value={passwordForm.confirm_password}
                             onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
-                            className="w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500"
+                            className="w-full rounded-3xl border px-4 py-3 text-sm outline-none transition-all"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
                           />
                         </div>
                       </div>
@@ -690,21 +696,21 @@ function AppContent() {
                       <div>
                         <div className="flex items-center justify-between gap-4 mb-4">
                           <div>
-                            <p className="text-[10px] uppercase tracking-[0.35em] text-indigo-400">Account Activity</p>
+                            <p className="text-[10px] uppercase tracking-[0.35em]" style={{ color: 'var(--accent)' }}>Account Activity</p>
                             <h3 className="text-xl font-black" style={{ color: 'var(--text-heading)' }}>Recent activity</h3>
                           </div>
                         </div>
                         <div className="space-y-4">
                           {accountLogs.audit_logs.length === 0 ? (
-                            <p className="text-sm text-zinc-500">No recent account activity found.</p>
+                            <p className="text-sm" style={{ color: 'var(--text-faint)' }}>No recent account activity found.</p>
                           ) : (
                             accountLogs.audit_logs.slice(0, 5).map((log, index) => (
                               <div key={index} className="rounded-3xl border p-4" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                                 <div className="flex items-center justify-between gap-3">
-                                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">{log.action}</span>
-                                  <span className="text-[10px] text-zinc-500">{new Date(log.timestamp).toLocaleString()}</span>
+                                  <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--accent)' }}>{log.action}</span>
+                                  <span className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{new Date(log.timestamp).toLocaleString()}</span>
                                 </div>
-                                <p className="mt-3 text-sm text-zinc-400">{log.details}</p>
+                                <p className="mt-3 text-sm" style={{ color: 'var(--text-muted)' }}>{log.details}</p>
                               </div>
                             ))
                           )}
@@ -712,17 +718,17 @@ function AppContent() {
                       </div>
 
                       <div>
-                        <p className="text-[10px] uppercase tracking-[0.35em] text-emerald-400 mb-4">Recent sessions</p>
+                        <p className="text-[10px] uppercase tracking-[0.35em] mb-4" style={{ color: '#10b981' }}>Recent sessions</p>
                         <div className="space-y-4">
                           {accountLogs.sessions.length === 0 ? (
-                            <p className="text-sm text-zinc-500">No session history found.</p>
+                            <p className="text-sm" style={{ color: 'var(--text-faint)' }}>No session history found.</p>
                           ) : (
                             accountLogs.sessions.slice(0, 5).map((session) => (
                               <div key={session.id} className="rounded-3xl border p-4" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                                 <div className="flex flex-col gap-1">
-                                  <span className="text-sm font-bold text-white">{session.role} Session</span>
-                                  <span className="text-[10px] text-zinc-500">Login: {new Date(session.login_time).toLocaleString()}</span>
-                                  <span className="text-[10px] text-zinc-500">{session.logout_time ? `Logout: ${new Date(session.logout_time).toLocaleString()}` : 'Active session'}</span>
+                                  <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{session.role} Session</span>
+                                  <span className="text-[10px]" style={{ color: 'var(--text-faint)' }}>Login: {new Date(session.login_time).toLocaleString()}</span>
+                                  <span className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{session.logout_time ? `Logout: ${new Date(session.logout_time).toLocaleString()}` : 'Active session'}</span>
                                 </div>
                               </div>
                             ))
@@ -742,27 +748,28 @@ function AppContent() {
           <div className="w-full max-w-lg rounded-3xl p-8" style={{ background: 'var(--modal-bg)', border: `1px solid var(--border-strong)` }}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-black" style={{ color: 'var(--text-heading)' }}>Assemble Master Dataset</h3>
-              <button onClick={() => setShowCombineModal(false)} className="text-zinc-500 hover:text-white"><X size={20} /></button>
+              <button onClick={() => setShowCombineModal(false)} className="transition-colors hover:opacity-70" style={{ color: 'var(--text-faint)' }}><X size={20} /></button>
             </div>
 
-            <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Select the partial/yearly datasets you wish to combine. The system will merge them, remove duplicate entries, and output a fresh Master Dataset.</p>
+            <p className="text-xs mb-6 leading-relaxed" style={{ color: 'var(--text-muted)' }}>Select the partial/yearly datasets you wish to combine. The system will merge them, remove duplicate entries, and output a fresh Master Dataset.</p>
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">New Master Dataset Title</label>
+                <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-faint)' }}>New Master Dataset Title</label>
                 <input
                   type="text" value={combineTitle} onChange={(e) => setCombineTitle(e.target.value)}
                   placeholder="e.g., 2024-2026 Consolidated Sales"
                   className="w-full px-4 py-3 rounded-xl outline-none font-medium text-sm"
-                  style={{ background: 'var(--input-bg)', border: `1px solid var(--input-border)`, color: 'var(--input-text)' }}
+                  style={{ background: 'var(--input-bg)', border: `1px solid var(--border-subtle)`, color: 'var(--input-text)' }}
                 />
               </div>
 
               <div>
-                <label className="block text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">Select Chunks to Merge</label>
+                <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-faint)' }}>Select Chunks to Merge</label>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                   {sidebarDatasets.filter(ds => ds.dataset_type === 'YEARLY').map(ds => (
-                    <label key={ds.id} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" style={{ border: `1px solid var(--border-subtle)` }}>
+                    <label key={ds.id} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:opacity-70" 
+                      style={{ background: 'var(--input-bg)', border: `1px solid var(--border-subtle)` }}>
                       <input
                         type="checkbox"
                         checked={selectedCombineIds.includes(ds.id)}
@@ -770,11 +777,12 @@ function AppContent() {
                           if (e.target.checked) setSelectedCombineIds([...selectedCombineIds, ds.id]);
                           else setSelectedCombineIds(selectedCombineIds.filter(id => id !== ds.id));
                         }}
-                        className="w-4 h-4 accent-indigo-500 rounded"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: 'var(--accent)' }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-zinc-200 truncate">{ds.title}</p>
-                        <p className="text-[10px] text-zinc-500">{ds.row_count.toLocaleString()} rows</p>
+                        <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{ds.title}</p>
+                        <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{ds.row_count.toLocaleString()} rows</p>
                       </div>
                     </label>
                   ))}
@@ -787,7 +795,7 @@ function AppContent() {
                 onClick={handleCombineDatasets}
                 disabled={!combineTitle || selectedCombineIds.length < 2 || combineStatus === 'loading'}
                 className="w-full py-3 rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg,#4f46e5,#6366f1)' }}
+                style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
               >
                 {combineStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />}
                 Combine {selectedCombineIds.length} Datasets

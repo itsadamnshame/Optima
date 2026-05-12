@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Zap, Eye, EyeOff } from 'lucide-react';
 
@@ -28,12 +28,59 @@ const Register = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const formatPhoneNumber = (value) => {
+    if (!value) return value;
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    const phoneNumberLength = phoneNumber.length;
+    if (phoneNumberLength < 4) return phoneNumber;
+    if (phoneNumberLength < 7) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    }
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
   };
+
+  const [usernameDirty, setUsernameDirty] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState('idle'); // idle, checking, taken, available
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'phone_number') {
+      setFormData({ ...formData, [name]: formatPhoneNumber(value) });
+    } else if (name === 'username') {
+      setUsernameDirty(true);
+      setFormData({ ...formData, [name]: value });
+      checkUsername(value);
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
+
+  const checkUsername = async (username) => {
+    if (!username || username.length < 3) {
+      setUsernameStatus('idle');
+      return;
+    }
+    setUsernameStatus('checking');
+    try {
+      const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+      const data = await res.json();
+      if (data.exists) setUsernameStatus('taken');
+      else setUsernameStatus('available');
+    } catch {
+      setUsernameStatus('idle');
+    }
+  };
+
+  // Auto-generate username if not dirty
+  useEffect(() => {
+    if (!usernameDirty && (formData.first_name || formData.last_name)) {
+      const suggested = `${formData.first_name}${formData.last_name ? '-' + formData.last_name : ''}`.replace(/\s+/g, '');
+      if (suggested) {
+        setFormData(prev => ({ ...prev, username: suggested }));
+        checkUsername(suggested);
+      }
+    }
+  }, [formData.first_name, formData.last_name]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -85,7 +132,7 @@ const Register = () => {
     <div className="flex min-h-screen items-center justify-center font-sans py-12" style={{ background: 'var(--bg-base)' }}>
       <div className="w-full max-w-md p-8 rounded-xl" style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-indigo-200 shadow-lg">
+          <div className="p-2 rounded-lg text-white shadow-lg" style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
             <Zap size={24} />
           </div>
           <h1 className="text-2xl font-black tracking-tighter italic" style={{ color: 'var(--text-heading)' }}>OPTIMA</h1>
@@ -93,13 +140,12 @@ const Register = () => {
         
         <h2 className="text-xl font-bold text-center mb-6" style={{ color: 'var(--text-primary)' }}>Create an Account</h2>
         
-        {error && <div className="p-3 rounded-lg mb-4 text-sm font-medium" style={{ background: 'var(--error-bg)', color: 'var(--sim-error-text)' }}>{error}</div>}
         {success && (
-          <div className="p-4 rounded-lg mb-4 text-sm font-medium text-center" style={{ background: 'var(--success-bg)', color: '#059669' }}>
+          <div className="p-4 rounded-lg mb-4 text-sm font-medium text-center" style={{ background: 'var(--success-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}>
             Account created successfully!<br/><br/>
             Your account is currently <span className="font-bold">Under Review</span>. An Administrator must approve it before you can log in.
             <br/><br/>
-            <Link to="/login" className="underline font-bold hover:text-green-900">Return to Login</Link>
+            <Link to="/login" className="underline font-bold transition-opacity hover:opacity-70" style={{ color: 'var(--accent)' }}>Return to Login</Link>
           </div>
         )}
         
@@ -107,33 +153,36 @@ const Register = () => {
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">First Name</label>
+                <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>First Name</label>
                 <input 
                   type="text" 
                   name="first_name"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 rounded-lg outline-none transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                   value={formData.first_name}
                   onChange={handleChange}
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Middle Name</label>
+                <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Middle Name</label>
                 <input 
                   type="text" 
                   name="middle_name"
                   placeholder="(Optional)"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 rounded-lg outline-none transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                   value={formData.middle_name}
                   onChange={handleChange}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Last Name</label>
+                <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Last Name</label>
                 <input 
                   type="text" 
                   name="last_name"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 rounded-lg outline-none transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                   value={formData.last_name}
                   onChange={handleChange}
                   required
@@ -143,22 +192,24 @@ const Register = () => {
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
+                <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Email Address</label>
                 <input 
                   type="email" 
                   name="email"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 rounded-lg outline-none transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                   value={formData.email}
                   onChange={handleChange}
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Phone Number</label>
+                <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Phone Number</label>
                 <input 
                   type="tel" 
                   name="phone_number"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 rounded-lg outline-none transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                   value={formData.phone_number}
                   onChange={handleChange}
                   required
@@ -167,31 +218,47 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Username</label>
-              <input 
-                type="text" 
-                name="username"
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={formData.username}
-                onChange={handleChange}
-                required
-              />
+              <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Username</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  name="username"
+                  className="w-full px-4 py-3 rounded-lg outline-none transition-all pr-10"
+                  style={{ 
+                    background: 'var(--input-bg)', 
+                    border: usernameStatus === 'taken' ? '1px solid var(--error-border)' : '1px solid var(--input-border)', 
+                    color: 'var(--input-text)' 
+                  }}
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {usernameStatus === 'checking' && <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
+                  {usernameStatus === 'available' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_var(--success-glow)]" />}
+                  {usernameStatus === 'taken' && <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" />}
+                </div>
+              </div>
+              {usernameStatus === 'taken' && <p className="text-[9px] font-black uppercase tracking-widest mt-1" style={{ color: '#f43f5e' }}>Username is already taken</p>}
+              {usernameStatus === 'available' && <p className="text-[9px] font-black uppercase tracking-widest mt-1" style={{ color: '#10b981' }}>Username is available</p>}
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Password</label>
+              <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Password</label>
               <div className="relative">
                 <input 
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 rounded-lg outline-none transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                   value={formData.password}
                   onChange={handleChange}
                   required
                 />
                 <button 
                   type="button" 
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-3 transition-colors"
+                  style={{ color: 'var(--text-muted)' }}
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -200,41 +267,51 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Repeat Password</label>
+              <label className="block text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Repeat Password</label>
               <input 
                 type={showPassword ? "text" : "password"}
                 name="confirmPassword"
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-3 rounded-lg outline-none transition-all"
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
               />
-              <p className="text-[10px] text-gray-500 mt-2">Password must be 8+ characters and include uppercase, lowercase, number, and special symbol.</p>
+              <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>Password must be 8+ characters and include uppercase, lowercase, number, and special symbol.</p>
             </div>
 
             <div className="flex items-start gap-3 mt-6">
               <input 
                 type="checkbox" 
                 id="terms"
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                className="mt-1 h-4 w-4 rounded cursor-pointer"
+                style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)' }}
                 checked={acceptTerms}
                 onChange={(e) => setAcceptTerms(e.target.checked)}
                 required
               />
-              <label htmlFor="terms" className="text-sm text-gray-600 leading-tight">
-                I accept the <button type="button" onClick={() => setShowTermsModal(true)} className="text-indigo-600 font-bold hover:underline">Terms and Conditions</button> and consent to the processing of my personal data.
+              <label htmlFor="terms" className="text-sm leading-tight" style={{ color: 'var(--text-muted)' }}>
+                I accept the <button type="button" onClick={() => setShowTermsModal(true)} className="font-bold hover:opacity-70 transition-opacity" style={{ color: 'var(--accent)' }}>Terms and Conditions</button> and consent to the processing of my personal data.
               </label>
             </div>
 
-            <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors mt-6">
+            {error && (
+              <div className="p-3 rounded-xl text-xs font-black uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1" 
+                style={{ background: 'var(--error-bg)', color: 'var(--sim-error-text)', border: '1px solid var(--error-border)', marginTop: '24px' }}>
+                {error}
+              </div>
+            )}
+
+            <button type="submit" className="w-full text-white font-bold py-3 rounded-lg transition-all mt-4 shadow-lg"
+              style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
               Register
             </button>
           </form>
         )}
         
         {!success && (
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Already have an account? <Link to="/login" className="text-indigo-600 font-bold hover:underline">Log in</Link>
+          <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+            Already have an account? <Link to="/login" className="font-bold hover:opacity-80 transition-opacity" style={{ color: 'var(--accent)' }}>Log in</Link>
           </p>
         )}
       </div>

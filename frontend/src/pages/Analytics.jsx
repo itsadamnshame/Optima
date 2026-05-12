@@ -22,10 +22,10 @@ const Card = ({ children, className = "", title, subtitle, icon: Icon, action })
     {(title || Icon) && (
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {Icon && <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400"><Icon size={18} /></div>}
+          {Icon && <div className="p-2 rounded-xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}><Icon size={18} /></div>}
           <div>
-            <h4 className="text-white font-black text-sm uppercase tracking-tight">{title}</h4>
-            {subtitle && <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{subtitle}</p>}
+            <h4 className="font-black text-sm uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>{title}</h4>
+            {subtitle && <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>{subtitle}</p>}
           </div>
         </div>
         {action}
@@ -37,14 +37,14 @@ const Card = ({ children, className = "", title, subtitle, icon: Icon, action })
 
 const Metric = ({ label, value, sub, trend }) => (
   <div className="space-y-1">
-    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{label}</p>
+    <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>{label}</p>
     <div className="flex items-baseline gap-2">
-      <span className="text-2xl font-black text-white tracking-tighter">{value}</span>
+      <span className="text-2xl font-black tracking-tighter" style={{ color: 'var(--text-heading)' }}>{value}</span>
       {trend && <span className={`text-[10px] font-black ${trend > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
         {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
       </span>}
     </div>
-    {sub && <p className="text-[10px] text-zinc-600 font-bold">{sub}</p>}
+    {sub && <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
   </div>
 );
 
@@ -193,16 +193,16 @@ export default function Analytics({
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-8 animate-in fade-in zoom-in-95 duration-700">
         <div className="relative">
-          <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full animate-pulse" />
-          <div className="relative w-32 h-32 rounded-full border-4 border-indigo-500/20 flex items-center justify-center">
-            <Brain size={48} className="text-indigo-500 animate-bounce" />
-            <div className="absolute inset-0 rounded-full border-t-4 border-indigo-500 animate-spin" />
+          <div className="absolute inset-0 blur-3xl rounded-full animate-pulse" style={{ background: 'var(--accent-glow)', opacity: 0.2 }} />
+          <div className="relative w-32 h-32 rounded-full border-4 flex items-center justify-center" style={{ borderColor: 'var(--border-subtle)' }}>
+            <Brain size={48} className="animate-bounce" style={{ color: 'var(--accent)' }} />
+            <div className="absolute inset-0 rounded-full border-t-4 animate-spin" style={{ borderColor: 'var(--accent)' }} />
           </div>
         </div>
         <div className="text-center space-y-4 max-w-md">
           <h2 className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: 'var(--text-heading)' }}>Synthesizing Models</h2>
-          <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-            <div className="h-full bg-indigo-500 transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.5)]" style={{ width: `${progress}%` }} />
+          <div className="w-full h-2 rounded-full overflow-hidden border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+            <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, background: 'var(--accent)', boxShadow: '0 0 15px var(--accent-glow)' }} />
           </div>
           <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>
             Processing Active Dataset — {Math.round(progress)}%
@@ -237,7 +237,7 @@ export default function Analytics({
               <ArrowLeft size={20} />
             </button>
             <div>
-              <div className="flex items-center gap-2 text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">
+              <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>
                 <Clock size={12} /> {new Date(selectedRun.created_at).toLocaleDateString()} Run
               </div>
               <h2 className="text-3xl font-black tracking-tighter" style={{ color: 'var(--text-heading)' }}>{selectedRun.name}</h2>
@@ -247,13 +247,15 @@ export default function Analytics({
           <div className="flex items-center gap-2 p-1 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
             <button 
               onClick={() => setActiveTab('global')}
-              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'global' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'global' ? 'text-white shadow-lg' : ''}`}
+              style={{ background: activeTab === 'global' ? 'var(--accent)' : 'transparent', color: activeTab === 'global' ? '#fff' : 'var(--text-faint)', boxShadow: activeTab === 'global' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
               <Layers size={14} className="inline mr-2" /> Global Strategy
             </button>
             <button 
               onClick={() => setActiveTab('product')}
-              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'product' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'product' ? 'text-white shadow-lg' : ''}`}
+              style={{ background: activeTab === 'product' ? 'var(--accent)' : 'transparent', color: activeTab === 'product' ? '#fff' : 'var(--text-faint)', boxShadow: activeTab === 'product' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
               <Package size={14} className="inline mr-2" /> Product Analysis
             </button>
@@ -266,13 +268,14 @@ export default function Analytics({
             <div className="lg:col-span-1 space-y-4 sticky top-4 self-start">
               <Card title="Product Library" subtitle={`${filteredItems.length} active items`}>
                 <div className="relative">
-                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-faint)' }} />
                   <input 
                     type="text" 
                     placeholder="Search catalog..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-black/40 border border-white/5 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-indigo-500/50 transition-all"
+                    className="w-full rounded-2xl pl-10 pr-4 py-3 text-xs font-bold outline-none transition-all"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border-subtle)', color: 'var(--input-text)' }}
                   />
                 </div>
                 <div className="space-y-1 mt-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2 custom-scrollbar">
@@ -280,10 +283,15 @@ export default function Analytics({
                     <button 
                       key={item}
                       onClick={() => setSelectedProduct(item)}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all ${selectedProduct === item ? 'bg-indigo-500/10 border border-indigo-500/30 text-white' : 'text-zinc-500 hover:bg-white/5'}`}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all ${selectedProduct === item ? 'shadow-sm' : 'hover:opacity-70'}`}
+                      style={{ 
+                        background: selectedProduct === item ? 'var(--card-accent-bg)' : 'transparent',
+                        border: `1px solid ${selectedProduct === item ? 'var(--accent)' : 'transparent'}`,
+                        color: selectedProduct === item ? 'var(--text-primary)' : 'var(--text-muted)'
+                      }}
                     >
                       <span className="text-[11px] font-bold truncate uppercase">{item}</span>
-                      {selectedProduct === item && <ChevronRight size={14} className="text-indigo-400" />}
+                      {selectedProduct === item && <ChevronRight size={14} style={{ color: 'var(--accent)' }} />}
                     </button>
                   ))}
                 </div>
@@ -296,14 +304,14 @@ export default function Analytics({
           <div className={activeTab === 'product' ? "lg:col-span-3 space-y-8" : "lg:col-span-4 space-y-8"}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+                <div className="p-3 rounded-2xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
                   <Calendar size={24} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">
+                  <h3 className="text-2xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>
                     {activeTab === 'global' ? 'Store-Wide Outlook' : 'Item Strategy Hub'}
                   </h3>
-                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">12-Month Forecast Horizon</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>12-Month Forecast Horizon</p>
                 </div>
               </div>
 
@@ -338,7 +346,8 @@ export default function Analytics({
                 
                 <div className="flex flex-wrap gap-2">
                   {tags.map(tag => (
-                    <span key={tag} className="px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-[10px] font-black uppercase tracking-widest">
+                    <span key={tag} className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest"
+                      style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--border-subtle)', color: 'var(--accent)' }}>
                       {tag}
                     </span>
                   ))}
@@ -415,16 +424,16 @@ export default function Analytics({
 
               <Card title="Decomposition" subtitle="Trend Analysis" icon={Layers}>
                 <div className="space-y-4 pt-2">
-                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                    <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Status</p>
-                    <p className="text-xs font-bold text-white uppercase tracking-tight flex items-center gap-2">
+                  <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Status</p>
+                    <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                       <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                       {metrics.is_zombie ? 'Stagnant' : 'Healthy Signal'}
                     </p>
                   </div>
-                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                    <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Historical Depth</p>
-                    <p className="text-xs font-bold text-white tracking-tight">Active Coverage</p>
+                  <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Historical Depth</p>
+                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Active Coverage</p>
                   </div>
                 </div>
               </Card>
@@ -434,10 +443,10 @@ export default function Analytics({
             {stl && (
               <div className="mt-8 space-y-4">
                 <div className="flex items-center gap-3 px-4">
-                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400"><Layers size={20} /></div>
+                  <div className="p-2 rounded-xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}><Layers size={20} /></div>
                   <div>
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight">Strategic STL Hub</h3>
-                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Seasonal-Trend-Loess Decomposition</p>
+                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Strategic STL Hub</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Seasonal-Trend-Loess Decomposition</p>
                   </div>
                 </div>
 
@@ -502,14 +511,14 @@ export default function Analytics({
       <div className="relative rounded-[2.5rem] p-10 overflow-hidden" 
         style={{ background: 'var(--gradient-hero)', border: `1px solid var(--glass-border)` }}>
         <div className="relative z-10">
-          <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block" />
+          <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2" style={{ color: 'var(--accent)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block" style={{ background: 'var(--accent)' }} />
             Audit Repository
           </p>
-          <h2 className="text-4xl font-black text-white tracking-tight flex items-center gap-3">
-            <TrendingUp className="text-indigo-400" size={36} /> Analytics Vault
+          <h2 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--text-heading)' }}>
+            <TrendingUp size={36} style={{ color: 'var(--accent)' }} /> Analytics Vault
           </h2>
-          <p className="text-zinc-500 text-sm font-medium mt-2 ml-1">
+          <p className="text-sm font-medium mt-2 ml-1" style={{ color: 'var(--text-muted)' }}>
             Persisted 12-month hybrid models and strategic audit trails.
           </p>
         </div>
@@ -518,8 +527,8 @@ export default function Analytics({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
-            <Activity className="animate-spin text-indigo-500" size={40} />
-            <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">Accessing Models...</p>
+            <Activity className="animate-spin" size={40} style={{ color: 'var(--accent)' }} />
+            <p className="font-bold uppercase tracking-widest text-xs" style={{ color: 'var(--text-faint)' }}>Accessing Models...</p>
           </div>
         ) : runs.length > 0 ? (
           runs.map(run => (
@@ -528,26 +537,28 @@ export default function Analytics({
               className="group relative rounded-[2.5rem] p-8 space-y-4 transition-all hover:scale-[1.02] cursor-pointer hover:border-indigo-500/50"
               style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
               <div className="flex justify-between items-start">
-                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+                <div className="p-3 rounded-2xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
                   <FileBarChart size={24} />
                 </div>
-                <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest flex items-center gap-2">
+                <div className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
                   <Clock size={12} /> {new Date(run.created_at).toLocaleDateString()}
                 </div>
               </div>
               <div>
-                <h4 className="text-xl font-black text-white tracking-tighter group-hover:text-indigo-300 transition-colors">{run.name}</h4>
-                <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
+                <h4 className="text-xl font-black tracking-tighter transition-colors" style={{ color: 'var(--text-heading)' }}>{run.name}</h4>
+                <p className="text-[9px] font-bold uppercase tracking-widest mt-1" style={{ color: 'var(--text-faint)' }}>
                   Horizon: 12 Months • {run.config?.item_count || 0} Products
                 </p>
               </div>
               <div className="pt-4 flex items-center gap-3">
-                <div className="flex-1 py-3 bg-white/5 border border-white/5 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-indigo-600/30 transition-all">
+                <div className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                  style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--border-subtle)', color: 'var(--accent)' }}>
                   <PlayCircle size={14} /> Open Result
                 </div>
                 <button 
                   onClick={(e) => handleDeleteRun(e, run.id)}
-                  className="p-3 rounded-xl bg-white/5 text-zinc-600 hover:text-rose-400 hover:bg-rose-400/10 transition-all border border-white/5"
+                  className="p-3 rounded-xl transition-all border"
+                  style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-faint)' }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -556,13 +567,13 @@ export default function Analytics({
           ))
         ) : (
           <div className="col-span-full py-20 rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center space-y-4"
-            style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)' }}>
-            <div className="p-5 rounded-full bg-zinc-800/50 text-zinc-600">
+            style={{ borderColor: 'var(--border-subtle)', background: 'var(--glass-bg)' }}>
+            <div className="p-5 rounded-full" style={{ background: 'var(--input-bg)', color: 'var(--text-faint)' }}>
               <Search size={40} />
             </div>
             <div className="text-center">
-              <h3 className="text-xl font-black text-white uppercase italic">No saved runs found</h3>
-              <p className="text-zinc-500 text-sm mt-1">Head over to the Management Hub to train your first model.</p>
+              <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>No saved runs found</h3>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Head over to the Management Hub to train your first model.</p>
             </div>
           </div>
         )}
