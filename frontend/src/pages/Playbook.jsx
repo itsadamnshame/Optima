@@ -7,7 +7,7 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
     const metricKeys = Object.keys(forecastMetrics || {});
     const firstItemKey = metricKeys.length > 0 ? metricKeys[0] : null;
     const mape = firstItemKey ? (forecastMetrics[firstItemKey]?.mape_pct ?? null) : null;
-    const accuracy = mape !== null ? `${Math.max(0, 100 - mape).toFixed(1)}%` : 'N/A';
+    const errorRate = mape !== null ? `${mape.toFixed(1)}%` : 'N/A';
     const avgMae = firstItemKey ? (forecastMetrics[firstItemKey]?.mae ?? '0.00') : '0.00';
     const velocityPlays = recommendations?.velocity ?? [];
     const hasVelocity = velocityPlays.length > 0;
@@ -20,8 +20,8 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
         <p className="text-base leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
           Based on the unified audit, the{' '}
           <span className="font-bold" style={{ color: 'var(--accent)' }}>{topItem}</span> segment is entering a statistically significant
-          demand phase. With a verified model reliability of{' '}
-          <span className="font-bold" style={{ color: 'var(--text-heading)' }}>{accuracy}</span>, the risk of inventory stockout remains low, provided
+          demand phase. With a calculated forecast error rate (MAPE) of{' '}
+          <span className="font-bold" style={{ color: 'var(--text-heading)' }}>{errorRate}</span>, the risk of inventory stockout remains manageable, provided
           that the detected short-term buying patterns are used to guide weekend stocking levels.
         </p>
         <p className="text-base leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>

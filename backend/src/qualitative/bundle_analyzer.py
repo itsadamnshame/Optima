@@ -22,23 +22,19 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         query = text('SELECT "CustomerID", "ItemDescription" FROM sales_transactions WHERE dataset_id = :d')
         df_raw = pd.read_sql(query, engine, params={"d": dataset_id})
         
+        # [NEW] Load simplified metadata for filtering
+        query_meta = text('SELECT ItemDescription, is_bundle, is_not_product FROM item_metadata WHERE dataset_id = :d')
+        meta_df = pd.read_sql(query_meta, engine, params={"d": dataset_id})
+        
+        non_product_items = set(meta_df[meta_df['is_not_product'] == 1]['ItemDescription'].tolist())
+        is_bundle_map = dict(zip(meta_df['ItemDescription'], meta_df['is_bundle']))
+
         if df_raw.empty:
             return []
         
-        # Load Metadata early to filter discontinued items
-        query_meta = text("SELECT ItemDescription, availability_status, availability_type, is_bundle FROM item_metadata WHERE dataset_id = :d")
-        with engine.connect() as conn:
-            meta_rows = conn.execute(query_meta, {"d": dataset_id}).fetchall()
-        
-        item_meta = {r[0]: {"status": r[1], "type": r[2], "is_bundle": bool(r[3]) if len(r) > 3 else False} for r in meta_rows}
-        
-        # Filter out discontinued items from transactions
-        available_items = {item for item, meta in item_meta.items() if meta['status'] != 'discontinued'}
-        df_raw = df_raw[df_raw['ItemDescription'].isin(available_items)].copy()
-        
-        if df_raw.empty:
-            print("BUNDLER: No available items after filtering discontinued products.")
-            return []
+        # [NEW] Filter out non-product items (registrations, conferences, etc.)
+        if non_product_items:
+            df_raw = df_raw[~df_raw['ItemDescription'].isin(non_product_items)]
         
         # Group by CustomerID to create baskets (Customer Affinity Analysis)
         basket = (df_raw.groupby(['CustomerID', 'ItemDescription'])['ItemDescription']
@@ -109,21 +105,16 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
             item_a = row['antecedents']
             item_b = row['consequents']
             
-            meta_a = item_meta.get(item_a, {})
-            meta_b = item_meta.get(item_b, {})
-            
-            if meta_a.get('is_bundle') or meta_b.get('is_bundle'):
+            # [NEW] Skip if either item is already a bundle (prevents bundle-of-bundles)
+            if is_bundle_map.get(item_a, 0) == 1 or is_bundle_map.get(item_b, 0) == 1:
                 continue
-            
+                
             m_a = item_metrics.get(item_a, {"forecast_score": 0, "trend_slope": 0, "seasonal_weight": 0})
             m_b = item_metrics.get(item_b, {"forecast_score": 0, "trend_slope": 0, "seasonal_weight": 0})
 
             avg_forecast = (m_a['forecast_score'] + m_b['forecast_score']) / 2
             avg_slope = (m_a['trend_slope'] + m_b['trend_slope']) / 2
             avg_seasonal = (m_a['seasonal_weight'] + m_b['seasonal_weight']) / 2
-            
-            is_available = 1 if (meta_a.get('status') == 'available' and meta_b.get('status') == 'available') else 0
-            is_always = 1 if (meta_a.get('type') == 'always' or meta_b.get('type') == 'always') else 0
 
             candidates.append({
                 "item_a": item_a,
@@ -133,9 +124,7 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
                 "confidence": row['confidence'],
                 "forecast_score": avg_forecast,
                 "trend_slope": avg_slope,
-                "seasonal_weight": avg_seasonal,
-                "is_available": is_available,
-                "is_always": is_always
+                "seasonal_weight": avg_seasonal
             })
 
         if not candidates:
@@ -144,12 +133,12 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         # --- PHASE 3: THE RANKING STAGE (RANDOM FOREST) ---
         print("BUNDLER: Starting Phase 3 (Random Forest Ranking)...")
         df_candidates = pd.DataFrame(candidates)
-        X_feat = df_candidates[['lift', 'support', 'confidence', 'forecast_score', 'trend_slope', 'seasonal_weight', 'is_available', 'is_always']]
+        X_feat = df_candidates[['lift', 'support', 'confidence', 'forecast_score', 'trend_slope', 'seasonal_weight']]
         
         def calculate_success_label(r):
-            score = (r['lift'] * 2) + (r['is_available'] * 10) + (r['trend_slope'] * 5) + (r['seasonal_weight'] * 2)
+            score = (r['lift'] * 2) + (r['trend_slope'] * 5) + (r['seasonal_weight'] * 2) + (r['confidence'] * 3)
             # Threshold at 70th percentile
-            return 1 if score > np.percentile([ (c['lift']*2 + c['is_available']*10 + c['trend_slope']*5 + c['seasonal_weight']*2) for c in candidates ], 70) else 0
+            return 1 if score > np.percentile([ (c['lift']*2 + c['trend_slope']*5 + c['seasonal_weight']*2 + c['confidence']*3) for c in candidates ], 70) else 0
 
         y_labels = df_candidates.apply(calculate_success_label, axis=1)
         rf = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -172,9 +161,6 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
             if row['probability'] > 0.8:
                 badge = "STRATEGIC"
                 reason = "High historical Lift combined with Rising Trends and Seasonal Peaks."
-            elif row['is_available'] == 0:
-                badge = "RISK"
-                reason = "Strong historical link but one item is currently Unavailable."
             elif row['trend_slope'] > 0.5:
                 badge = "EMERGING"
                 reason = "Rapidly growing demand for both items in recent months."
@@ -191,8 +177,6 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
                 "forecast_score": round(row['forecast_score'], 2),
                 "trend_slope": round(row['trend_slope'], 3),
                 "seasonal_weight": round(row['seasonal_weight'], 2),
-                "is_available": bool(row['is_available']),
-                "is_always": bool(row['is_always']),
                 "probability": round(row['probability'] * 100, 1),
                 "badge": badge,
                 "why": reason

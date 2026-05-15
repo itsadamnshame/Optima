@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   UploadCloud, Loader2, Database, Lock,
-  Trash2, Globe, EyeOff, Edit3, Save, X, FileSpreadsheet, Calendar, Check,
-  User, ShieldOff, Eye, ChevronLeft, ChevronRight, AlertTriangle, Sparkles, CheckCircle, Info, AlertCircle, Brain, Zap, TrendingUp, Package
+  Trash2, Globe, EyeOff, Edit3, Save, X, FileSpreadsheet, Calendar, Check, Package,
+  User, ShieldOff, Eye, ChevronLeft, ChevronRight, AlertTriangle, Sparkles, CheckCircle, Info, AlertCircle, Brain, Zap, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -23,12 +23,11 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  const [step, setStep] = useState(1); // 1: Scan, 2: Config, 3: Success, 4: Forecast
+  const [step, setStep] = useState(1); // 1: Upload, 2: Commit, 3: Training
   const [scannedItems, setScannedItems] = useState([]);
-  const [itemConfigs, setItemConfigs] = useState({});
   const [isScanning, setIsScanning] = useState(false);
 
-  // Step 4 State
+  // Training State
   const [selectedDatasetIds, setSelectedDatasetIds] = useState([]);
   const [runName, setRunName] = useState('');
   const [isTraining, setIsTraining] = useState(false);
@@ -38,24 +37,27 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [forecastRuns, setForecastRuns] = useState([]);
   const [bundlerRuns, setBundlerRuns] = useState([]);
   const [refForecastId, setRefForecastId] = useState('none');
-  const [minSupport, setMinSupport] = useState(1.0); // UI uses 1.0 (percent), backend uses 0.01
+  const [minSupport, setMinSupport] = useState(1.0);
   const [persistBundler, setPersistBundler] = useState(false);
   const [error, setError] = useState(null);
   const [abortController, setAbortController] = useState(null);
 
+  // Viewer State
   const [viewerData, setViewerData] = useState([]);
   const [viewerDatasetId, setViewerDatasetId] = useState(null);
   const [viewerPage, setViewerPage] = useState(1);
   const [viewerTotalRows, setViewerTotalRows] = useState(0);
   const [viewerLoading, setViewerLoading] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
-
   const [viewerYearFilter, setViewerYearFilter] = useState('');
   const [viewerAvailableYears, setViewerAvailableYears] = useState([]);
   const [viewerPageInput, setViewerPageInput] = useState('');
-  const [viewerType, setViewerType] = useState('raw'); // 'raw' | 'aggregated' | 'global_aggregated'
+  const [viewerType, setViewerType] = useState('raw');
   const [viewerSort, setViewerSort] = useState({ key: '', dir: 'DESC' });
   const [showInventory, setShowInventory] = useState(false);
+
+  // Metadata State
+  const [itemConfigs, setItemConfigs] = useState({});
   const [localItemConfigs, setLocalItemConfigs] = useState({});
   const [defaultItemConfigs, setDefaultItemConfigs] = useState({});
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -66,51 +68,6 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       fetchForecastRuns(selectedDatasetIds[0]);
     }
   }, [selectedDatasetIds]);
-
-  const openConfigModal = async (datasetIds) => {
-    if (!datasetIds || datasetIds.length === 0) return;
-    setShowConfigModal(true);
-    setConfigLoading(true);
-    try {
-      const id = datasetIds[0];
-      const res = await axios.get(`/api/datasets/${id}/metadata`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const meta = res.data.metadata || {};
-      setDefaultItemConfigs(meta);
-      // Initialize local configs with default metadata if not already set
-      setLocalItemConfigs(prev => {
-        const next = { ...prev };
-        Object.keys(meta).forEach(item => {
-          if (!next[item]) next[item] = meta[item];
-        });
-        return next;
-      });
-    } catch (err) {
-      console.error("Failed to fetch metadata", err);
-    } finally {
-      setConfigLoading(false);
-    }
-  };
-
-  const updateLocalConfig = (item, field, value) => {
-    setLocalItemConfigs(prev => ({
-      ...prev,
-      [item]: {
-        ...prev[item],
-        [field]: value
-      }
-    }));
-  };
-
-  const resetToDefault = (item) => {
-    if (defaultItemConfigs[item]) {
-      setLocalItemConfigs(prev => ({
-        ...prev,
-        [item]: { ...defaultItemConfigs[item] }
-      }));
-    }
-  };
 
   const fetchForecastRuns = async (datasetId) => {
     try {
@@ -183,19 +140,11 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
     } catch (e) { console.error(e); } finally { setLoadingDatasets(false); }
   };
 
-  const updateItemConfig = (item, field, value) => {
-    setItemConfigs(prev => {
-      const current = prev[item] || { availability: 'available', special: false, bundle: false, always: false };
-      let next = { ...current };
-      if (field === 'available') {
-        next.availability = value ? 'available' : 'discontinued';
-      } else if (field === 'status') {
-        next.availability = value;
-      } else {
-        next[field] = value;
-      }
-      return { ...prev, [item]: next };
-    });
+  const updateItemConfig = (item, key, value) => {
+    setItemConfigs(prev => ({
+      ...prev,
+      [item]: { ...prev[item], [key]: value }
+    }));
   };
 
   const handleScan = async (e) => {
@@ -206,19 +155,61 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
     const formData = new FormData();
     selectedFiles.forEach(f => formData.append('files', f));
     try {
-      const r = await axios.post('/api/ingest/scan', formData, {
+      const r = await axios.post('/api/scan-items', formData, {
         headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
       });
       const items = r.data.items;
       setScannedItems(items);
+      
       const initialConfigs = {};
-      items.forEach(item => { initialConfigs[item] = { availability: 'available', availability_type: 'always', bundle: false }; });
+      items.forEach(item => {
+        initialConfigs[item] = { bundle: false, is_not_product: false };
+      });
       setItemConfigs(initialConfigs);
       setStep(2);
     } catch (err) {
-      alert(err.response?.data?.detail || 'Scan failed.');
+      console.error(err);
+      setError("Failed to scan items. Please check your files.");
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const openConfigModal = async (datasetIds) => {
+    if (datasetIds.length === 0) return;
+    const datasetId = datasetIds[0];
+    setShowConfigModal(true);
+    setConfigLoading(true);
+    try {
+      const res = await axios.get(`/api/datasets/${datasetId}/metadata`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLocalItemConfigs(res.data);
+      setDefaultItemConfigs(res.data);
+      setViewerDatasetId(datasetId);
+    } catch (err) {
+      console.error("Failed to load metadata", err);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const updateLocalConfig = (item, key, value) => {
+    setLocalItemConfigs(prev => ({
+      ...prev,
+      [item]: { ...prev[item], [key]: value }
+    }));
+  };
+
+  const saveConfigOverride = async () => {
+    if (!viewerDatasetId) return;
+    try {
+      await axios.post(`/api/datasets/${viewerDatasetId}/metadata`, localItemConfigs, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setShowConfigModal(false);
+    } catch (err) {
+      alert("Failed to save configuration changes.");
     }
   };
 
@@ -288,7 +279,6 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
     setFiles([]);
     setDatasetTitle('');
     setScannedItems([]);
-    setItemConfigs({});
     setStep(1);
   };
 
@@ -317,16 +307,20 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       const payload = {
         run_name: runName,
         dataset_ids: selectedDatasetIds.map(id => parseInt(id)),
+        item_configs: itemConfigs,
         train_forecast: trainForecast,
         train_bundler: trainBundler,
         save_bundler: persistBundler,
         ref_forecast_id: refForecastId === 'auto' ? 'auto' : (refForecastId === 'none' ? 'none' : parseInt(refForecastId)),
-        min_support: minSupport / 100,
-        item_configs: localItemConfigs
+        min_support: minSupport / 100
       };
       const res = await axios.post('/api/forecast/train', payload, {
         headers: { 'Authorization': `Bearer ${token}` },
-        signal: controller.signal
+        signal: controller.signal,
+        // 30 minutes — training can take a long time; we don't want the browser
+        // to drop the connection and falsely report a failure while the backend
+        // is still crunching.
+        timeout: 30 * 60 * 1000,
       });
 
       clearInterval(interval);
@@ -352,12 +346,26 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       }, 1000);
     } catch (err) {
       if (axios.isCancel(err)) {
+        // User explicitly cancelled — just reset
         console.log("Training cancelled");
+        setIsTraining(false);
+        setTrainingProgress(0);
+      } else if (!err.response) {
+        // No response = network drop / connection reset while the backend was still running.
+        // The backend is almost certainly still processing. Show a non-destructive warning
+        // and keep the UI in a "check back" state rather than showing a hard "FAILED".
+        setIsTraining(false);
+        setTrainingProgress(0);
+        setError(
+          "Connection to the server was lost mid-run. The backend may still be processing. " +
+          "Wait a moment, then check the Forecasting or Product Bundler pages for results before retrying."
+        );
       } else {
+        // A real HTTP error (4xx/5xx) — the backend explicitly rejected or crashed.
         setError(err.response?.data?.detail || 'Training failed.');
+        setIsTraining(false);
+        setTrainingProgress(0);
       }
-      setIsTraining(false);
-      setTrainingProgress(0);
     } finally {
       setAbortController(null);
     }
@@ -454,15 +462,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         <div className="flex gap-1 p-1 rounded-2xl border mt-6 w-fit" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
           <button
             onClick={() => setStep(1)}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step < 4 ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
-            style={{ background: step < 4 ? 'var(--accent)' : 'transparent', color: step < 4 ? '#fff' : 'var(--text-muted)', boxShadow: step < 4 ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step < 3 ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+            style={{ background: step < 3 ? 'var(--accent)' : 'transparent', color: step < 3 ? '#fff' : 'var(--text-muted)', boxShadow: step < 3 ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
           >
             <UploadCloud size={14} className="inline mr-2" /> Data Ingestion
           </button>
           <button
-            onClick={() => setStep(4)}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step === 4 ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
-            style={{ background: step === 4 ? 'var(--accent)' : 'transparent', color: step === 4 ? '#fff' : 'var(--text-muted)', boxShadow: step === 4 ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
+            onClick={() => setStep(3)}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${step === 3 ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+            style={{ background: step === 3 ? 'var(--accent)' : 'transparent', color: step === 3 ? '#fff' : 'var(--text-muted)', boxShadow: step === 3 ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
           >
             <Sparkles size={14} className="inline mr-2" /> Model Training
           </button>
@@ -479,7 +487,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                     {s}
                   </div>
                   <span className={`text-[9px] font-black uppercase tracking-widest`} style={{ color: step >= s ? 'var(--accent)' : 'var(--text-muted)' }}>
-                    {s === 1 ? 'Scan File' : 'Configure Items'}
+                    {s === 1 ? 'Scan File' : 'Configure Rules'}
                   </span>
                   {s === 1 && <div className="w-8 h-px" style={{ background: step > 1 ? 'var(--accent)' : 'var(--border-subtle)' }} />}
                 </div>
@@ -637,79 +645,35 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Item Configuration</h3>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Define properties for {scannedItems.length} detected products</p>
+                  <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Ingestion Rules</h3>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Configure flags for {scannedItems.length} detected products</p>
                 </div>
                 <button onClick={() => setStep(1)} className="text-xs font-bold transition-colors hover:opacity-70" style={{ color: 'var(--accent)' }}>Back</button>
               </div>
 
-              <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar space-y-3">
+              <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-3">
                 {scannedItems.map(item => {
-                  const config = itemConfigs[item] || { availability: 'available', special: false, bundle: false, always: false };
-                  const isAvailable = config.availability !== 'discontinued' && config.availability !== 'stockout';
+                  const config = itemConfigs[item] || { bundle: false, is_not_product: false };
                   return (
-                    <div key={item} className="p-5 rounded-3xl space-y-4" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                    <div key={item} className="p-4 rounded-2xl border flex flex-col gap-3" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
                       <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-sm truncate pr-4" style={{ color: 'var(--text-primary)' }}>{item}</h4>
-                        <div className="flex items-center gap-3 p-1.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                          <span className={`text-[8px] font-black uppercase tracking-widest px-2 ${isAvailable ? '' : 'text-rose-400'}`} style={{ color: isAvailable ? 'var(--text-faint)' : '' }}>Unavailable</span>
-                          <button
-                            onClick={() => updateItemConfig(item, 'availability', isAvailable ? 'discontinued' : 'available')}
-                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${isAvailable ? 'shadow-lg' : 'bg-zinc-800'}`}
-                            style={{ background: isAvailable ? 'var(--accent)' : '', boxShadow: isAvailable ? '0 4px 10px -2px var(--accent-glow)' : '' }}
-                          >
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${isAvailable ? 'left-7' : 'left-1'}`} />
-                          </button>
-                          <span className={`text-[8px] font-black uppercase tracking-widest px-2`} style={{ color: isAvailable ? 'var(--accent)' : 'var(--text-faint)' }}>Available</span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {isAvailable ? (
-                          <div className="col-span-2 space-y-3">
-                            <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Availability Strategy</label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {[
-                                { id: 'always', label: 'Always Available', color: 'emerald' },
-                                { id: 'seasonal', label: 'Seasonal Item', color: 'amber' },
-                                { id: 'high_velocity', label: 'Rapid Response', color: 'indigo' }
-                              ].map(strat => {
-                                const isActive = config.availability_type === strat.id;
-                                return (
-                                  <button
-                                    key={strat.id}
-                                    onClick={() => updateItemConfig(item, 'availability_type', strat.id)}
-                                    className={`py-3 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${isActive ? 'shadow-sm' : ''}`}
-                                    style={{ 
-                                      background: isActive ? 'var(--card-accent-bg)' : 'transparent',
-                                      borderColor: isActive ? 'var(--accent)' : 'var(--border-subtle)',
-                                      color: isActive ? 'var(--accent)' : 'var(--text-faint)'
-                                    }}
-                                  >
-                                    {strat.label}
-                                  </button>
-                                );
-                              })}
+                        <h4 className="font-bold text-xs truncate pr-4" style={{ color: 'var(--text-primary)' }}>{item}</h4>
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox" checked={config.bundle} onChange={(e) => updateItemConfig(item, 'bundle', e.target.checked)} className="hidden" />
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.bundle ? 'bg-indigo-500 border-indigo-500' : ''}`} style={{ borderColor: config.bundle ? 'var(--accent)' : 'var(--border)', background: config.bundle ? 'var(--accent)' : '' }}>
+                              {config.bundle && <Check size={10} className="text-white" />}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="col-span-2 space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Status</label>
-                            <button
-                              className="w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest bg-rose-500/10 border border-rose-500/50 text-rose-400"
-                            >
-                              Discontinued / No longer sold
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="pt-2 border-t border-white/5">
-                        <label className="flex items-center gap-3 cursor-pointer group">
-                          <input type="checkbox" checked={config.bundle} onChange={(e) => updateItemConfig(item, 'bundle', e.target.checked)} className="hidden" />
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.bundle ? 'bg-indigo-500 border-indigo-500' : ''}`} style={{ borderColor: config.bundle ? 'var(--accent)' : 'var(--border)', background: config.bundle ? 'var(--accent)' : '' }}>
-                            {config.bundle && <Check size={10} className="text-white" />}
-                          </div>
-                          <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Mark as Bundle / Set</span>
-                        </label>
+                            <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Bundle</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox" checked={config.is_not_product} onChange={(e) => updateItemConfig(item, 'is_not_product', e.target.checked)} className="hidden" />
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.is_not_product ? 'bg-rose-500 border-rose-500' : ''}`} style={{ borderColor: config.is_not_product ? 'var(--error-border)' : 'var(--border)', background: config.is_not_product ? 'var(--error-bg)' : '' }}>
+                              {config.is_not_product && <Check size={10} className="text-white" />}
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Exclude</span>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   );
@@ -754,7 +718,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 )}
               </div>
             </div>
-          ) : step === 4 ? (
+          ) : step === 3 ? (
             <div className="animate-in zoom-in-95 duration-500 w-full mx-auto space-y-8 px-4">
               <div className="text-center space-y-2">
                 <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border shadow-2xl" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)', color: 'var(--accent)' }}>
@@ -1057,12 +1021,22 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 </div>
 
                 <div className="flex flex-col items-center gap-4 w-full md:w-auto">
-                  {error && (
-                    <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center gap-3">
-                      <AlertCircle size={14} className="shrink-0" />
-                      <p className="text-[10px] font-black uppercase tracking-tight">{error}</p>
-                    </div>
-                  )}
+                  {error && (() => {
+                    const isConnectionWarn = error.includes('Connection to the server was lost');
+                    return (
+                      <div className={`p-4 rounded-2xl border flex items-start gap-3 max-w-sm`}
+                        style={{
+                          background: isConnectionWarn ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                          borderColor: isConnectionWarn ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)',
+                          color: isConnectionWarn ? '#f59e0b' : '#f87171'
+                        }}>
+                        {isConnectionWarn
+                          ? <Info size={14} className="shrink-0 mt-0.5" />
+                          : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
+                        <p className="text-[10px] font-bold leading-relaxed">{error}</p>
+                      </div>
+                    );
+                  })()}
 
                   {isTraining ? (
                     <div className="w-full md:w-80 space-y-4">
@@ -1098,7 +1072,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               </div>
               <div className="flex flex-col md:flex-row gap-4">
                 <button
-                  onClick={() => setStep(4)}
+                  onClick={() => setStep(3)}
                   className="px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all"
                   style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
                 >
@@ -1119,14 +1093,14 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       {/* ITEM CONFIGURATION MODAL */}
       {showConfigModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl" style={{ background: 'var(--modal-bg)' }}>
+          <div className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl" style={{ background: 'var(--modal-bg)' }}>
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-xl font-black flex items-center gap-2 uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>
-                  <Package className="text-indigo-400" /> Item Configuration Override
+                  <Package className="text-indigo-400" /> Ingestion Rule Override
                 </h3>
                 <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Fine-tune product properties for this analysis run
+                  Adjust bundle status and exclusion flags for this dataset
                 </p>
               </div>
               <button onClick={() => setShowConfigModal(false)} className="p-3 rounded-2xl transition-all"
@@ -1138,104 +1112,40 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
             {configLoading ? (
               <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-50">
                 <Loader2 size={40} className="animate-spin text-indigo-500" />
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Syncing Metadata Vault...</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Accessing Metadata Vault...</p>
               </div>
             ) : (
               <>
-                <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-4">
-                  {Object.keys(localItemConfigs).length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center opacity-30 space-y-4">
-                      <ShieldOff size={48} />
-                      <p className="text-xs font-black uppercase tracking-widest">No metadata found for selection</p>
+                <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-3">
+                  {Object.entries(localItemConfigs).map(([item, config]) => (
+                    <div key={item} className="p-4 rounded-2xl border flex items-center justify-between" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border-subtle)' }}>
+                      <h4 className="font-bold text-[11px] truncate pr-4" style={{ color: 'var(--text-primary)' }}>{item}</h4>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input type="checkbox" checked={config.bundle} onChange={(e) => updateLocalConfig(item, 'bundle', e.target.checked)} className="hidden" />
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.bundle ? 'bg-indigo-500 border-indigo-500' : ''}`} style={{ borderColor: config.bundle ? 'var(--accent)' : 'var(--border)', background: config.bundle ? 'var(--accent)' : '' }}>
+                            {config.bundle && <Check size={10} className="text-white" />}
+                          </div>
+                          <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Bundle</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input type="checkbox" checked={config.is_not_product} onChange={(e) => updateLocalConfig(item, 'is_not_product', e.target.checked)} className="hidden" />
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.is_not_product ? 'bg-rose-500 border-rose-500' : ''}`} style={{ borderColor: config.is_not_product ? 'var(--error-border)' : 'var(--border)', background: config.is_not_product ? 'var(--error-bg)' : '' }}>
+                            {config.is_not_product && <Check size={10} className="text-white" />}
+                          </div>
+                          <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Exclude</span>
+                        </label>
+                      </div>
                     </div>
-                  ) : (
-                    Object.entries(localItemConfigs).map(([item, config]) => {
-                      const isAvailable = config.availability !== 'discontinued' && config.availability !== 'stockout';
-                      return (
-                        <div key={item} className={`p-6 rounded-3xl transition-all border ${isModified ? 'shadow-sm' : ''}`}
-                          style={{ 
-                            background: isModified ? 'var(--card-accent-bg)' : 'transparent',
-                            borderColor: isModified ? 'var(--accent)' : 'var(--border-subtle)'
-                          }}>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="min-w-0 flex-1">
-                              <h4 className="font-bold text-sm truncate uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>{item}</h4>
-                              {isModified && <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--accent)' }}>Modified Run Value</span>}
-                            </div>
-                            <div className="flex items-center gap-4">
-                              {isModified && (
-                                <button 
-                                  onClick={() => resetToDefault(item)}
-                                  className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors"
-                                  style={{ color: 'var(--text-faint)' }}
-                                >
-                                  <Zap size={10} /> Return to Default
-                                </button>
-                              )}
-                              <div className="flex items-center gap-3 p-1.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                                <button
-                                  onClick={() => updateLocalConfig(item, 'availability', isAvailable ? 'discontinued' : 'available')}
-                                  className={`relative w-12 h-6 rounded-full transition-all duration-300 ${isAvailable ? 'shadow-lg' : ''}`}
-                                  style={{ background: isAvailable ? 'var(--accent)' : 'var(--bg-elevated)', boxShadow: isAvailable ? '0 4px 10px -2px var(--accent-glow)' : 'none' }}
-                                >
-                                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${isAvailable ? 'left-7' : 'left-1'}`} />
-                                </button>
-                                <span className={`text-[8px] font-black uppercase tracking-widest px-2 ${isAvailable ? '' : ''}`} style={{ color: isAvailable ? 'var(--accent)' : 'var(--text-faint)' }}>
-                                  {isAvailable ? 'Active' : 'Bypassed'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest block ml-1" style={{ color: 'var(--text-faint)' }}>Logic Pattern</label>
-                              <div className="flex gap-2">
-                                {['always', 'seasonal'].map(type => (
-                                  <button
-                                    key={type}
-                                    onClick={() => updateLocalConfig(item, 'availability_type', type)}
-                                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${config.availability_type === type ? 'shadow-sm border' : 'hover:opacity-70'}`}
-                                    style={{ 
-                                      background: config.availability_type === type ? 'var(--card-accent-bg)' : 'transparent',
-                                      color: config.availability_type === type ? 'var(--accent)' : 'var(--text-muted)',
-                                      borderColor: config.availability_type === type ? 'var(--accent)' : 'transparent'
-                                    }}
-                                  >
-                                    {type}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest block ml-1" style={{ color: 'var(--text-faint)' }}>Strategic Tags</label>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => updateLocalConfig(item, 'bundle', !config.bundle)}
-                                  className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${config.bundle ? 'shadow-sm border' : 'hover:opacity-70'}`}
-                                  style={{ 
-                                    background: config.bundle ? 'var(--card-accent-bg)' : 'transparent',
-                                    color: config.bundle ? 'var(--accent)' : 'var(--text-muted)',
-                                    borderColor: config.bundle ? 'var(--accent)' : 'transparent'
-                                  }}
-                                >
-                                  Bundle Candidate
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                  ))}
                 </div>
                 <div className="mt-8 flex justify-end">
                   <button 
-                    onClick={() => setShowConfigModal(false)}
+                    onClick={saveConfigOverride}
                     className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95"
                     style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
                   >
-                    Lock Configuration
+                    Commit Changes
                   </button>
                 </div>
               </>

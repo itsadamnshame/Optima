@@ -61,7 +61,7 @@ def detect_zombies(monthly_series):
         pass
     return False
 
-def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", config=None):
+def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
     """
     Main entry point for the Hybrid Forecaster (Phase 2).
     
@@ -69,16 +69,8 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", con
         item_df: Transaction data for the item
         forecast_end: End date for forecast
         item_name: Item description/name
-        config: Dictionary with keys:
-            - type: 'seasonal', 'high_velocity', or 'always'
-            - status: 'available' or 'discontinued'
-            - bundle_is_set: bool, whether this item is a bundle/set
     """
-    if config is None:
-        config = {}
-    
-    availability_type = config.get('type', 'always')
-    print(f"OPTIMA: Analyzing {item_name}... [Strategy: {availability_type}]")
+    print(f"OPTIMA: Analyzing {item_name}...")
     
     # 1. Aggregate
     monthly = aggregate_monthly(item_df)
@@ -114,25 +106,15 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", con
     # Remove timezone if any
     prophet_df['ds'] = prophet_df['ds'].dt.tz_localize(None)
     
-    # 4a. Configure Prophet based on availability strategy
+    # 4a. Configure Prophet with automated defaults
     prophet_config = {
         'yearly_seasonality': True,
         'weekly_seasonality': False,
         'daily_seasonality': False,
-        'interval_width': 0.95
+        'interval_width': 0.95,
+        'seasonality_prior_scale': 10,
+        'changepoint_prior_scale': 0.05
     }
-    
-    if availability_type == 'seasonal':
-        # Seasonal items: amplify seasonality detection
-        prophet_config['seasonality_prior_scale'] = 20  # Default is 10
-        prophet_config['seasonality_mode'] = 'multiplicative'  # Capture % swings
-        print(f"OPTIMA: [{item_name}] Applied SEASONAL tuning (seasonality_prior_scale=20, multiplicative mode)")
-    
-    elif availability_type == 'high_velocity':
-        # Rapid response items: respond faster to trend shifts
-        prophet_config['changepoint_prior_scale'] = 0.10  # Default is 0.05
-        prophet_config['seasonality_prior_scale'] = 5  # Reduce seasonality to emphasize trend
-        print(f"OPTIMA: [{item_name}] Applied RAPID RESPONSE tuning (changepoint_prior_scale=0.10)")
     
     m = Prophet(**prophet_config)
     m.fit(prophet_df)
@@ -145,28 +127,15 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", con
     try:
         # Use residuals as input for SARIMA
         try:
-            # For seasonal items, force seasonal differencing (D=1)
-            if availability_type == 'seasonal':
-                resid_model = auto_arima(
-                    residuals, 
-                    seasonal=True, 
-                    m=12,
-                    D=1,  # Force seasonal differencing for seasonal items
-                    error_action='ignore', 
-                    suppress_warnings=True,
-                    stepwise=True
-                )
-                print(f"OPTIMA: [{item_name}] Applied SEASONAL ARIMA with D=1")
-            else:
-                # Tier 1: Full Seasonal SARIMA (Requires 24+ months for stability)
-                resid_model = auto_arima(
-                    residuals, 
-                    seasonal=True, 
-                    m=12, 
-                    error_action='ignore', 
-                    suppress_warnings=True,
-                    stepwise=True
-                )
+            # Tier 1: Full Seasonal SARIMA (auto_arima selects optimal D)
+            resid_model = auto_arima(
+                residuals, 
+                seasonal=True, 
+                m=12, 
+                error_action='ignore', 
+                suppress_warnings=True,
+                stepwise=True
+            )
         except Exception as e:
             print(f"OPTIMA: [{item_name}] Full SARIMA failed: {e}. Attempting SARIMA without seasonal differencing (D=0).")
             try:

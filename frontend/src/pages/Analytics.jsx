@@ -319,8 +319,8 @@ export default function Analytics({
                 {metrics.mape_pct !== undefined && (
                   <div className="flex flex-wrap gap-4">
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Model Accuracy</p>
-                      <p className="text-sm font-bold text-white">{Math.max(0, 100 - metrics.mape_pct).toFixed(1)}% <span className="text-[10px] text-zinc-500 ml-1">Accuracy</span></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Forecast Error</p>
+                      <p className="text-sm font-bold text-white">{(metrics.mape_pct || 0).toFixed(1)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
                     </div>
                     {metrics.mae !== undefined && (
                       <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">

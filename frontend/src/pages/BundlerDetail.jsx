@@ -65,9 +65,7 @@ export default function BundlerDetail() {
     { label: 'Support', value: selectedBundle.support },
     { label: 'Forecast Alignment', value: selectedBundle.forecast_score },
     { label: 'Trend Momentum', value: selectedBundle.trend_slope },
-    { label: 'Seasonal Weight', value: selectedBundle.seasonal_weight },
-    { label: 'Item Availability', value: selectedBundle.is_available ? 'Available' : 'Unavailable' },
-    { label: 'Bundling Strategy', value: selectedBundle.is_always ? 'Always / Core' : 'Dynamic' }
+    { label: 'Seasonal Weight', value: selectedBundle.seasonal_weight }
   ] : [];
 
   const getBadgeStyle = (badge) => badgeStyles[badge] || badgeStyles.DEFAULT;

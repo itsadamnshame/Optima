@@ -306,17 +306,16 @@ def setup_db():
         """))
         conn.commit()
 
-        # [NEW] CREATE item_metadata TABLE
+        conn.commit()
+
+        # [NEW] Restore simplified item_metadata table
         conn.execute(text(f"""
             CREATE TABLE IF NOT EXISTS item_metadata (
                 id {pk_syntax},
                 dataset_id INTEGER NOT NULL,
                 ItemDescription TEXT NOT NULL,
-                availability_status TEXT DEFAULT 'available',
-                availability_type TEXT DEFAULT 'always',
-                is_special_item INTEGER DEFAULT 0,
                 is_bundle INTEGER DEFAULT 0,
-                other_notes TEXT,
+                is_not_product INTEGER DEFAULT 0,
                 FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
             )
         """))
@@ -697,24 +696,7 @@ async def get_session_logs(user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/datasets/{dataset_id}/metadata")
-async def get_dataset_metadata(dataset_id: int, user=Depends(get_current_user)):
-    try:
-        with engine.connect() as conn:
-            res = conn.execute(
-                text("SELECT ItemDescription, availability_status, availability_type, is_bundle FROM item_metadata WHERE dataset_id = :dataset_id"),
-                {"dataset_id": dataset_id}
-            ).fetchall()
-            meta = {}
-            for r in res:
-                meta[r[0]] = {
-                    "availability": r[1],
-                    "availability_type": r[2],
-                    "bundle": bool(r[3])
-                }
-            return {"metadata": meta}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# NOTE: /api/datasets/{dataset_id}/metadata endpoint removed — item configuration no longer used
 
 @app.get("/api/auth/session-status")
 
@@ -1030,14 +1012,13 @@ async def scan_file_for_items(
 async def process_sales_data(
     title: str = Form(...),
     dataset_type: str = Form("MASTER"),
-    item_configs: str = Form(...), # JSON string mapping ItemDescription to settings
+    item_configs: str = Form("{}"), # Kept for backward compat but ignored
     files: List[UploadFile] = File(...),
     user=Depends(get_current_user)
 ):
     if user.get("role") != "ADMIN":
         raise HTTPException(status_code=403, detail="Admin access required to upload data")
     try:
-        configs = json.loads(item_configs)
         all_frames = []
         filenames = []
 
@@ -1124,21 +1105,6 @@ async def process_sales_data(
                 {"t": title, "f": combined_filename, "d": now, "u": user['username'], "rc": len(valid_sales), "dt": dataset_type, "drs": dr_start, "dre": dr_end, "gap": gap_info_str}
             )
 
-            # Save Item Metadata
-            for item, meta in configs.items():
-                conn.execute(
-                    text("""INSERT INTO item_metadata 
-                            (dataset_id, ItemDescription, availability_status, availability_type, is_bundle) 
-                            VALUES (:d, :item, :status, :type, :bundle)"""),
-                    {
-                        "d": dataset_id,
-                        "item": item,
-                        "status": meta.get('availability', 'available'),
-                        "type": meta.get('availability_type', 'always'),
-                        "bundle": 1 if meta.get('bundle') else 0
-                    }
-                )
-
             conn.commit()
 
             valid_sales['dataset_id'] = dataset_id
@@ -1164,6 +1130,26 @@ async def process_sales_data(
                 conn.execute(
                     text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y) VALUES (:d, :item, :ds, :y)"),
                     {"d": dataset_id, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row['Quantity'])}
+                )
+            conn.commit()
+
+            # [NEW] Save simplified item metadata
+            import json
+            try:
+                parsed_configs = json.loads(item_configs)
+            except:
+                parsed_configs = {}
+
+            # We iterate over unique items in the valid_sales to ensure all products are captured
+            all_unique_items = valid_sales['ItemDescription'].unique()
+            for item in all_unique_items:
+                config = parsed_configs.get(item, {})
+                is_bundle = 1 if config.get('bundle') else 0
+                is_not_product = 1 if config.get('is_not_product') else 0
+                
+                conn.execute(
+                    text("INSERT INTO item_metadata (dataset_id, ItemDescription, is_bundle, is_not_product) VALUES (:d, :item, :b, :np)"),
+                    {"d": dataset_id, "item": item, "b": is_bundle, "np": is_not_product}
                 )
             conn.commit()
 
@@ -1486,6 +1472,47 @@ async def get_all_items(dataset_ids: Optional[str] = Query(None), user=Depends(g
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/datasets/{dataset_id}/metadata")
+async def get_dataset_metadata(dataset_id: int, user=Depends(get_current_user)):
+    """Returns the simplified item metadata (bundle and product status) for a dataset."""
+    try:
+        with engine.connect() as conn:
+            query = text("SELECT ItemDescription, is_bundle, is_not_product FROM item_metadata WHERE dataset_id = :id")
+            res = conn.execute(query, {"id": dataset_id}).fetchall()
+            
+            metadata = {}
+            for row in res:
+                metadata[row[0]] = {
+                    "bundle": bool(row[1]),
+                    "is_not_product": bool(row[2])
+                }
+            return metadata
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/datasets/{dataset_id}/metadata")
+async def update_dataset_metadata(dataset_id: int, payload: dict = Body(...), user=Depends(get_current_user)):
+    """Updates the item metadata for a dataset."""
+    if user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        with engine.connect() as conn:
+            # We use a transaction to update efficiently
+            for item, config in payload.items():
+                is_bundle = 1 if config.get('bundle') else 0
+                is_not_product = 1 if config.get('is_not_product') else 0
+                
+                conn.execute(
+                    text("UPDATE item_metadata SET is_bundle = :b, is_not_product = :np WHERE dataset_id = :id AND ItemDescription = :item"),
+                    {"b": is_bundle, "np": is_not_product, "id": dataset_id, "item": item}
+                )
+            conn.commit()
+            return {"status": "success"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 class ItemsRequest(BaseModel):
     dataset_ids: List[int]
 
@@ -1535,13 +1562,13 @@ class ForecastTrainRequest(BaseModel):
     dataset_ids: List[int]
     run_name: str
     items: Optional[List[str]] = None
+    item_configs: Optional[dict] = None
     train_forecast: bool = False
     train_bundler: bool = False
     save_bundler: bool = False
     ref_forecast_id: Optional[Union[int, str]] = "none"
     min_support: float = 0.01
     end_date: Optional[str] = None
-    item_configs: Optional[dict] = None
 
 
 class CommitBundlerRequest(BaseModel):
@@ -1588,6 +1615,16 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
         raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
         if raw_df.empty:
             raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated.")
+
+        # [NEW] Fetch metadata to filter out non-product items
+        meta_df = _read_sql_in("SELECT ItemDescription, is_not_product FROM item_metadata WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
+        non_product_items = set(meta_df[meta_df['is_not_product'] == 1]['ItemDescription'].tolist())
+        
+        # Filter raw_df
+        raw_df = raw_df[~raw_df['ItemDescription'].isin(non_product_items)]
+        
+        if raw_df.empty:
+            raise HTTPException(status_code=400, detail="Datasets contain only non-product items after filtering.")
 
         # Ensure types
         raw_df['ds'] = pd.to_datetime(raw_df['ds'])
@@ -1637,44 +1674,15 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
                 print(f"OPTIMA: {len(eligible_items)} products passed threshold (out of {len(count_df)} total)")
                 target_items = eligible_items
                 
-            item_meta_map = {}
-            with engine.connect() as conn:
-                # We take metadata from the latest dataset for labeling
-                latest_id = max(req.dataset_ids)
-                res = conn.execute(
-                    text("SELECT ItemDescription, availability_status, availability_type, is_bundle FROM item_metadata WHERE dataset_id = :dataset_id"),
-                    {"dataset_id": latest_id}
-                ).fetchall()
-                for r in res:
-                    item_meta_map[r[0]] = {"status": r[1], "type": r[2], "is_bundle": bool(r[3]) if len(r) > 3 else False}
-            
-            # Apply local overrides from the request if present
-            if req.item_configs:
-                for item, config in req.item_configs.items():
-                    item_meta_map[item] = {
-                        "status": config.get('availability', 'available'),
-                        "type": config.get('availability_type', 'always'),
-                        "is_bundle": config.get('bundle_is_set', False)
-                    }
-
             def process_item(item):
-                meta = item_meta_map.get(item, {"status": "available", "type": "always"})
-                if meta["status"] == 'discontinued': return None
-                
                 item_df = raw_df[raw_df['ItemDescription'] == item].copy()
-                # Pass the configuration to the forecaster
-                forecast = preprocess_and_forecast_item(item_df, target_end_date, item, config=meta)
+                forecast = preprocess_and_forecast_item(item_df, target_end_date, item)
                 
                 if not forecast.empty:
                     forecast['ItemDescription'] = item
                     metrics = forecast.attrs.get('metrics', {})
                     metrics['stl'] = forecast.attrs.get('stl', {})
-                    
-                    # Attach tags
-                    tags = []
-                    if meta["type"] == 'seasonal': tags.append("Tagged: Seasonal")
-                    if meta["type"] == 'high_velocity': tags.append("High Velocity")
-                    metrics['tags'] = tags
+                    metrics['tags'] = []
                     
                     return item, forecast, metrics
                 return None
@@ -2016,7 +2024,6 @@ async def get_bundler_preview(dataset_id: int, min_support: float = 0.01, ref_fo
         if ref_forecast_id != "none" and ref_forecast_id != "auto":
             ref_id = int(ref_forecast_id)
             
-        from bundler import generate_strategic_bundles
         bundles = generate_strategic_bundles(
             engine, dataset_id, 
             bundler_run_id=None, 
@@ -2092,8 +2099,6 @@ async def simulate_bundle(req: dict, user=Depends(get_current_user)):
         if not item_a or not item_b:
             raise HTTPException(status_code=400, detail="Two items required for simulation")
 
-        # Use the specialized simulation scorer
-        from bundler import score_single_pair
         result = score_single_pair(engine, dataset_ids, item_a, item_b, ref_id)
         
         return {"result": result}
