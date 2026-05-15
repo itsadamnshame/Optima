@@ -68,9 +68,10 @@ def _insert_and_get_id(conn, sql: str, params: dict):
 def _read_sql(sql: str, params: Optional[dict] = None):
     return pd.read_sql(text(sql), engine, params=params)
 
-def _read_sql_in(sql: str, param_name: str, values: List[int]):
+def _read_sql_in(sql: str, param_name: str, values: List[int], **kwargs):
     stmt = text(sql).bindparams(bindparam(param_name, expanding=True))
-    return pd.read_sql(stmt, engine, params={param_name: values})
+    params = {param_name: values, **kwargs}
+    return pd.read_sql(stmt, engine, params=params)
 
 def _parse_id_csv(value: str) -> List[int]:
     try:
@@ -301,12 +302,20 @@ def setup_db():
                 ItemDescription TEXT NOT NULL,
                 ds TEXT NOT NULL,
                 y REAL NOT NULL,
+                metric_type TEXT DEFAULT 'Volume',
                 FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
             )
         """))
         conn.commit()
 
         conn.commit()
+
+        try:
+            conn.execute(text("ALTER TABLE aggregated_sales ADD COLUMN metric_type TEXT DEFAULT 'Volume'"))
+            conn.commit()
+        except Exception:
+            _ignore_schema_error(conn)
+            pass
 
         # [NEW] Restore simplified item_metadata table
         conn.execute(text(f"""
@@ -973,7 +982,7 @@ def analyze_dataset_gaps(df):
                         gap_str = "Missing Months: " + ", ".join(missing_months.strftime('%b %Y'))
     return dr_start, dr_end, gap_str
 
-@app.post("/api/ingest/scan")
+@app.post("/api/scan-items")
 async def scan_file_for_items(
     files: List[UploadFile] = File(...),
     user=Depends(get_current_user)
@@ -1124,12 +1133,21 @@ async def process_sales_data(
 
             # Filter only eligible items for the aggregated table
             filtered_agg = agg_df[agg_df['ItemDescription'].isin(eligible_items)]
-            monthly_agg = filtered_agg.groupby(['ItemDescription', 'ds'])['Quantity'].sum().reset_index()
             
-            for _, row in monthly_agg.iterrows():
+            # Aggregate Volume (Quantity)
+            monthly_agg_qty = filtered_agg.groupby(['ItemDescription', 'ds'])['Quantity'].sum().reset_index()
+            for _, row in monthly_agg_qty.iterrows():
                 conn.execute(
-                    text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y) VALUES (:d, :item, :ds, :y)"),
+                    text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y, metric_type) VALUES (:d, :item, :ds, :y, 'Volume')"),
                     {"d": dataset_id, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row['Quantity'])}
+                )
+            
+            # Aggregate Revenue (Total)
+            monthly_agg_rev = filtered_agg.groupby(['ItemDescription', 'ds'])['Total'].sum().reset_index()
+            for _, row in monthly_agg_rev.iterrows():
+                conn.execute(
+                    text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y, metric_type) VALUES (:d, :item, :ds, :y, 'Revenue')"),
+                    {"d": dataset_id, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row['Total'])}
                 )
             conn.commit()
 
@@ -1307,7 +1325,7 @@ async def get_dataset_years(dataset_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/datasets/{dataset_id}/aggregated")
-async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int = 50, sort_by: str = "ds", sort_dir: str = "ASC", user=Depends(get_current_user)):
+async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int = 50, sort_by: str = "ds", sort_dir: str = "ASC", metric: str = "Volume", user=Depends(get_current_user)):
     try:
         offset = (page - 1) * limit
         
@@ -1316,15 +1334,25 @@ async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int
             exists = conn.execute(text("SELECT 1 FROM aggregated_sales WHERE dataset_id=:id LIMIT 1"), {"id": dataset_id}).fetchone()
             if not exists:
                 print(f"OPTIMA: Retro-aggregating dataset {dataset_id}...")
-                raw_df = _read_sql(f"SELECT {_ident('ItemDescription')}, {_ident('OrderDate')}, {_ident('Quantity')} FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": dataset_id})
+                raw_df = _read_sql(f"SELECT {_ident('ItemDescription')}, {_ident('OrderDate')}, {_ident('Quantity')}, {_ident('Total')} FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": dataset_id})
                 if not raw_df.empty:
                     raw_df['OrderDate'] = pd.to_datetime(raw_df['OrderDate'])
                     raw_df['ds'] = raw_df['OrderDate'].dt.to_period('M').dt.to_timestamp()
-                    agg = raw_df.groupby(['ItemDescription', 'ds'])['Quantity'].sum().reset_index()
-                    for _, row in agg.iterrows():
+                    
+                    # Aggregate Volume
+                    agg_qty = raw_df.groupby(['ItemDescription', 'ds'])['Quantity'].sum().reset_index()
+                    for _, row in agg_qty.iterrows():
                         conn.execute(
-                            text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y) VALUES (:d, :item, :ds, :y)"),
+                            text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y, metric_type) VALUES (:d, :item, :ds, :y, 'Volume')"),
                             {"d": dataset_id, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row['Quantity'])}
+                        )
+                    
+                    # Aggregate Revenue
+                    agg_rev = raw_df.groupby(['ItemDescription', 'ds'])['Total'].sum().reset_index()
+                    for _, row in agg_rev.iterrows():
+                        conn.execute(
+                            text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y, metric_type) VALUES (:d, :item, :ds, :y, 'Revenue')"),
+                            {"d": dataset_id, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row['Total'])}
                         )
                     conn.commit()
 
@@ -1332,10 +1360,10 @@ async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int
         if sort_by not in allowed_cols: sort_by = "ds"
         direction = "DESC" if sort_dir.upper() == "DESC" else "ASC"
 
-        df = _read_sql(f"SELECT * FROM aggregated_sales WHERE dataset_id = :dataset_id ORDER BY {sort_by} {direction} LIMIT :limit OFFSET :offset", {"dataset_id": dataset_id, "limit": limit, "offset": offset})
+        df = _read_sql(f"SELECT * FROM aggregated_sales WHERE dataset_id = :dataset_id AND metric_type = :metric ORDER BY {sort_by} {direction} LIMIT :limit OFFSET :offset", {"dataset_id": dataset_id, "limit": limit, "offset": offset, "metric": metric})
         
         with engine.connect() as conn:
-            total_rows_res = conn.execute(text("SELECT COUNT(*) FROM aggregated_sales WHERE dataset_id=:id"), {"id": dataset_id}).fetchone()
+            total_rows_res = conn.execute(text("SELECT COUNT(*) FROM aggregated_sales WHERE dataset_id=:id AND metric_type = :metric"), {"id": dataset_id, "metric": metric}).fetchone()
             total_rows = total_rows_res[0] if total_rows_res else 0
             
         data = df.to_dict(orient="records")
@@ -1351,10 +1379,10 @@ async def get_dataset_aggregated_data(dataset_id: int, page: int = 1, limit: int
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/datasets/{dataset_id}/aggregated/global")
-async def get_dataset_global_aggregated_data(dataset_id: int, user=Depends(get_current_user)):
+async def get_dataset_global_aggregated_data(dataset_id: int, metric: str = "Volume", user=Depends(get_current_user)):
     try:
         # SUM all items per month for this dataset
-        df = _read_sql("SELECT ds, SUM(y) as total_quantity FROM aggregated_sales WHERE dataset_id = :dataset_id GROUP BY ds ORDER BY ds ASC", {"dataset_id": dataset_id})
+        df = _read_sql("SELECT ds, SUM(y) as total_quantity FROM aggregated_sales WHERE dataset_id = :dataset_id AND metric_type = :metric GROUP BY ds ORDER BY ds ASC", {"dataset_id": dataset_id, "metric": metric})
         data = df.to_dict(orient="records")
         return {
             "status": "success",
@@ -1558,9 +1586,9 @@ async def trigger_optima_pipeline(
 # PERSISTENT FORECASTING SYSTEM
 # ==========================================
 class ForecastTrainRequest(BaseModel):
-
     dataset_ids: List[int]
     run_name: str
+    metric: str = "Volume"
     items: Optional[List[str]] = None
     item_configs: Optional[dict] = None
     train_forecast: bool = False
@@ -1612,9 +1640,32 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
         
     try:
         # 1. Fetch PRE-AGGREGATED Data
-        raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
+        raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids AND metric_type = :metric", "dataset_ids", req.dataset_ids, metric=req.metric)
+        
         if raw_df.empty:
-            raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated.")
+            # Attempt to retro-aggregate if missing
+            with engine.connect() as conn:
+                for did in req.dataset_ids:
+                    metric_exists = conn.execute(text("SELECT 1 FROM aggregated_sales WHERE dataset_id=:id AND metric_type=:m LIMIT 1"), {"id": did, "m": req.metric}).fetchone()
+                    if not metric_exists:
+                        print(f"OPTIMA: Retro-aggregating {req.metric} for dataset {did}...")
+                        col = "Total" if req.metric == "Revenue" else "Quantity"
+                        raw = _read_sql(f"SELECT {_ident('ItemDescription')}, {_ident('OrderDate')}, {_ident(col)} FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": did})
+                        if not raw.empty:
+                            raw['OrderDate'] = pd.to_datetime(raw['OrderDate'])
+                            raw['ds'] = raw['OrderDate'].dt.to_period('M').dt.to_timestamp()
+                            agg = raw.groupby(['ItemDescription', 'ds'])[col].sum().reset_index()
+                            for _, row in agg.iterrows():
+                                conn.execute(
+                                    text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y, metric_type) VALUES (:d, :item, :ds, :y, :m)"),
+                                    {"d": did, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row[col]), "m": req.metric}
+                                )
+                            conn.commit()
+            
+            # Re-fetch
+            raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids AND metric_type = :metric", "dataset_ids", req.dataset_ids, metric=req.metric)
+            if raw_df.empty:
+                raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated for the selected metric.")
 
         # [NEW] Fetch metadata to filter out non-product items
         meta_df = _read_sql_in("SELECT ItemDescription, is_not_product FROM item_metadata WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
@@ -1715,7 +1766,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
                 run_id = _insert_and_get_id(
                     conn,
                     "INSERT INTO forecast_runs (name, dataset_id, created_at, config_json) VALUES (:n, :d, :c, :cj)",
-                    {"n": req.run_name, "d": req.dataset_ids[0], "c": now, "cj": json.dumps({"end_date": target_end_date, "item_count": len(all_results), "dataset_ids": req.dataset_ids})}
+                    {"n": req.run_name, "d": req.dataset_ids[0], "c": now, "cj": json.dumps({"end_date": target_end_date, "metric": req.metric, "item_count": len(all_results), "dataset_ids": req.dataset_ids})}
                 )
                 
                 for item, df in all_results:

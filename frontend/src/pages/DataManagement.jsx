@@ -62,6 +62,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [defaultItemConfigs, setDefaultItemConfigs] = useState({});
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
+  const [metric, setMetric] = useState('Volume');
 
   useEffect(() => {
     if (selectedDatasetIds.length > 0) {
@@ -307,6 +308,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       const payload = {
         run_name: runName,
         dataset_ids: selectedDatasetIds.map(id => parseInt(id)),
+        metric: metric,
         item_configs: itemConfigs,
         train_forecast: trainForecast,
         train_bundler: trainBundler,
@@ -726,6 +728,22 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 </div>
                 <h3 className="text-4xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Intelligence Hub</h3>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Architecting persistent strategic models across your data landscape.</p>
+                
+                <div className="flex gap-1 p-1 rounded-2xl border mx-auto w-fit mt-6" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                  {['Volume', 'Revenue'].map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setMetric(m)}
+                      className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${metric === m ? 'text-white shadow-xl scale-105' : 'hover:bg-[var(--glass-bg-hover)] text-gray-500'}`}
+                      style={{ 
+                        background: metric === m ? 'var(--accent)' : 'transparent', 
+                        boxShadow: metric === m ? '0 10px 15px -3px var(--accent-glow)' : 'none'
+                      }}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">

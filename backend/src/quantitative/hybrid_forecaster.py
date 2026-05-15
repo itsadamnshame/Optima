@@ -185,12 +185,12 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
         final_forecast.loc[future_mask, 'yhat_upper'] += (correction + np.abs(correction)*0.1)
 
         # Cleanup columns for UI
-        final_forecast.rename(columns={'ds': 'forecast_date', 'yhat': 'predicted_quantity'}, inplace=True)
+        final_forecast.rename(columns={'ds': 'forecast_date', 'yhat': 'predicted_value'}, inplace=True)
         
         # Add historical actuals for the chart
         actuals_map = monthly.to_dict()
-        final_forecast['actual_quantity'] = final_forecast['forecast_date'].map(actuals_map)
-        final_forecast['type'] = final_forecast['actual_quantity'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
+        final_forecast['actual_value'] = final_forecast['forecast_date'].map(actuals_map)
+        final_forecast['type'] = final_forecast['actual_value'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
         final_forecast['forecast_date'] = final_forecast['forecast_date'].dt.strftime('%Y-%m-%d')
         
         # Attach STL and Metrics as attributes
@@ -217,9 +217,9 @@ def generate_dummy_forecast(monthly, forecast_end, item_name, status):
     all_dates = monthly.index.append(future_dates)
     
     df = pd.DataFrame({'forecast_date': all_dates})
-    df['actual_quantity'] = df['forecast_date'].map(monthly.to_dict())
-    df['predicted_quantity'] = 0.0
-    df['type'] = df['actual_quantity'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
+    df['actual_value'] = df['forecast_date'].map(monthly.to_dict())
+    df['predicted_value'] = 0.0
+    df['type'] = df['actual_value'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
     df['forecast_date'] = df['forecast_date'].dt.strftime('%Y-%m-%d')
     df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A'}
     return df

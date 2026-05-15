@@ -157,6 +157,12 @@ export default function Analytics({
     }
   };
 
+  const formatMetric = (val, dec = 1) => {
+    if (val === undefined || val === null || val === 'N/A') return 'N/A';
+    const num = typeof val === 'number' ? val : parseFloat(val);
+    return isNaN(num) ? 'N/A' : num.toFixed(dec);
+  };
+
   // --- DATA TRANSFORMS ---
 
   const getChartData = (itemKey) => {
@@ -166,15 +172,15 @@ export default function Analytics({
       ...d,
       date: d.forecast_date ? new Date(d.forecast_date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : '',
       timestamp: d.forecast_date,
-      actual: d.actual_quantity,
-      forecast: d.predicted_quantity,
+      actual: d.actual_value ?? d.actual_quantity ?? null,
+      forecast: d.predicted_value ?? d.predicted_quantity ?? null,
       lower: d.yhat_lower,
       upper: d.yhat_upper
     }));
   };
 
   const getMonthlyData = (fullData) => {
-    const firstForecastIdx = fullData.findIndex(d => !d.actual);
+    const firstForecastIdx = fullData.findIndex(d => d.actual === null || d.actual === undefined);
     if (firstForecastIdx === -1) return [];
     // Take 4 points around the transition for context
     return fullData.slice(Math.max(0, firstForecastIdx - 2), firstForecastIdx + 4);
@@ -223,6 +229,8 @@ export default function Analytics({
     const metrics = meta.metrics || {};
     const stl = metrics.stl || null;
     const tags = metrics.tags || [];
+    
+    const metricLabel = selectedRun?.config?.metric || 'Quantity';
 
     return (
       <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -320,20 +328,16 @@ export default function Analytics({
                   <div className="flex flex-wrap gap-4">
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Forecast Error</p>
-                      <p className="text-sm font-bold text-white">{(metrics.mape_pct || 0).toFixed(1)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
                     </div>
-                    {metrics.mae !== undefined && (
-                      <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Avg. Error Magnitude</p>
-                        <p className="text-sm font-bold text-white">{(typeof metrics.mae === 'number' ? metrics.mae : 0).toFixed(2)} <span className="text-[10px] text-zinc-500 ml-1">MAE</span></p>
-                      </div>
-                    )}
-                    {metrics.rmse !== undefined && (
-                      <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                        <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Peak Error Sensitivity</p>
-                        <p className="text-sm font-bold text-white">{(typeof metrics.rmse === 'number' ? metrics.rmse : 0).toFixed(2)} <span className="text-[10px] text-zinc-500 ml-1">RMSE</span></p>
-                      </div>
-                    )}
+                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Avg. Error Magnitude</p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mae, 2)} <span className="text-[10px] text-zinc-500 ml-1">MAE</span></p>
+                    </div>
+                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Peak Error Sensitivity</p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} <span className="text-[10px] text-zinc-500 ml-1">RMSE</span></p>
+                    </div>
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Model Health</p>
                       <p className="text-sm font-bold text-white flex items-center gap-2">
@@ -388,9 +392,9 @@ export default function Analytics({
                     />
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: chartColors.label }} />
                     <Area type="monotone" dataKey="upper" baseValue="lower" stroke={chartColors.forecast} strokeWidth={0.5} fill={chartColors.area} connectNulls name="Confidence Range" />
-                    <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={false} name="Hybrid Prediction" />
-                    <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={4} dot={{ r: 5, fill: chartColors.actual }} name="Historical Actual" />
-                    <ReferenceLine x={chartData.find(d => !d.actual)?.date} stroke={chartColors.forecast} strokeDasharray="3 3" label={{ value: 'PREDICTION', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
+                    <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={false} connectNulls name={`Predicted ${metricLabel}`} />
+                    <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={4} dot={{ r: 5, fill: chartColors.actual }} connectNulls name={`Actual ${metricLabel}`} />
+                    <ReferenceLine x={chartData.find(d => d.actual === null || d.actual === undefined)?.date} stroke={chartColors.forecast} strokeDasharray="3 3" label={{ value: 'PREDICTION', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -415,8 +419,8 @@ export default function Analytics({
                         }} 
                         itemStyle={{ color: chartColors.tooltip.text }}
                       />
-                      <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={{ r: 5, fill: chartColors.forecast }} name="Target" />
-                      <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={3} dot={{ r: 4, fill: chartColors.actual }} name="History" />
+                      <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={{ r: 5, fill: chartColors.forecast }} connectNulls name={`Target ${metricLabel}`} />
+                      <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={3} dot={{ r: 4, fill: chartColors.actual }} connectNulls name={`History ${metricLabel}`} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
