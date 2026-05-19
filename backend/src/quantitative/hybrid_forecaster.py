@@ -8,7 +8,7 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-def aggregate_monthly(df):
+def aggregate_monthly(df, history_end=None):
     """
     Rolls up daily transactions into a continuous monthly series.
     Ensures missing months are filled with 0.
@@ -36,9 +36,14 @@ def aggregate_monthly(df):
         # 3. Monthly resampling (Month Start)
         monthly = daily['Quantity'].resample('MS').sum()
     
-    # 4. Fill gaps (ensure no months are missing between start and end)
+    # 4. Fill gaps (ensure no months are missing between start and end/history_end)
     if not monthly.empty:
-        full_range = pd.date_range(start=monthly.index.min(), end=monthly.index.max(), freq='MS')
+        end_date = monthly.index.max()
+        if history_end is not None:
+            history_end = pd.to_datetime(history_end)
+            if history_end > end_date:
+                end_date = history_end
+        full_range = pd.date_range(start=monthly.index.min(), end=end_date, freq='MS')
         monthly = monthly.reindex(full_range, fill_value=0)
     
     return monthly
@@ -73,7 +78,7 @@ def detect_zombies(monthly_series):
         pass
     return False
 
-def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
+def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", history_end=None):
     """
     Main entry point for the Hybrid Forecaster (Phase 2).
     
@@ -81,11 +86,12 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
         item_df: Transaction data for the item
         forecast_end: End date for forecast
         item_name: Item description/name
+        history_end: Global end date of dataset history
     """
     print(f"OPTIMA: Analyzing {item_name}...")
     
     # 1. Aggregate
-    monthly = aggregate_monthly(item_df)
+    monthly = aggregate_monthly(item_df, history_end=history_end)
     
     if len(monthly) < 12:
         print(f"OPTIMA: [{item_name}] Insufficient history ({len(monthly)} months). Skipping specialist model.")

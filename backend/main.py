@@ -1704,7 +1704,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
             print(f"OPTIMA: Training Global Baseline for '{req.run_name}'...")
             # Since it's already aggregated by item/month, we sum all items per month
             global_agg = raw_df.groupby('ds')['y'].sum().reset_index()
-            global_forecast = preprocess_and_forecast_item(global_agg, target_end_date, "GLOBAL_STORE_TOTAL")
+            global_forecast = preprocess_and_forecast_item(global_agg, target_end_date, "GLOBAL_STORE_TOTAL", history_end=last_dt)
             if not global_forecast.empty:
                 global_forecast['ItemDescription'] = 'GLOBAL_BASELINE'
                 all_results.append(('GLOBAL_BASELINE', global_forecast))
@@ -1726,7 +1726,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
                 
             def process_item(item):
                 item_df = raw_df[raw_df['ItemDescription'] == item].copy()
-                forecast = preprocess_and_forecast_item(item_df, target_end_date, item)
+                forecast = preprocess_and_forecast_item(item_df, target_end_date, item, history_end=last_dt)
                 
                 if not forecast.empty:
                     forecast['ItemDescription'] = item
