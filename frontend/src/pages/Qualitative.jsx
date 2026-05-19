@@ -34,6 +34,32 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
   const [searchA, setSearchA] = useState('');
   const [searchB, setSearchB] = useState('');
   const [selectedDatasetIds, setSelectedDatasetIds] = useState([]);
+
+  const dropdownRefA = useRef(null);
+  const dropdownRefB = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRefA.current && !dropdownRefA.current.contains(event.target)) {
+        setShowDropdownA(false);
+      }
+      if (dropdownRefB.current && !dropdownRefB.current.contains(event.target)) {
+        setShowDropdownB(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const filteredCatalogA = catalog.filter(item => 
+    item && item.toLowerCase().includes((searchA || '').toLowerCase()) && item !== simItemB
+  ).slice(0, 50);
+
+  const filteredCatalogB = catalog.filter(item => 
+    item && item.toLowerCase().includes((searchB || '').toLowerCase()) && item !== simItemA
+  ).slice(0, 50);
   
   useEffect(() => {
     if (selectedDatasetIds.length === 0 && activeDatasetId) {
@@ -458,22 +484,47 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 </div>
 
                 <div className="space-y-6">
-                   <div className="relative">
-                     <label className="text-[9px] font-black uppercase tracking-widest ml-1 mb-2 block" style={{ color: 'var(--text-muted)' }}>Primary Item</label>
-                     <div className="relative">
-                       <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-faint)' }} />
-                      <input 
-                        type="text"
-                        placeholder="Search primary item..."
-                        value={simItemA || searchA}
-                        onChange={(e) => { setSearchA(e.target.value); setSimItemA(''); setShowDropdownA(true); }}
-                        onFocus={() => setShowDropdownA(true)}
-                        className="w-full rounded-2xl pl-11 pr-4 py-4 text-xs font-bold outline-none focus:border-indigo-500/50 transition-all shadow-xl"
-                        style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)', color: 'var(--sim-text-primary)' }}
-                      />
-                      {simItemA && <button onClick={() => setSimItemA('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
-                    </div>
-                  </div>
+                    <div className="relative" ref={dropdownRefA}>
+                      <label className="text-[9px] font-black uppercase tracking-widest ml-1 mb-2 block" style={{ color: 'var(--text-muted)' }}>Primary Item</label>
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-faint)' }} />
+                       <input 
+                         type="text"
+                         placeholder="Search primary item..."
+                         value={simItemA || searchA}
+                         onChange={(e) => { setSearchA(e.target.value); setSimItemA(''); setShowDropdownA(true); }}
+                         onFocus={() => setShowDropdownA(true)}
+                         className="w-full rounded-2xl pl-11 pr-4 py-4 text-xs font-bold outline-none focus:border-indigo-500/50 transition-all shadow-xl"
+                         style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)', color: 'var(--sim-text-primary)' }}
+                       />
+                       {(simItemA || searchA) && <button onClick={() => { setSimItemA(''); setSearchA(''); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
+                      </div>
+                      {showDropdownA && searchA.length >= 1 && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border p-2 shadow-2xl custom-scrollbar"
+                             style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-strong)' }}>
+                          {filteredCatalogA.length > 0 ? (
+                            filteredCatalogA.map((item, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  setSimItemA(item);
+                                  setSearchA(item);
+                                  setShowDropdownA(false);
+                                }}
+                                className="w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-indigo-500/10 hover:text-indigo-400"
+                                style={{ color: 'var(--text-secondary)' }}
+                              >
+                                {item}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                              No items found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                   </div>
 
                   <div className="flex justify-center">
                     <div className="w-8 h-8 rounded-full border flex items-center justify-center" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
@@ -481,22 +532,47 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                     </div>
                   </div>
 
-                   <div className="relative">
-                     <label className="text-[9px] font-black uppercase tracking-widest ml-1 mb-2 block" style={{ color: 'var(--text-muted)' }}>Secondary Item</label>
-                     <div className="relative">
-                       <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-faint)' }} />
-                      <input 
-                        type="text"
-                        placeholder="Search secondary item..."
-                        value={simItemB || searchB}
-                        onChange={(e) => { setSearchB(e.target.value); setSimItemB(''); setShowDropdownB(true); }}
-                        onFocus={() => setShowDropdownB(true)}
-                        className="w-full rounded-2xl pl-11 pr-4 py-4 text-xs font-bold outline-none focus:border-emerald-500/50 transition-all shadow-xl"
-                        style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)', color: 'var(--sim-text-primary)' }}
-                      />
-                      {simItemB && <button onClick={() => setSimItemB('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
-                    </div>
-                  </div>
+                   <div className="relative" ref={dropdownRefB}>
+                      <label className="text-[9px] font-black uppercase tracking-widest ml-1 mb-2 block" style={{ color: 'var(--text-muted)' }}>Secondary Item</label>
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-faint)' }} />
+                       <input 
+                         type="text"
+                         placeholder="Search secondary item..."
+                         value={simItemB || searchB}
+                         onChange={(e) => { setSearchB(e.target.value); setSimItemB(''); setShowDropdownB(true); }}
+                         onFocus={() => setShowDropdownB(true)}
+                         className="w-full rounded-2xl pl-11 pr-4 py-4 text-xs font-bold outline-none focus:border-emerald-500/50 transition-all shadow-xl"
+                         style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)', color: 'var(--sim-text-primary)' }}
+                       />
+                       {(simItemB || searchB) && <button onClick={() => { setSimItemB(''); setSearchB(''); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X size={14} /></button>}
+                      </div>
+                      {showDropdownB && searchB.length >= 1 && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border p-2 shadow-2xl custom-scrollbar"
+                             style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-strong)' }}>
+                          {filteredCatalogB.length > 0 ? (
+                            filteredCatalogB.map((item, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  setSimItemB(item);
+                                  setSearchB(item);
+                                  setShowDropdownB(false);
+                                }}
+                                className="w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-emerald-500/10 hover:text-emerald-500"
+                                style={{ color: 'var(--text-secondary)' }}
+                              >
+                                {item}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                              No items found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                   </div>
                 </div>
               </div>
             </div>
