@@ -137,15 +137,10 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
   };
 
   const fetchBundlerRuns = async (selectedId = null) => {
-    if (!activeDatasetId || activeDatasetId === 'null') {
-      setBundlerRuns([]);
-      setSelectedRunId('');
-      setBundles([]);
-      return;
-    }
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`/api/datasets/${activeDatasetId}/bundler-runs`, {
+      // Fetch ALL runs across all datasets so the user always sees their saved work
+      const res = await axios.get(`/api/bundler/runs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const runs = res.data.runs || [];
@@ -284,9 +279,15 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 style={{ color: 'var(--text-primary)' }}
               >
                 {isSandbox && <option value="sandbox">Sandbox: {stagedInfo?.name || 'New Result'}</option>}
-                {bundlerRuns.map(run => (
-                  <option key={run.id} value={run.id.toString()}>{(run.name || 'Unnamed Run').toUpperCase()}</option>
-                ))}
+                {bundlerRuns.map(run => {
+                  const ds = sidebarDatasets.find(d => d.id === run.dataset_id);
+                  const dsLabel = ds ? ds.title : `Dataset ${run.dataset_id}`;
+                  return (
+                    <option key={run.id} value={run.id.toString()}>
+                      {(run.name || 'Unnamed Run').toUpperCase()} [{dsLabel}]
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
@@ -395,8 +396,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                   <Search size={40} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>No Bundles Found</h3>
-                  <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>Lower your discovery sensitivity or ingest more transactional data to identify affinities.</p>
+                  <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>No Saved Bundles</h3>
+                  <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>No bundle runs have been saved for this dataset. You may need to switch datasets or run a new Strategic Forecast to generate results.</p>
                 </div>
               </div>
             )}
