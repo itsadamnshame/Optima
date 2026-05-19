@@ -132,8 +132,13 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
     }
   };
 
-  const fetchBundlerRuns = async () => {
-    if (!activeDatasetId || activeDatasetId === 'null') return;
+  const fetchBundlerRuns = async (selectedId = null) => {
+    if (!activeDatasetId || activeDatasetId === 'null') {
+      setBundlerRuns([]);
+      setSelectedRunId('');
+      setBundles([]);
+      return;
+    }
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`/api/datasets/${activeDatasetId}/bundler-runs`, {
@@ -141,8 +146,15 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
       });
       const runs = res.data.runs || [];
       setBundlerRuns(runs);
-      if (runs.length > 0 && (!selectedRunId || selectedRunId === 'null')) {
-        setSelectedRunId(runs[0].id.toString());
+      if (runs.length > 0) {
+        if (selectedId) {
+          setSelectedRunId(selectedId.toString());
+        } else {
+          setSelectedRunId(runs[0].id.toString());
+        }
+      } else {
+        setSelectedRunId('');
+        setBundles([]);
       }
     } catch (err) {
       console.error("Failed to fetch bundler runs", err);
@@ -170,7 +182,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
     setSaveLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post('/api/bundler/runs/commit', {
+      const res = await axios.post('/api/bundler/runs/commit', {
         name: stagedInfo.name,
         dataset_id: stagedInfo.datasetId,
         forecast_ref_id: stagedInfo.refId,
@@ -179,7 +191,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       setIsSandbox(false);
-      fetchBundlerRuns();
+      fetchBundlerRuns(res.data?.run_id);
       setNotification({ type: 'success', message: 'Strategy successfully committed to the vault.' });
       setTimeout(() => setNotification(null), 5000);
     } catch (err) {
@@ -541,7 +553,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                         setSaveLoading(true);
                         try {
                           const token = localStorage.getItem('token');
-                          await axios.post('/api/bundler/runs/commit', {
+                          const res = await axios.post('/api/bundler/runs/commit', {
                             name: `Manual: ${simResult.pair}`,
                             dataset_id: activeDatasetId,
                             forecast_ref_id: stagedInfo?.refId || selectedRunId,
@@ -549,6 +561,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                           }, { headers: { Authorization: `Bearer ${token}` } });
                           setNotification({ type: 'success', message: 'Simulation results added to Strategy Vault.' });
                           setTimeout(() => setNotification(null), 5000);
+                          fetchBundlerRuns(res.data?.run_id);
                         } catch (err) {
                           console.error("Save failed", err);
                           setNotification({ type: 'error', message: 'Failed to save simulation. Integrity check failed.' });
