@@ -1765,7 +1765,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
                 run_id = _insert_and_get_id(
                     conn,
                     "INSERT INTO forecast_runs (name, dataset_id, created_at, config_json) VALUES (:n, :d, :c, :cj)",
-                    {"n": req.run_name, "d": req.dataset_ids[0], "c": now, "cj": json.dumps({"end_date": target_end_date, "metric": req.metric, "item_count": len(all_results), "dataset_ids": req.dataset_ids})}
+                    {"n": req.run_name, "d": req.dataset_ids[0], "c": now, "cj": json.dumps({"end_date": target_end_date, "metric": "Volume", "item_count": len(all_results), "dataset_ids": req.dataset_ids})}
                 )
                 
                 for item, df in all_results:

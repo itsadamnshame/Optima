@@ -45,10 +45,20 @@ def aggregate_monthly(df):
 
 def detect_zombies(monthly_series):
     """
-    Uses STL Trend to identify 'Zombie' products (dead or dying).
-    Returns True if the trend is effectively zero.
+    Uses STL Trend and consecutive zero checks to identify 'Zombie' products (dead or dying).
+    Returns True if the product has no recent sales or if the trend is effectively zero.
     """
-    if len(monthly_series) < 12: # Not enough data for STL seasonal
+    if monthly_series.empty:
+        return True
+
+    # 1. Direct check: If the last 6 months have 0 sales, it is a zombie (exceeds typical seasonal off-season)
+    if len(monthly_series) >= 6 and (monthly_series.iloc[-6:] == 0).all():
+        return True
+
+    # 2. Check for short series: if less than 12 months, and the last 3 months have 0 sales
+    if len(monthly_series) < 12:
+        if len(monthly_series) >= 3 and (monthly_series.iloc[-3:] == 0).all():
+            return True
         return False
         
     try:
@@ -180,9 +190,7 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
         # Apply SARIMA correction to the future rows (where ds > last_date)
         future_mask = final_forecast['ds'] > last_date
         
-        # Dampen revenue residuals to prevent wild swings in high-magnitude data
-        dampening = 0.5 if metric_type == "Revenue" else 1.0
-        correction = np.array(resid_forecast) * dampening
+        correction = np.array(resid_forecast)
         
         final_forecast.loc[future_mask, 'yhat'] += correction
         final_forecast.loc[future_mask, 'yhat_lower'] += (correction - np.abs(correction) * 0.1)
@@ -208,7 +216,8 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
         final_forecast.attrs['stl'] = stl_data
         final_forecast.attrs['metrics'] = {
             **calculate_metrics(prophet_df['y'].values, historical_pred),
-            'status': 'optimal'
+            'status': 'optimal',
+            'is_zombie': False
         }
 
         return final_forecast
@@ -232,7 +241,7 @@ def generate_dummy_forecast(monthly, forecast_end, item_name, status):
     df['predicted_value'] = 0.0
     df['type'] = df['actual_value'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
     df['forecast_date'] = df['forecast_date'].dt.strftime('%Y-%m-%d')
-    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A'}
+    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A', 'is_zombie': status == 'zombie'}
     return df
 
 def calculate_metrics(actual, predicted):

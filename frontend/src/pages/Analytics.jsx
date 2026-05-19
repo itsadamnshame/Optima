@@ -497,12 +497,12 @@ export default function Analytics({
                   </div>
                 }
               >
-                <div className="h-[250px] w-full flex flex-col items-center justify-center">
+                <div className="h-[410px] w-full flex flex-col items-stretch justify-between">
                   {yoy ? (
-                    <div className="w-full h-full flex flex-col">
-                      <div className="flex-1 w-full pb-4 pt-4 min-h-[180px]">
+                    <div className="w-full h-full flex flex-col justify-between">
+                      <div className="flex-1 w-full pb-4 pt-4 min-h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={yoyChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                          <LineChart data={yoyChartData} margin={{ top: 10, right: 10, left: 24, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                             <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 9, fontWeight: 700}} interval={1} height={20} />
                             <YAxis hide domain={['auto', 'auto']} />
@@ -609,7 +609,7 @@ export default function Analytics({
                               val: stl[component][i]
                             }))} margin={{ top: 15, right: 15, left: 15, bottom: 5 }}>
                               <CartesianGrid strokeDasharray="0" stroke={chartColors.grid} vertical={true} />
-                              <XAxis dataKey="date" hide={idx !== 3} axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 8}} />
+                              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 8}} />
                               <YAxis hide domain={['auto', 'auto']} />
                               <Tooltip 
                                 contentStyle={{ background: chartColors.tooltip.bg, border: `1px solid ${chartColors.tooltip.border}`, borderRadius: '12px', fontSize: '9px', padding: '8px' }}
