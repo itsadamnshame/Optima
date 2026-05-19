@@ -26,8 +26,13 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         query_meta = text('SELECT ItemDescription, is_bundle, is_not_product FROM item_metadata WHERE dataset_id = :d')
         meta_df = pd.read_sql(query_meta, engine, params={"d": dataset_id})
         
-        non_product_items = set(meta_df[meta_df['is_not_product'] == 1]['ItemDescription'].tolist())
-        is_bundle_map = dict(zip(meta_df['ItemDescription'], meta_df['is_bundle']))
+        if not meta_df.empty:
+            meta_df.columns = [c.lower() for c in meta_df.columns]
+            non_product_items = set(meta_df[meta_df['is_not_product'] == 1]['itemdescription'].tolist())
+            is_bundle_map = dict(zip(meta_df['itemdescription'], meta_df['is_bundle']))
+        else:
+            non_product_items = set()
+            is_bundle_map = {}
 
         if df_raw.empty:
             return []
