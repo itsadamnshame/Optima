@@ -53,9 +53,11 @@ def detect_zombies(monthly_series):
         
     try:
         res = STL(monthly_series, period=12).fit()
-        # If the last 3 months of trend are near zero and declining
+        # For Volume (units), 0.5 is half a unit.
+        threshold = 0.5
+        
         last_trend = res.trend.iloc[-3:].mean()
-        if last_trend < 0.5: # Less than half a unit per month on average
+        if last_trend < threshold:
             return True
     except:
         pass
@@ -107,13 +109,15 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
     prophet_df['ds'] = prophet_df['ds'].dt.tz_localize(None)
     
     # 4a. Configure Prophet with automated defaults
+    cp_prior = 0.05
+    
     prophet_config = {
         'yearly_seasonality': True,
         'weekly_seasonality': False,
         'daily_seasonality': False,
         'interval_width': 0.95,
         'seasonality_prior_scale': 10,
-        'changepoint_prior_scale': 0.05
+        'changepoint_prior_scale': cp_prior
     }
     
     m = Prophet(**prophet_config)
@@ -125,83 +129,90 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown"):
     
     # 6. SARIMA Fit (The Micro Phase - Residual Correction)
     try:
-        # Use residuals as input for SARIMA
         try:
             # Tier 1: Full Seasonal SARIMA (auto_arima selects optimal D)
             resid_model = auto_arima(
-                residuals, 
-                seasonal=True, 
-                m=12, 
-                error_action='ignore', 
+                residuals,
+                seasonal=True,
+                m=12,
+                error_action='ignore',
                 suppress_warnings=True,
                 stepwise=True
             )
         except Exception as e:
             print(f"OPTIMA: [{item_name}] Full SARIMA failed: {e}. Attempting SARIMA without seasonal differencing (D=0).")
             try:
-                # Tier 2: SARIMA without seasonal differencing (Compatible with 12+ months)
-                # This still uses SARIMA architecture but avoids the 'insufficient samples' issue
+                # Tier 2: SARIMA without seasonal differencing
                 resid_model = auto_arima(
-                    residuals, 
-                    seasonal=True, 
-                    m=12, 
-                    D=0, 
-                    error_action='ignore', 
+                    residuals,
+                    seasonal=True,
+                    m=12,
+                    D=0,
+                    error_action='ignore',
                     suppress_warnings=True,
                     stepwise=True
                 )
             except:
                 print(f"OPTIMA: [{item_name}] SARIMA architecture totally incompatible. Using Prophet baseline.")
                 resid_model = None
-        
+
         # 7. Generate Future Prediction
-        # Calculate months to forecast
         last_date = monthly.index.max()
         target_date = pd.to_datetime(forecast_end)
         horizon = (target_date.year - last_date.year) * 12 + (target_date.month - last_date.month)
         if horizon < 1: horizon = 1
-        if horizon > 24: horizon = 24 # Cap at 2 years
-        
+        if horizon > 24: horizon = 24  # Cap at 2 years
+
         future_prophet = m.make_future_dataframe(periods=horizon, freq='MS')
         forecast_prophet_future = m.predict(future_prophet)
-        
+
         # SARIMA Correction for future
         if resid_model:
             resid_forecast = resid_model.predict(n_periods=horizon)
+            historical_resid = resid_model.predict_in_sample()
         else:
             resid_forecast = np.zeros(horizon)
-        
+            historical_resid = np.zeros(len(residuals))
+
         # Combined Results
-        # Join historical and future
         final_forecast = forecast_prophet_future[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
-        
+
         # Apply SARIMA correction to the future rows (where ds > last_date)
         future_mask = final_forecast['ds'] > last_date
-        # Ensure lengths match
-        correction = np.array(resid_forecast)
+        
+        # Dampen revenue residuals to prevent wild swings in high-magnitude data
+        dampening = 0.5 if metric_type == "Revenue" else 1.0
+        correction = np.array(resid_forecast) * dampening
+        
         final_forecast.loc[future_mask, 'yhat'] += correction
-        # Also adjust intervals slightly for the added uncertainty of the residual model
-        final_forecast.loc[future_mask, 'yhat_lower'] += (correction - np.abs(correction)*0.1)
-        final_forecast.loc[future_mask, 'yhat_upper'] += (correction + np.abs(correction)*0.1)
+        final_forecast.loc[future_mask, 'yhat_lower'] += (correction - np.abs(correction) * 0.1)
+        final_forecast.loc[future_mask, 'yhat_upper'] += (correction + np.abs(correction) * 0.1)
+
+        # Zero floor: prevent impossible negative predictions
+        for col in ['yhat', 'yhat_lower', 'yhat_upper']:
+            final_forecast[col] = final_forecast[col].clip(lower=0)
 
         # Cleanup columns for UI
         final_forecast.rename(columns={'ds': 'forecast_date', 'yhat': 'predicted_value'}, inplace=True)
-        
+
         # Add historical actuals for the chart
         actuals_map = monthly.to_dict()
         final_forecast['actual_value'] = final_forecast['forecast_date'].map(actuals_map)
         final_forecast['type'] = final_forecast['actual_value'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
         final_forecast['forecast_date'] = final_forecast['forecast_date'].dt.strftime('%Y-%m-%d')
-        
+
+        # Metric calculation: use final hybrid predictions in original space
+        historical_pred = (forecast_prophet['yhat'].values + historical_resid).clip(0)
+
         # Attach STL and Metrics as attributes
         final_forecast.attrs['stl'] = stl_data
         final_forecast.attrs['metrics'] = {
-            **calculate_metrics(prophet_df['y'], forecast_prophet['yhat']),
+            **calculate_metrics(prophet_df['y'].values, historical_pred),
             'status': 'optimal'
         }
-        
+
         return final_forecast
-        
+
     except Exception as e:
         print(f"OPTIMA: [{item_name}] Hybrid Fit failed: {e}")
         return pd.DataFrame()
@@ -225,11 +236,16 @@ def generate_dummy_forecast(monthly, forecast_end, item_name, status):
     return df
 
 def calculate_metrics(actual, predicted):
+    """
+    Computes standard error metrics.
+    Returns mape_pct as a direct error percentage (e.g. 5.0 for 5% error).
+    """
     actual, predicted = np.array(actual), np.array(predicted)
     mae = np.mean(np.abs(actual - predicted))
     rmse = np.sqrt(np.mean((actual - predicted)**2))
     
     mask = actual != 0
+    # Standard MAPE formula: Mean(|Actual - Predicted| / Actual) * 100
     mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if np.any(mask) else 0
     
     return {

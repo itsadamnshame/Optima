@@ -62,7 +62,6 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [defaultItemConfigs, setDefaultItemConfigs] = useState({});
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
-  const [metric, setMetric] = useState('Volume');
 
   useEffect(() => {
     if (selectedDatasetIds.length > 0) {
@@ -142,10 +141,13 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   };
 
   const updateItemConfig = (item, key, value) => {
-    setItemConfigs(prev => ({
-      ...prev,
-      [item]: { ...prev[item], [key]: value }
-    }));
+    setItemConfigs(prev => {
+      const current = prev[item] || { bundle: false, is_not_product: false };
+      const next = { ...current, [key]: value };
+      if (key === 'bundle' && value === true) next.is_not_product = false;
+      if (key === 'is_not_product' && value === true) next.bundle = false;
+      return { ...prev, [item]: next };
+    });
   };
 
   const handleScan = async (e) => {
@@ -161,7 +163,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       });
       const items = r.data.items;
       setScannedItems(items);
-      
+
       const initialConfigs = {};
       items.forEach(item => {
         initialConfigs[item] = { bundle: false, is_not_product: false };
@@ -196,10 +198,13 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   };
 
   const updateLocalConfig = (item, key, value) => {
-    setLocalItemConfigs(prev => ({
-      ...prev,
-      [item]: { ...prev[item], [key]: value }
-    }));
+    setLocalItemConfigs(prev => {
+      const current = prev[item] || { bundle: false, is_not_product: false };
+      const next = { ...current, [key]: value };
+      if (key === 'bundle' && value === true) next.is_not_product = false;
+      if (key === 'is_not_product' && value === true) next.bundle = false;
+      return { ...prev, [item]: next };
+    });
   };
 
   const saveConfigOverride = async () => {
@@ -308,7 +313,6 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       const payload = {
         run_name: runName,
         dataset_ids: selectedDatasetIds.map(id => parseInt(id)),
-        metric: metric,
         item_configs: itemConfigs,
         train_forecast: trainForecast,
         train_bundler: trainBundler,
@@ -331,14 +335,14 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         setIsTraining(false);
         if (trainBundler) {
           // Navigate to Qualitative with live results for tuning
-          navigate('/qualitative', { 
-            state: { 
-              stagedBundles: res.data.bundles, 
-              stagedName: runName, 
+          navigate('/qualitative', {
+            state: {
+              stagedBundles: res.data.bundles,
+              stagedName: runName,
               stagedDatasetId: selectedDatasetIds[0],
               stagedRefId: refForecastId,
               autoSaved: res.data.auto_saved
-            } 
+            }
           });
         } else if (trainForecast) {
           navigate('/analytics');
@@ -480,632 +484,616 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       </div>
 
       <div className="space-y-6">
-          <div className="flex items-center justify-between mb-8 px-2">
-            <div className="flex items-center gap-4">
-              {[1, 2].map(s => (
-                <div key={s} className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${step >= s ? 'text-white shadow-lg' : ''}`}
-                    style={{ background: step >= s ? 'var(--accent)' : 'var(--input-bg)', color: step >= s ? '#fff' : 'var(--text-muted)', boxShadow: step >= s ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}>
-                    {s}
-                  </div>
-                  <span className={`text-[9px] font-black uppercase tracking-widest`} style={{ color: step >= s ? 'var(--accent)' : 'var(--text-muted)' }}>
-                    {s === 1 ? 'Scan File' : 'Configure Rules'}
-                  </span>
-                  {s === 1 && <div className="w-8 h-px" style={{ background: step > 1 ? 'var(--accent)' : 'var(--border-subtle)' }} />}
+        <div className="flex items-center justify-between mb-8 px-2">
+          <div className="flex items-center gap-4">
+            {[1, 2].map(s => (
+              <div key={s} className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${step >= s ? 'text-white shadow-lg' : ''}`}
+                  style={{ background: step >= s ? 'var(--accent)' : 'var(--input-bg)', color: step >= s ? '#fff' : 'var(--text-muted)', boxShadow: step >= s ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}>
+                  {s}
                 </div>
-              ))}
-            </div>
-
-            <button 
-              onClick={() => setShowInventory(!showInventory)}
-              className={`px-4 py-2 rounded-xl border transition-all group/inv flex items-center gap-2 ${showInventory ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
-              style={{ background: showInventory ? 'var(--accent)' : 'var(--bg-surface)', borderColor: showInventory ? 'transparent' : 'var(--border)', color: showInventory ? '#fff' : 'var(--text-secondary)' }}
-              title="Toggle Dataset Inventory"
-            >
-              <Database size={14} className={showInventory ? 'text-white' : 'text-indigo-400'} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Inventory</span>
-            </button>
+                <span className={`text-[9px] font-black uppercase tracking-widest`} style={{ color: step >= s ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {s === 1 ? 'Scan File' : 'Configure Rules'}
+                </span>
+                {s === 1 && <div className="w-8 h-px" style={{ background: step > 1 ? 'var(--accent)' : 'var(--border-subtle)' }} />}
+              </div>
+            ))}
           </div>
 
-          {step === 1 ? (
-            <div className="relative p-20 min-h-[500px] rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center transition-all group" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border)' }}>
-              
-              <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
-                <UploadCloud size={32} />
-              </div>
-              <h3 className="text-xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Source Selection</h3>
-              <p className="text-sm mt-2 mb-8 max-w-xs" style={{ color: 'var(--text-muted)' }}>Upload your transaction logs to begin the Optima ingestion pipeline.</p>
-              <input type="file" multiple id="file-upload" className="hidden" onChange={handleScan} accept=".csv,.xlsx,.xls" disabled={isScanning} />
-              <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer transition-all shadow-xl flex items-center gap-3 ${isScanning ? 'opacity-50 cursor-wait' : 'hover:scale-[1.02] active:scale-95'}`}
-                style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
-                {isScanning ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Analyzing Files...
-                  </>
-                ) : (
-                  'Select Local Files'
-                )}
-              </label>
+          <button
+            onClick={() => setShowInventory(!showInventory)}
+            className={`px-4 py-2 rounded-xl border transition-all group/inv flex items-center gap-2 ${showInventory ? 'text-white shadow-lg' : 'hover:bg-[var(--glass-bg-hover)]'}`}
+            style={{ background: showInventory ? 'var(--accent)' : 'var(--bg-surface)', borderColor: showInventory ? 'transparent' : 'var(--border)', color: showInventory ? '#fff' : 'var(--text-secondary)' }}
+            title="Toggle Dataset Inventory"
+          >
+            <Database size={14} className={showInventory ? 'text-white' : 'text-indigo-400'} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Inventory</span>
+          </button>
+        </div>
 
-              {/* INVENTORY PANEL (SLIDE-OVER) */}
-              {showInventory && (
-                <div className="absolute inset-0 z-50 rounded-[2.5rem] p-8 animate-in fade-in duration-300 flex flex-col border shadow-2xl"
-                  style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                      <Database style={{ color: 'var(--accent)' }} size={24} />
-                      <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Dataset Inventory</h3>
-                    </div>
-                    <button 
-                      onClick={() => setShowInventory(false)}
-                      className="p-2 rounded-xl transition-colors hover:opacity-70"
-                      style={{ background: 'var(--card-accent-bg)', color: 'var(--text-muted)' }}
-                    >
-                      <X size={20} />
-                    </button>
+        {step === 1 ? (
+          <div className="relative p-20 min-h-[500px] rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center transition-all group" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border)' }}>
+
+            <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+              <UploadCloud size={32} />
+            </div>
+            <h3 className="text-xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Source Selection</h3>
+            <p className="text-sm mt-2 mb-8 max-w-xs" style={{ color: 'var(--text-muted)' }}>Upload your transaction logs to begin the Optima ingestion pipeline.</p>
+            <input type="file" multiple id="file-upload" className="hidden" onChange={handleScan} accept=".csv,.xlsx,.xls" disabled={isScanning} />
+            <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer transition-all shadow-xl flex items-center gap-3 ${isScanning ? 'opacity-50 cursor-wait' : 'hover:scale-[1.02] active:scale-95'}`}
+              style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
+              {isScanning ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Analyzing Files...
+                </>
+              ) : (
+                'Select Local Files'
+              )}
+            </label>
+
+            {/* INVENTORY PANEL (SLIDE-OVER) */}
+            {showInventory && (
+              <div className="absolute inset-0 z-50 rounded-[2.5rem] p-8 animate-in fade-in duration-300 flex flex-col border shadow-2xl"
+                style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <Database style={{ color: 'var(--accent)' }} size={24} />
+                    <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Dataset Inventory</h3>
                   </div>
+                  <button
+                    onClick={() => setShowInventory(false)}
+                    className="p-2 rounded-xl transition-colors hover:opacity-70"
+                    style={{ background: 'var(--card-accent-bg)', color: 'var(--text-muted)' }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
 
-                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                    {datasets.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
-                        <EyeOff size={48} />
-                        <p className="text-[10px] font-black uppercase tracking-widest">No Datasets Available</p>
-                      </div>
-                    ) : (
-                      datasets.map(ds => (
-                        <div key={ds.id} className="p-4 rounded-2xl border flex flex-col group transition-colors text-left"
-                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="min-w-0 flex-1">
-                              {editingId === ds.id ? (
-                                <div className="flex items-center gap-2">
-                                  <input 
-                                    className="rounded px-2 py-1 text-xs font-black uppercase outline-none w-full"
-                                    style={{ background: 'var(--input-bg)', border: '1px solid var(--accent)', color: 'var(--input-text)' }}
-                                    value={editTitle}
-                                    onChange={(e) => setEditTitle(e.target.value)}
-                                    autoFocus
-                                  />
-                                  <button onClick={() => saveTitle(ds.id)} className="text-emerald-400 hover:text-emerald-300 p-1 transition-colors"><Save size={14}/></button>
-                                  <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1 transition-colors"><X size={14}/></button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <p className="text-xs font-black uppercase truncate" style={{ color: 'var(--text-heading)' }}>{ds.title}</p>
-                                  <button onClick={() => startEditing(ds)} className="opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70" style={{ color: 'var(--accent)' }}><Edit3 size={10}/></button>
-                                </div>
-                              )}
-                              
-                              <div className="flex items-center gap-3 mt-1">
-                                <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }}>
-                                  <Database size={8} /> {(ds.row_count || 0).toLocaleString()} ROWS
-                                </span>
-                                <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
-                                <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }} title="Uploaded At">
-                                  <Calendar size={8} /> {new Date(ds.created_at).toLocaleString()}
-                                </span>
-                                {ds.last_edited_at && (
-                                  <>
-                                    <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
-                                    <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--accent)' }} title="Last Modified">
-                                      <Edit3 size={8} /> {new Date(ds.last_edited_at).toLocaleString()}
-                                    </span>
-                                  </>
-                                )}
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
+                  {datasets.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                      <EyeOff size={48} />
+                      <p className="text-[10px] font-black uppercase tracking-widest">No Datasets Available</p>
+                    </div>
+                  ) : (
+                    datasets.map(ds => (
+                      <div key={ds.id} className="p-4 rounded-2xl border flex flex-col group transition-colors text-left"
+                        style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="min-w-0 flex-1">
+                            {editingId === ds.id ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  className="rounded px-2 py-1 text-xs font-black uppercase outline-none w-full"
+                                  style={{ background: 'var(--input-bg)', border: '1px solid var(--accent)', color: 'var(--input-text)' }}
+                                  value={editTitle}
+                                  onChange={(e) => setEditTitle(e.target.value)}
+                                  autoFocus
+                                />
+                                <button onClick={() => saveTitle(ds.id)} className="text-emerald-400 hover:text-emerald-300 p-1 transition-colors"><Save size={14} /></button>
+                                <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1 transition-colors"><X size={14} /></button>
                               </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={() => handleTogglePrivacy(ds.id, ds.is_private)}
-                                className={`p-2 rounded-lg transition-all ${ds.is_private ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'} hover:scale-110`}
-                                title={ds.is_private ? "Private Dataset" : "Public Dataset"}
-                              >
-                                {ds.is_private ? <Lock size={14} /> : <Globe size={14} />}
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteDataset(ds.id)}
-                                className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                                title="Purge Dataset"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-black uppercase truncate" style={{ color: 'var(--text-heading)' }}>{ds.title}</p>
+                                <button onClick={() => startEditing(ds)} className="opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70" style={{ color: 'var(--accent)' }}><Edit3 size={10} /></button>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }}>
+                                <Database size={8} /> {(ds.row_count || 0).toLocaleString()} ROWS
+                              </span>
+                              <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
+                              <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }} title="Uploaded At">
+                                <Calendar size={8} /> {new Date(ds.created_at).toLocaleString()}
+                              </span>
+                              {ds.last_edited_at && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
+                                  <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--accent)' }} title="Last Modified">
+                                    <Edit3 size={8} /> {new Date(ds.last_edited_at).toLocaleString()}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={() => openViewer(ds.id, 1)}
-                              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80"
-                              style={{ background: 'var(--accent)', color: '#fff' }}
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleTogglePrivacy(ds.id, ds.is_private)}
+                              className={`p-2 rounded-lg transition-all ${ds.is_private ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'} hover:scale-110`}
+                              title={ds.is_private ? "Private Dataset" : "Public Dataset"}
                             >
-                              <Eye size={12} /> Explorer
+                              {ds.is_private ? <Lock size={14} /> : <Globe size={14} />}
                             </button>
-                            <button 
-                              onClick={() => openConfigModal([ds.id])}
-                              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl transition-all hover:opacity-70"
-                              style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}
+                            <button
+                              onClick={() => handleDeleteDataset(ds.id)}
+                              className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                              title="Purge Dataset"
                             >
-                              <Package size={12} /> Configure
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </div>
-                      ))
-                    )}
+
+                        <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openViewer(ds.id, 1)}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80"
+                            style={{ background: 'var(--accent)', color: '#fff' }}
+                          >
+                            <Eye size={12} /> Explorer
+                          </button>
+                          <button
+                            onClick={() => openConfigModal([ds.id])}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl transition-all hover:opacity-70"
+                            style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}
+                          >
+                            <Package size={12} /> Configure
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="mt-8 pt-8 text-center" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
+                    Strategic Hub Active • {datasets.length} total repositories
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : step === 2 ? (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Ingestion Rules</h3>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Configure marks for {scannedItems.length} detected products. Normal products should be left unmarked.</p>
+              </div>
+              <button onClick={() => setStep(1)} className="text-xs font-bold transition-colors hover:opacity-70" style={{ color: 'var(--accent)' }}>Back</button>
+            </div>
+
+            <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-3">
+              {scannedItems.map(item => {
+                const config = itemConfigs[item] || { bundle: false, is_not_product: false };
+                return (
+                  <div key={item} className="p-4 rounded-2xl border flex flex-col gap-3" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-xs truncate pr-4" style={{ color: 'var(--text-primary)' }}>{item}</h4>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input type="checkbox" checked={config.bundle} onChange={(e) => updateItemConfig(item, 'bundle', e.target.checked)} className="hidden" />
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${config.bundle ? 'bg-indigo-500 border-indigo-500' : ''}`} style={{ borderColor: config.bundle ? 'var(--accent)' : 'var(--text-muted)', background: config.bundle ? 'var(--accent)' : 'transparent' }}>
+                            {config.bundle && <Check size={12} className="text-white" />}
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Bundle</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input type="checkbox" checked={config.is_not_product} onChange={(e) => updateItemConfig(item, 'is_not_product', e.target.checked)} className="hidden" />
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${config.is_not_product ? 'bg-rose-500 border-rose-500' : ''}`} style={{ borderColor: config.is_not_product ? 'var(--error-border)' : 'var(--text-muted)', background: config.is_not_product ? 'var(--error-bg)' : 'transparent' }}>
+                            {config.is_not_product && <Check size={12} className="text-white" />}
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Exclude</span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="mt-8 pt-8 text-center" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
-                      Strategic Hub Active • {datasets.length} total repositories
-                    </p>
-                  </div>
+                );
+              })}
+            </div>
+            <div className="pt-6 border-t border-white/5 space-y-4">
+              <input type="text" value={datasetTitle} onChange={(e) => setDatasetTitle(e.target.value)}
+                placeholder="Dataset Display Title (e.g. Sales Q1 2026)"
+                className="w-full px-5 py-4 rounded-2xl outline-none text-sm font-bold"
+                style={inputStyle} />
+
+              {error && (
+                <div className="px-4 py-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm font-bold mt-4">
+                  {error}
                 </div>
               )}
-            </div>
-          ) : step === 2 ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Ingestion Rules</h3>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Configure flags for {scannedItems.length} detected products</p>
+
+              {uploading ? (
+                <div className="space-y-4 pt-4">
+                  <div className="flex items-center gap-3 font-black text-[10px] uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+                    <Loader2 size={16} className="animate-spin" /> Ingesting & Aggregating...
+                  </div>
+                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                  <button
+                    onClick={handleCancelOperation}
+                    className="text-[9px] font-black uppercase tracking-widest mt-2 hover:opacity-70 transition-opacity"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Cancel Upload
+                  </button>
                 </div>
-                <button onClick={() => setStep(1)} className="text-xs font-bold transition-colors hover:opacity-70" style={{ color: 'var(--accent)' }}>Back</button>
+              ) : (
+                <button
+                  onClick={handleUpload}
+                  className="w-full py-5 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
+                  style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
+                >
+                  Commit Dataset
+                </button>
+              )}
+            </div>
+          </div>
+        ) : step === 3 ? (
+          <div className="animate-in zoom-in-95 duration-500 w-full mx-auto space-y-8 px-4">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border shadow-2xl" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)', color: 'var(--accent)' }}>
+                <Brain size={32} />
+              </div>
+              <h3 className="text-4xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Intelligence Hub</h3>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Architecting persistent strategic models across your data landscape.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+              {/* COLUMN 1: DATA MASTERY */}
+              <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>1. Data Mastery</label>
+                  <Database size={14} style={{ color: 'var(--text-faint)' }} />
+                </div>
+
+                <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-bold uppercase ml-1" style={{ color: 'var(--text-faint)' }}>Active Sources</p>
+                    <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+                      {datasets.filter(ds => ds.dataset_type === 'MASTER' || !ds.dataset_type).map(ds => (
+                        <label key={ds.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${selectedDatasetIds.includes(ds.id) ? 'shadow-lg' : 'hover:opacity-80'}`}
+                          style={{
+                            background: selectedDatasetIds.includes(ds.id) ? 'var(--card-accent-bg)' : 'var(--input-bg)',
+                            borderColor: selectedDatasetIds.includes(ds.id) ? 'var(--accent)' : 'var(--border-subtle)',
+                            color: selectedDatasetIds.includes(ds.id) ? 'var(--text-primary)' : 'var(--text-muted)'
+                          }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedDatasetIds.includes(ds.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedDatasetIds([...selectedDatasetIds, ds.id]);
+                              else setSelectedDatasetIds(selectedDatasetIds.filter(id => id !== ds.id));
+                            }}
+                            className="rounded accent-indigo-500"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold truncate uppercase">{ds.title}</p>
+                            <p className="text-[9px] tracking-wider uppercase" style={{ color: 'var(--text-faint)' }}>{ds.row_count.toLocaleString()} ROWS</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => openConfigModal(selectedDatasetIds)}
+                    disabled={selectedDatasetIds.length === 0}
+                    className="w-full py-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-20 hover:opacity-80"
+                    style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}
+                  >
+                    <Package size={14} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Configure Selections</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                {scannedItems.map(item => {
-                  const config = itemConfigs[item] || { bundle: false, is_not_product: false };
-                  return (
-                    <div key={item} className="p-4 rounded-2xl border flex flex-col gap-3" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-xs truncate pr-4" style={{ color: 'var(--text-primary)' }}>{item}</h4>
-                        <div className="flex items-center gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" checked={config.bundle} onChange={(e) => updateItemConfig(item, 'bundle', e.target.checked)} className="hidden" />
-                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.bundle ? 'bg-indigo-500 border-indigo-500' : ''}`} style={{ borderColor: config.bundle ? 'var(--accent)' : 'var(--border)', background: config.bundle ? 'var(--accent)' : '' }}>
-                              {config.bundle && <Check size={10} className="text-white" />}
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Bundle</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" checked={config.is_not_product} onChange={(e) => updateItemConfig(item, 'is_not_product', e.target.checked)} className="hidden" />
-                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.is_not_product ? 'bg-rose-500 border-rose-500' : ''}`} style={{ borderColor: config.is_not_product ? 'var(--error-border)' : 'var(--border)', background: config.is_not_product ? 'var(--error-bg)' : '' }}>
-                              {config.is_not_product && <Check size={10} className="text-white" />}
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Exclude</span>
-                          </label>
-                        </div>
+              {/* COLUMN 2: PREDICTIVE INTELLIGENCE */}
+              <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>2. Predictive Intelligence</label>
+                  <TrendingUp size={14} style={{ color: 'var(--text-faint)' }} />
+                </div>
+
+                <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                  <button
+                    onClick={toggleForecaster}
+                    className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
+                    style={{
+                      background: trainForecast ? 'var(--card-accent-bg)' : 'var(--input-bg)',
+                      borderColor: trainForecast ? 'var(--accent)' : 'var(--border-subtle)',
+                      boxShadow: trainForecast ? '0 0 25px var(--accent-glow)' : 'none'
+                    }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300`}
+                        style={{
+                          background: trainForecast ? 'var(--accent)' : 'var(--card-accent-bg)',
+                          color: trainForecast ? '#fff' : 'var(--text-muted)',
+                          boxShadow: trainForecast ? '0 4px 10px -2px var(--accent-glow)' : 'none'
+                        }}>
+                        <Brain size={20} />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainForecast ? 'var(--accent)' : 'var(--text-muted)' }}>Forecaster</span>
+                        <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Demand Predictions</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="pt-6 border-t border-white/5 space-y-4">
-                <input type="text" value={datasetTitle} onChange={(e) => setDatasetTitle(e.target.value)}
-                  placeholder="Dataset Display Title (e.g. Sales Q1 2026)"
-                  className="w-full px-5 py-4 rounded-2xl outline-none text-sm font-bold"
-                  style={inputStyle} />
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
+                      style={{ borderColor: trainForecast ? 'var(--accent)' : 'var(--border)', background: trainForecast ? 'var(--accent)' : 'transparent' }}>
+                      {trainForecast && <Check size={14} className="text-white" />}
+                    </div>
+                  </button>
 
-                {error && (
-                  <div className="px-4 py-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm font-bold mt-4">
-                    {error}
+                  <div className="pt-4 flex-1 flex flex-col min-h-0">
+                    <p className="text-[9px] font-bold uppercase ml-1 mb-2" style={{ color: 'var(--text-faint)' }}>Forecasting Records</p>
+                    <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                      {forecastRuns.map(run => (
+                        <div key={run.id} className="p-4 rounded-2xl border group hover:border-indigo-500/30 transition-all"
+                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <input
+                              className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-tight w-full"
+                              style={{ color: 'var(--text-heading)' }}
+                              value={run.name}
+                              onChange={(e) => handleRenameRun('forecast', run.id, e.target.value)}
+                            />
+                            <button onClick={() => handleDeleteRun('forecast', run.id)} className="text-rose-500/40 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
+                            <span>{new Date(run.created_at).toLocaleString()}</span>
+                            <span className="text-emerald-500/60">{run.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {forecastRuns.length === 0 && (
+                        <div className="py-12 text-center space-y-2">
+                          <EyeOff size={24} className="mx-auto" style={{ color: 'var(--text-faint)', opacity: 0.2 }} />
+                          <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>No records found</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
+              </div>
 
-                {uploading ? (
-                  <div className="space-y-4 pt-4">
-                    <div className="flex items-center gap-3 font-black text-[10px] uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
-                      <Loader2 size={16} className="animate-spin" /> Ingesting & Aggregating...
+              {/* COLUMN 3: STRATEGIC LOGIC */}
+              <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>3. Strategic Logic</label>
+                  <Zap size={14} style={{ color: 'var(--text-faint)' }} />
+                </div>
+
+                <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                  <button
+                    onClick={() => setTrainBundler(!trainBundler)}
+                    className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
+                    style={{
+                      background: trainBundler ? 'var(--success-bg)' : 'var(--input-bg)',
+                      borderColor: trainBundler ? '#10b981' : 'var(--border-subtle)',
+                      borderColor: trainBundler ? 'var(--success-border)' : 'var(--border-subtle)',
+                      boxShadow: trainBundler ? '0 0 25px var(--success-glow)' : 'none'
+                    }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+                        style={{
+                          background: trainBundler ? 'var(--success-border)' : 'var(--card-accent-bg)',
+                          color: trainBundler ? '#fff' : 'var(--text-muted)',
+                          boxShadow: trainBundler ? '0 4px 10px -2px var(--success-glow)' : 'none'
+                        }}
+                      >
+                        <Zap size={20} />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainBundler ? 'var(--success-border)' : 'var(--text-muted)' }}>Bundler</span>
+                        <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Affinity Logic</span>
+                      </div>
                     </div>
-                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-500 animate-pulse" style={{ width: '60%' }} />
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
+                      style={{ borderColor: trainBundler ? 'var(--success-border)' : 'var(--border)', background: trainBundler ? 'var(--success-border)' : 'transparent' }}>
+                      {trainBundler && <Check size={14} className="text-white" />}
                     </div>
-                    <button
-                      onClick={handleCancelOperation}
-                      className="text-[9px] font-black uppercase tracking-widest mt-2 hover:opacity-70 transition-opacity"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      Cancel Upload
-                    </button>
+                  </button>
+
+                  {trainBundler && (
+                    <div className="space-y-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center px-1">
+                          <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Discovery Sensitivity</label>
+                          <div className="flex items-center gap-2 rounded-full px-3 py-1 shadow-lg" style={{ background: 'var(--success-border)', boxShadow: '0 4px 10px -2px var(--success-glow)' }}>
+                            <CheckCircle size={10} className="text-white" />
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0.001"
+                              value={minSupport}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setMinSupport(isNaN(val) ? 0.001 : Math.max(0.001, val));
+                              }}
+                              className="bg-transparent border-none outline-none text-[10px] font-black text-white w-10 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <span className="text-[10px] font-black text-white/60">%</span>
+                          </div>
+                        </div>
+                        <input
+                          type="range" min="0.1" max="10" step="0.1"
+                          value={minSupport > 10 ? 10 : minSupport}
+                          onChange={(e) => setMinSupport(parseFloat(e.target.value))}
+                          className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                          style={{ background: 'var(--input-bg)' }}
+                        />
+                        <div className="flex justify-between text-[8px] font-bold uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>
+                          <span>Broad Discovery</span>
+                          <span>Conservative</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 py-2">
+                        <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
+                          Ranking Reference
+                          <Info size={10} style={{ color: 'var(--text-faint)' }} />
+                        </label>
+                        <select
+                          value={refForecastId}
+                          onChange={(e) => setRefForecastId(e.target.value)}
+                          className="w-full border rounded-2xl px-4 py-3 text-[10px] font-black outline-none transition-all appearance-none cursor-pointer"
+                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
+                        >
+                          {trainForecast && <option value="auto">AUTO: CURRENT TRAINING</option>}
+                          <option value="none">NONE (HISTORICAL DISCOVERY)</option>
+                          {forecastRuns.map(run => (
+                            <option key={run.id} value={run.id}>{run.name.toUpperCase()}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2 py-2">
+                        <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
+                          Bundler Persistence
+                          <Info size={10} style={{ color: 'var(--text-faint)' }} />
+                        </label>
+                        {trainForecast ? (
+                          <div className="px-4 py-3 rounded-2xl border text-[10px] font-black" style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)', color: 'var(--success-border)' }}>
+                            Bundler results are automatically saved when Forecast training is enabled.
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setPersistBundler(!persistBundler)}
+                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300`}
+                            style={{
+                              background: persistBundler ? 'var(--success-bg)' : 'var(--input-bg)',
+                              borderColor: persistBundler ? 'var(--success-border)' : 'var(--border-subtle)',
+                              color: persistBundler ? 'var(--success-border)' : 'var(--text-muted)'
+                            }}
+                          >
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Save Bundler Run</span>
+                            <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center`}
+                              style={{ borderColor: persistBundler ? 'var(--success-border)' : 'var(--border)', background: persistBundler ? 'var(--success-border)' : 'transparent', color: persistBundler ? '#fff' : 'transparent' }}>
+                              <Check size={12} />
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex-1 flex flex-col min-h-0">
+                    <p className="text-[9px] font-bold uppercase ml-1 mb-2" style={{ color: 'var(--text-faint)' }}>Bundling Records</p>
+                    <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                      {bundlerRuns.map(run => (
+                        <div key={run.id} className="p-4 rounded-2xl border group hover:border-emerald-500/30 transition-all"
+                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <input
+                              className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-tight w-full"
+                              style={{ color: 'var(--text-heading)' }}
+                              value={run.name}
+                              onChange={(e) => handleRenameRun('bundler', run.id, e.target.value)}
+                            />
+                            <button onClick={() => handleDeleteRun('bundler', run.id)} className="text-rose-500/40 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
+                            <span>{new Date(run.created_at).toLocaleString()}</span>
+                            <span className="text-indigo-400/60">SESSION</span>
+                          </div>
+                        </div>
+                      ))}
+                      {bundlerRuns.length === 0 && (
+                        <div className="py-12 text-center space-y-2">
+                          <EyeOff size={24} className="mx-auto" style={{ color: 'var(--text-faint)', opacity: 0.2 }} />
+                          <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>No records found</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ACTION BAR */}
+            <div className="p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-4 duration-700" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+              <div className="flex-1 space-y-2 w-full md:w-auto">
+                <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest ml-1 block">Active Run Title</label>
+                <input
+                  type="text"
+                  placeholder="E.g. Yearly Baseline Simulation..."
+                  value={runName}
+                  onChange={(e) => setRunName(e.target.value)}
+                  className="w-full border rounded-2xl px-6 py-4 text-xs font-black outline-none focus:border-indigo-500/50 transition-all shadow-xl"
+                  style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
+                />
+              </div>
+
+              <div className="flex flex-col items-center gap-4 w-full md:w-auto">
+                {error && (() => {
+                  const isConnectionWarn = error.includes('Connection to the server was lost');
+                  return (
+                    <div className={`p-4 rounded-2xl border flex items-start gap-3 max-w-sm`}
+                      style={{
+                        background: isConnectionWarn ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                        borderColor: isConnectionWarn ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)',
+                        color: isConnectionWarn ? '#f59e0b' : '#f87171'
+                      }}>
+                      {isConnectionWarn
+                        ? <Info size={14} className="shrink-0 mt-0.5" />
+                        : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
+                      <p className="text-[10px] font-bold leading-relaxed">{error}</p>
+                    </div>
+                  );
+                })()}
+
+                {isTraining ? (
+                  <div className="w-full md:w-80 space-y-4">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em]">
+                      <span className="text-indigo-400 animate-pulse">EXECUTING PIPELINE...</span>
+                      <span className="text-zinc-500">{Math.round(trainingProgress)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${trainingProgress}%` }} />
+                    </div>
                   </div>
                 ) : (
                   <button
-                    onClick={handleUpload}
-                    className="w-full py-5 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
-                    style={{ background: 'var(--accent)', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
+                    onClick={handleTrain}
+                    disabled={selectedDatasetIds.length === 0 || !runName || (!trainForecast && !trainBundler)}
+                    className="w-full md:w-80 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-20 disabled:grayscale"
+                    style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 20px 50px -10px var(--accent-glow)' }}
                   >
-                    Commit Dataset
+                    Initialize Strategic Run
                   </button>
                 )}
               </div>
             </div>
-          ) : step === 3 ? (
-            <div className="animate-in zoom-in-95 duration-500 w-full mx-auto space-y-8 px-4">
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border shadow-2xl" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)', color: 'var(--accent)' }}>
-                  <Brain size={32} />
-                </div>
-                <h3 className="text-4xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Intelligence Hub</h3>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Architecting persistent strategic models across your data landscape.</p>
-                
-                <div className="flex gap-1 p-1 rounded-2xl border mx-auto w-fit mt-6" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                  {['Volume', 'Revenue'].map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setMetric(m)}
-                      className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${metric === m ? 'text-white shadow-xl scale-105' : 'hover:bg-[var(--glass-bg-hover)] text-gray-500'}`}
-                      style={{ 
-                        background: metric === m ? 'var(--accent)' : 'transparent', 
-                        boxShadow: metric === m ? '0 10px 15px -3px var(--accent-glow)' : 'none'
-                      }}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                {/* COLUMN 1: DATA MASTERY */}
-                <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>1. Data Mastery</label>
-                    <Database size={14} style={{ color: 'var(--text-faint)' }} />
-                  </div>
-                  
-                  <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-bold uppercase ml-1" style={{ color: 'var(--text-faint)' }}>Active Sources</p>
-                      <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
-                        {datasets.filter(ds => ds.dataset_type === 'MASTER' || !ds.dataset_type).map(ds => (
-                          <label key={ds.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${selectedDatasetIds.includes(ds.id) ? 'shadow-lg' : 'hover:opacity-80'}`}
-                            style={{ 
-                              background: selectedDatasetIds.includes(ds.id) ? 'var(--card-accent-bg)' : 'var(--input-bg)',
-                              borderColor: selectedDatasetIds.includes(ds.id) ? 'var(--accent)' : 'var(--border-subtle)',
-                              color: selectedDatasetIds.includes(ds.id) ? 'var(--text-primary)' : 'var(--text-muted)'
-                            }}>
-                            <input
-                              type="checkbox"
-                              checked={selectedDatasetIds.includes(ds.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) setSelectedDatasetIds([...selectedDatasetIds, ds.id]);
-                                else setSelectedDatasetIds(selectedDatasetIds.filter(id => id !== ds.id));
-                              }}
-                              className="rounded accent-indigo-500"
-                            />
-                            <div className="min-w-0">
-                              <p className="text-[11px] font-bold truncate uppercase">{ds.title}</p>
-                              <p className="text-[9px] tracking-wider uppercase" style={{ color: 'var(--text-faint)' }}>{ds.row_count.toLocaleString()} ROWS</p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <button 
-                      onClick={() => openConfigModal(selectedDatasetIds)}
-                      disabled={selectedDatasetIds.length === 0}
-                      className="w-full py-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-20 hover:opacity-80"
-                      style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}
-                    >
-                      <Package size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Configure Selections</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* COLUMN 2: PREDICTIVE INTELLIGENCE */}
-                <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>2. Predictive Intelligence</label>
-                    <TrendingUp size={14} style={{ color: 'var(--text-faint)' }} />
-                  </div>
-
-                  <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                    <button 
-                      onClick={toggleForecaster}
-                      className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
-                      style={{ 
-                        background: trainForecast ? 'var(--card-accent-bg)' : 'var(--input-bg)',
-                        borderColor: trainForecast ? 'var(--accent)' : 'var(--border-subtle)',
-                        boxShadow: trainForecast ? '0 0 25px var(--accent-glow)' : 'none'
-                      }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300`}
-                          style={{ 
-                            background: trainForecast ? 'var(--accent)' : 'var(--card-accent-bg)',
-                            color: trainForecast ? '#fff' : 'var(--text-muted)',
-                            boxShadow: trainForecast ? '0 4px 10px -2px var(--accent-glow)' : 'none'
-                          }}>
-                          <Brain size={20} />
-                        </div>
-                        <div className="flex flex-col text-left">
-                          <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainForecast ? 'var(--accent)' : 'var(--text-muted)' }}>Forecaster</span>
-                          <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Demand Predictions</span>
-                        </div>
-                      </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
-                        style={{ borderColor: trainForecast ? 'var(--accent)' : 'var(--border)', background: trainForecast ? 'var(--accent)' : 'transparent' }}>
-                        {trainForecast && <Check size={14} className="text-white" />}
-                      </div>
-                    </button>
-
-                    <div className="pt-4 flex-1 flex flex-col min-h-0">
-                      <p className="text-[9px] font-bold uppercase ml-1 mb-2" style={{ color: 'var(--text-faint)' }}>Forecasting Records</p>
-                      <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
-                        {forecastRuns.map(run => (
-                          <div key={run.id} className="p-4 rounded-2xl border group hover:border-indigo-500/30 transition-all"
-                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <input 
-                                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-tight w-full"
-                                style={{ color: 'var(--text-heading)' }}
-                                value={run.name}
-                                onChange={(e) => handleRenameRun('forecast', run.id, e.target.value)}
-                              />
-                              <button onClick={() => handleDeleteRun('forecast', run.id)} className="text-rose-500/40 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                            <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
-                              <span>{new Date(run.created_at).toLocaleString()}</span>
-                              <span className="text-emerald-500/60">{run.status}</span>
-                            </div>
-                          </div>
-                        ))}
-                        {forecastRuns.length === 0 && (
-                          <div className="py-12 text-center space-y-2">
-                            <EyeOff size={24} className="mx-auto" style={{ color: 'var(--text-faint)', opacity: 0.2 }} />
-                            <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>No records found</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* COLUMN 3: STRATEGIC LOGIC */}
-                <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>3. Strategic Logic</label>
-                    <Zap size={14} style={{ color: 'var(--text-faint)' }} />
-                  </div>
-
-                  <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                    <button 
-                      onClick={() => setTrainBundler(!trainBundler)}
-                      className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
-                      style={{ 
-                        background: trainBundler ? 'var(--success-bg)' : 'var(--input-bg)',
-                        borderColor: trainBundler ? '#10b981' : 'var(--border-subtle)',
-                        borderColor: trainBundler ? 'var(--success-border)' : 'var(--border-subtle)',
-                        boxShadow: trainBundler ? '0 0 25px var(--success-glow)' : 'none'
-                      }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
-                            style={{ 
-                              background: trainBundler ? 'var(--success-border)' : 'var(--card-accent-bg)',
-                              color: trainBundler ? '#fff' : 'var(--text-muted)',
-                              boxShadow: trainBundler ? '0 4px 10px -2px var(--success-glow)' : 'none'
-                            }}
-                          >
-                          <Zap size={20} />
-                        </div>
-                        <div className="flex flex-col text-left">
-                          <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainBundler ? 'var(--success-border)' : 'var(--text-muted)' }}>Bundler</span>
-                          <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Affinity Logic</span>
-                        </div>
-                      </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
-                        style={{ borderColor: trainBundler ? 'var(--success-border)' : 'var(--border)', background: trainBundler ? 'var(--success-border)' : 'transparent' }}>
-                        {trainBundler && <Check size={14} className="text-white" />}
-                      </div>
-                    </button>
-
-                    {trainBundler && (
-                      <div className="space-y-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center px-1">
-                            <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Discovery Sensitivity</label>
-                            <div className="flex items-center gap-2 rounded-full px-3 py-1 shadow-lg" style={{ background: 'var(--success-border)', boxShadow: '0 4px 10px -2px var(--success-glow)' }}>
-                              <CheckCircle size={10} className="text-white" />
-                              <input 
-                                type="number" 
-                                step="0.1"
-                                min="0.001"
-                                value={minSupport}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
-                                  setMinSupport(isNaN(val) ? 0.001 : Math.max(0.001, val));
-                                }}
-                                className="bg-transparent border-none outline-none text-[10px] font-black text-white w-10 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                              <span className="text-[10px] font-black text-white/60">%</span>
-                            </div>
-                          </div>
-                          <input 
-                            type="range" min="0.1" max="10" step="0.1" 
-                            value={minSupport > 10 ? 10 : minSupport} 
-                            onChange={(e) => setMinSupport(parseFloat(e.target.value))}
-                            className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500" 
-                            style={{ background: 'var(--input-bg)' }}
-                          />
-                          <div className="flex justify-between text-[8px] font-bold uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>
-                            <span>Broad Discovery</span>
-                            <span>Conservative</span>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 py-2">
-                          <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
-                            Ranking Reference
-                            <Info size={10} style={{ color: 'var(--text-faint)' }} />
-                          </label>
-                          <select 
-                            value={refForecastId}
-                            onChange={(e) => setRefForecastId(e.target.value)}
-                            className="w-full border rounded-2xl px-4 py-3 text-[10px] font-black outline-none transition-all appearance-none cursor-pointer"
-                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
-                          >
-                            {trainForecast && <option value="auto">AUTO: CURRENT TRAINING</option>}
-                            <option value="none">NONE (HISTORICAL DISCOVERY)</option>
-                            {forecastRuns.map(run => (
-                              <option key={run.id} value={run.id}>{run.name.toUpperCase()}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="space-y-2 py-2">
-                          <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
-                            Bundler Persistence
-                            <Info size={10} style={{ color: 'var(--text-faint)' }} />
-                          </label>
-                          {trainForecast ? (
-                            <div className="px-4 py-3 rounded-2xl border text-[10px] font-black" style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)', color: 'var(--success-border)' }}>
-                              Bundler results are automatically saved when Forecast training is enabled.
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setPersistBundler(!persistBundler)}
-                              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300`}
-                              style={{ 
-                                background: persistBundler ? 'var(--success-bg)' : 'var(--input-bg)',
-                                borderColor: persistBundler ? 'var(--success-border)' : 'var(--border-subtle)',
-                                color: persistBundler ? 'var(--success-border)' : 'var(--text-muted)'
-                              }}
-                            >
-                              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Save Bundler Run</span>
-                              <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center`}
-                                style={{ borderColor: persistBundler ? 'var(--success-border)' : 'var(--border)', background: persistBundler ? 'var(--success-border)' : 'transparent', color: persistBundler ? '#fff' : 'transparent' }}>
-                                <Check size={12} />
-                              </span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="pt-2 flex-1 flex flex-col min-h-0">
-                      <p className="text-[9px] font-bold uppercase ml-1 mb-2" style={{ color: 'var(--text-faint)' }}>Bundling Records</p>
-                      <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
-                        {bundlerRuns.map(run => (
-                          <div key={run.id} className="p-4 rounded-2xl border group hover:border-emerald-500/30 transition-all"
-                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <input 
-                                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-tight w-full"
-                                style={{ color: 'var(--text-heading)' }}
-                                value={run.name}
-                                onChange={(e) => handleRenameRun('bundler', run.id, e.target.value)}
-                              />
-                              <button onClick={() => handleDeleteRun('bundler', run.id)} className="text-rose-500/40 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                            <div className="flex justify-between items-center text-[8px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
-                              <span>{new Date(run.created_at).toLocaleString()}</span>
-                              <span className="text-indigo-400/60">SESSION</span>
-                            </div>
-                          </div>
-                        ))}
-                        {bundlerRuns.length === 0 && (
-                          <div className="py-12 text-center space-y-2">
-                            <EyeOff size={24} className="mx-auto" style={{ color: 'var(--text-faint)', opacity: 0.2 }} />
-                            <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>No records found</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ACTION BAR */}
-              <div className="p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-4 duration-700" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-                <div className="flex-1 space-y-2 w-full md:w-auto">
-                  <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest ml-1 block">Active Run Title</label>
-                  <input
-                    type="text"
-                    placeholder="E.g. Yearly Baseline Simulation..."
-                    value={runName}
-                    onChange={(e) => setRunName(e.target.value)}
-                    className="w-full border rounded-2xl px-6 py-4 text-xs font-black outline-none focus:border-indigo-500/50 transition-all shadow-xl"
-                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
-                  />
-                </div>
-
-                <div className="flex flex-col items-center gap-4 w-full md:w-auto">
-                  {error && (() => {
-                    const isConnectionWarn = error.includes('Connection to the server was lost');
-                    return (
-                      <div className={`p-4 rounded-2xl border flex items-start gap-3 max-w-sm`}
-                        style={{
-                          background: isConnectionWarn ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                          borderColor: isConnectionWarn ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)',
-                          color: isConnectionWarn ? '#f59e0b' : '#f87171'
-                        }}>
-                        {isConnectionWarn
-                          ? <Info size={14} className="shrink-0 mt-0.5" />
-                          : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
-                        <p className="text-[10px] font-bold leading-relaxed">{error}</p>
-                      </div>
-                    );
-                  })()}
-
-                  {isTraining ? (
-                    <div className="w-full md:w-80 space-y-4">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em]">
-                        <span className="text-indigo-400 animate-pulse">EXECUTING PIPELINE...</span>
-                        <span className="text-zinc-500">{Math.round(trainingProgress)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${trainingProgress}%` }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleTrain}
-                      disabled={selectedDatasetIds.length === 0 || !runName || (!trainForecast && !trainBundler)}
-                      className="w-full md:w-80 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-20 disabled:grayscale"
-                      style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 20px 50px -10px var(--accent-glow)' }}
-                    >
-                      Initialize Strategic Run
-                    </button>
-                  )}
-                </div>
-              </div>
+          </div>
+        ) : (
+          <div className="animate-in fade-in zoom-in duration-700 flex flex-col items-center justify-center p-20 text-center space-y-6">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'var(--card-accent-bg)', color: '#10b981' }}>
+              <CheckCircle size={40} />
             </div>
-          ) : (
-            <div className="animate-in fade-in zoom-in duration-700 flex flex-col items-center justify-center p-20 text-center space-y-6">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'var(--card-accent-bg)', color: '#10b981' }}>
-                <CheckCircle size={40} />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Dataset Ingested</h3>
-                <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>Your records are now locked in the Optima vault. Proceed to build your forecast.</p>
-              </div>
-              <div className="flex flex-col md:flex-row gap-4">
-                <button
-                  onClick={() => setStep(3)}
-                  className="px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all"
-                  style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
-                >
-                  Start Training
-                </button>
-                <button
-                  onClick={resetIngestion}
-                  className="px-10 py-4 border rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
-                  style={{ background: 'var(--input-bg)', color: 'var(--text-muted)', borderColor: 'var(--border-subtle)' }}
-                >
-                  Upload More Data
-                </button>
-              </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Dataset Ingested</h3>
+              <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>Your records are now locked in the Optima vault. Proceed to build your forecast.</p>
             </div>
-          )}
+            <div className="flex flex-col md:flex-row gap-4">
+              <button
+                onClick={() => setStep(3)}
+                className="px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all"
+                style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
+              >
+                Start Training
+              </button>
+              <button
+                onClick={resetIngestion}
+                className="px-10 py-4 border rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                style={{ background: 'var(--input-bg)', color: 'var(--text-muted)', borderColor: 'var(--border-subtle)' }}
+              >
+                Upload More Data
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ITEM CONFIGURATION MODAL */}
@@ -1141,24 +1129,24 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                       <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 cursor-pointer group">
                           <input type="checkbox" checked={config.bundle} onChange={(e) => updateLocalConfig(item, 'bundle', e.target.checked)} className="hidden" />
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.bundle ? 'bg-indigo-500 border-indigo-500' : ''}`} style={{ borderColor: config.bundle ? 'var(--accent)' : 'var(--border)', background: config.bundle ? 'var(--accent)' : '' }}>
-                            {config.bundle && <Check size={10} className="text-white" />}
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${config.bundle ? 'bg-indigo-500 border-indigo-500' : ''}`} style={{ borderColor: config.bundle ? 'var(--accent)' : 'var(--text-muted)', background: config.bundle ? 'var(--accent)' : 'transparent' }}>
+                            {config.bundle && <Check size={12} className="text-white" />}
                           </div>
-                          <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Bundle</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Bundle</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer group">
                           <input type="checkbox" checked={config.is_not_product} onChange={(e) => updateLocalConfig(item, 'is_not_product', e.target.checked)} className="hidden" />
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${config.is_not_product ? 'bg-rose-500 border-rose-500' : ''}`} style={{ borderColor: config.is_not_product ? 'var(--error-border)' : 'var(--border)', background: config.is_not_product ? 'var(--error-bg)' : '' }}>
-                            {config.is_not_product && <Check size={10} className="text-white" />}
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${config.is_not_product ? 'bg-rose-500 border-rose-500' : ''}`} style={{ borderColor: config.is_not_product ? 'var(--error-border)' : 'var(--text-muted)', background: config.is_not_product ? 'var(--error-bg)' : 'transparent' }}>
+                            {config.is_not_product && <Check size={12} className="text-white" />}
                           </div>
-                          <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Exclude</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Exclude</span>
                         </label>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="mt-8 flex justify-end">
-                  <button 
+                  <button
                     onClick={saveConfigOverride}
                     className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95"
                     style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}

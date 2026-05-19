@@ -79,8 +79,8 @@ export default function Analytics({
   const [loading, setLoading] = useState(false);
   const [chartData, setChartData] = useState(existingChart || []);
   const [metrics, setMetrics] = useState(existingMetrics || {});
-  
   const [runs, setRuns] = useState([]);
+  const [benchmarkYearOffset, setBenchmarkYearOffset] = useState(1);
   const [selectedRun, setSelectedRun] = useState(null);
   const [runDetails, setRunDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -170,7 +170,7 @@ export default function Analytics({
     const raw = runDetails[itemKey].data || [];
     return raw.map(d => ({
       ...d,
-      date: d.forecast_date ? new Date(d.forecast_date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : '',
+      date: d.forecast_date ? new Date(d.forecast_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
       timestamp: d.forecast_date,
       actual: d.actual_value ?? d.actual_quantity ?? null,
       forecast: d.predicted_value ?? d.predicted_quantity ?? null,
@@ -184,6 +184,62 @@ export default function Analytics({
     if (firstForecastIdx === -1) return [];
     // Take 4 points around the transition for context
     return fullData.slice(Math.max(0, firstForecastIdx - 2), firstForecastIdx + 4);
+  };
+
+  const getYoYData = (fullData, offset) => {
+    const firstForecastIdx = fullData.findIndex(d => d.actual === null || d.actual === undefined);
+    if (firstForecastIdx === -1) return null;
+    
+    const current = fullData[firstForecastIdx];
+    if (!current || !current.timestamp) return null;
+
+    const currentDate = new Date(current.timestamp);
+    const targetDate = new Date(currentDate);
+    targetDate.setFullYear(currentDate.getFullYear() - offset);
+
+    // Find the closest historical match
+    const match = fullData.find(d => {
+      if (!d.timestamp || d.actual === null || d.actual === undefined) return false;
+      const dDate = new Date(d.timestamp);
+      return dDate.getMonth() === targetDate.getMonth() && dDate.getFullYear() === targetDate.getFullYear();
+    });
+
+    if (!match) return null;
+
+    return {
+      current: { label: 'Forecast', value: current.forecast, date: current.date },
+      previous: { label: `${offset}Y Ago`, value: match.actual, date: match.date },
+      diff: match.actual !== 0 ? ((current.forecast - match.actual) / match.actual) * 100 : 0
+    };
+  };
+
+  const getYoYChartData = (fullData, offset) => {
+    const firstForecastIdx = fullData.findIndex(d => d.actual === null || d.actual === undefined);
+    if (firstForecastIdx === -1) return null;
+    
+    const startIdx = firstForecastIdx;
+    const endIdx = fullData.length;
+    
+    const slice = fullData.slice(startIdx, endIdx);
+    
+    return slice.map(currentPoint => {
+      const currentDate = new Date(currentPoint.timestamp);
+      const targetDate = new Date(currentDate);
+      targetDate.setFullYear(currentDate.getFullYear() - offset);
+      
+      const match = fullData.find(d => {
+        if (!d.timestamp || d.actual === null || d.actual === undefined) return false;
+        const dDate = new Date(d.timestamp);
+        return dDate.getMonth() === targetDate.getMonth() && dDate.getFullYear() === targetDate.getFullYear();
+      });
+
+      return {
+        displayDate: currentPoint.date,
+        current: currentPoint.forecast !== null && currentPoint.forecast !== undefined ? currentPoint.forecast : currentPoint.actual,
+        historical: match ? match.actual : null,
+        benchmarkYear: targetDate.getFullYear(),
+      };
+    });
   };
 
   const filteredItems = useMemo(() => {
@@ -229,8 +285,27 @@ export default function Analytics({
     const metrics = meta.metrics || {};
     const stl = metrics.stl || null;
     const tags = metrics.tags || [];
+
+    const getAvailableHistoricalYears = (data) => {
+      if (!data || data.length === 0) return [1, 2, 3];
+      const firstActual = data.find(d => d.actual !== null && d.actual !== undefined);
+      const firstForecast = data.find(d => d.actual === null || d.actual === undefined);
+      if (!firstActual || !firstForecast || !firstActual.timestamp || !firstForecast.timestamp) return [1, 2, 3];
+      
+      const startYear = new Date(firstActual.timestamp).getFullYear();
+      const endYear = new Date(firstForecast.timestamp).getFullYear();
+      const diff = endYear - startYear;
+      
+      if (diff <= 0) return [1];
+      return Array.from({ length: Math.min(diff, 10) }, (_, i) => i + 1);
+    };
+
+    const historicalYears = getAvailableHistoricalYears(chartData);
+    const yoy = getYoYData(chartData, Math.min(benchmarkYearOffset, historicalYears.length || 1));
+    const yoyChartData = getYoYChartData(chartData, Math.min(benchmarkYearOffset, historicalYears.length || 1));
+    const benchmarkYear = yoyChartData && yoyChartData.length > 0 ? yoyChartData[0].benchmarkYear : `${benchmarkYearOffset}Y Ago`;
     
-    const metricLabel = selectedRun?.config?.metric || 'Quantity';
+    const metricLabel = 'Volume';
 
     return (
       <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -327,7 +402,7 @@ export default function Analytics({
                 {metrics.mape_pct !== undefined && (
                   <div className="flex flex-wrap gap-4">
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Forecast Error</p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Error Percentage</p>
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
                     </div>
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
@@ -400,29 +475,95 @@ export default function Analytics({
               </div>
             </Card>
 
-            {/* MONTHLY ZOOM */}
+            {/* STRATEGIC BENCHMARKING */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Card title="Current Month Snap" subtitle="Short-term Detail" className="md:col-span-2" icon={Clock}>
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 10, fontWeight: 700}} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill: chartColors.axis, fontSize: 10, fontWeight: 700}} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          background: chartColors.tooltip.bg, 
-                          border: `1px solid ${chartColors.tooltip.border}`, 
-                          borderRadius: '16px', 
-                          fontSize: '11px',
-                          color: chartColors.tooltip.text
-                        }} 
-                        itemStyle={{ color: chartColors.tooltip.text }}
-                      />
-                      <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={{ r: 5, fill: chartColors.forecast }} connectNulls name={`Target ${metricLabel}`} />
-                      <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={3} dot={{ r: 4, fill: chartColors.actual }} connectNulls name={`History ${metricLabel}`} />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <Card 
+                title="Strategic Benchmarking" 
+                subtitle="Historical YoY Performance" 
+                className="md:col-span-2" 
+                icon={TrendingUp}
+                action={
+                  <div className="flex bg-[var(--input-bg)] rounded-xl p-1 border border-[var(--border-subtle)] overflow-x-auto max-w-[200px] sm:max-w-none no-scrollbar">
+                    {historicalYears.map(yr => (
+                      <button
+                        key={yr}
+                        onClick={() => setBenchmarkYearOffset(yr)}
+                        className={`px-3 py-1 text-[9px] font-black rounded-lg transition-all ${benchmarkYearOffset === yr ? 'text-white shadow-sm' : 'text-[var(--text-faint)]'}`}
+                        style={{ background: benchmarkYearOffset === yr ? 'var(--accent)' : 'transparent' }}
+                      >
+                        {yr}Y
+                      </button>
+                    ))}
+                  </div>
+                }
+              >
+                <div className="h-[250px] w-full flex flex-col items-center justify-center">
+                  {yoy ? (
+                    <div className="w-full h-full flex flex-col">
+                      <div className="flex-1 w-full pb-4 pt-4 min-h-[180px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={yoyChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
+                            <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{fill: 'var(--text-secondary)', fontSize: 9, fontWeight: 700}} interval={1} height={20} />
+                            <YAxis hide domain={['auto', 'auto']} />
+                            <Tooltip 
+                              formatter={(value, name) => [formatMetric(value), name]}
+                              contentStyle={{ background: chartColors.tooltip.bg, border: `1px solid ${chartColors.tooltip.border}`, borderRadius: '12px', fontSize: '9px', padding: '8px' }}
+                              itemStyle={{ color: chartColors.tooltip.text, padding: 0 }}
+                              cursor={{ stroke: 'rgba(99,102,241,0.2)', strokeWidth: 1 }}
+                            />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: chartColors.label }} />
+                            <Line type="monotone" name={`${benchmarkYear} (Actual)`} dataKey="historical" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
+                            <Line type="monotone" name="Current / Forecast" dataKey="current" stroke="var(--accent)" strokeWidth={3} dot={false} connectNulls />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div className="p-4 rounded-2xl flex flex-col gap-3 border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+                        <div className="flex items-center justify-between px-2">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>{yoy.previous.label}</p>
+                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{formatMetric(yoy.previous.value)}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>vs</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--accent)' }}>{yoy.current.label}</p>
+                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{formatMetric(yoy.current.value)}</p>
+                          </div>
+                        </div>
+
+                        <div className="h-[1px] w-full" style={{ background: 'var(--border-subtle)' }} />
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Delta Variance</p>
+                            <div className="flex items-baseline gap-2">
+                              <p className={`text-xl font-black ${yoy.diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {yoy.diff >= 0 ? '+' : ''}{Number(yoy.diff || 0).toFixed(1)}%
+                              </p>
+                              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>
+                                ({yoy.diff >= 0 ? '+' : ''}{formatMetric(yoy.current.value - yoy.previous.value)} units)
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Analysis</p>
+                            <p className="text-xs font-bold uppercase italic" style={{ color: 'var(--text-primary)' }}>
+                              {yoy.diff >= 0 ? 'Exceeding Baseline' : 'Underperforming'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-3 opacity-50">
+                      <AlertCircle size={32} className="mx-auto text-[var(--text-faint)]" />
+                      <p className="text-xs font-bold uppercase tracking-widest">Insufficient Historical Depth</p>
+                      <p className="text-[10px] max-w-[200px]">We need at least {benchmarkYearOffset} years of prior data to generate this benchmark.</p>
+                    </div>
+                  )}
                 </div>
               </Card>
 

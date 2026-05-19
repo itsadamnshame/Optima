@@ -1107,7 +1107,7 @@ async def process_sales_data(
         dr_start, dr_end, gap_info_str = analyze_dataset_gaps(valid_sales)
 
         with engine.connect() as conn:
-            now = datetime.datetime.utcnow().isoformat()
+            now = datetime.datetime.now(datetime.UTC).isoformat()
             dataset_id = _insert_and_get_id(
                 conn,
                 "INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 0, :dt, :drs, :dre, :gap)",
@@ -1171,7 +1171,7 @@ async def process_sales_data(
                 )
             conn.commit()
 
-            log_audit(conn, user['username'], "UPLOAD_DATA", f"Uploaded dataset '{title}' ({len(valid_sales)} rows, {len(monthly_agg)} aggregated)")
+            log_audit(conn, user['username'], "UPLOAD_DATA", f"Uploaded dataset '{title}' ({len(valid_sales)} rows, {len(monthly_agg_qty)} aggregated)")
             return {"status": "success", "dataset_id": dataset_id, "rows": len(valid_sales)}
             
     except HTTPException:
@@ -1588,7 +1588,6 @@ async def trigger_optima_pipeline(
 class ForecastTrainRequest(BaseModel):
     dataset_ids: List[int]
     run_name: str
-    metric: str = "Volume"
     items: Optional[List[str]] = None
     item_configs: Optional[dict] = None
     train_forecast: bool = False
@@ -1640,16 +1639,16 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
         
     try:
         # 1. Fetch PRE-AGGREGATED Data
-        raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids AND metric_type = :metric", "dataset_ids", req.dataset_ids, metric=req.metric)
+        raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids AND metric_type = 'Volume'", "dataset_ids", req.dataset_ids)
         
         if raw_df.empty:
             # Attempt to retro-aggregate if missing
             with engine.connect() as conn:
                 for did in req.dataset_ids:
-                    metric_exists = conn.execute(text("SELECT 1 FROM aggregated_sales WHERE dataset_id=:id AND metric_type=:m LIMIT 1"), {"id": did, "m": req.metric}).fetchone()
+                    metric_exists = conn.execute(text("SELECT 1 FROM aggregated_sales WHERE dataset_id=:id AND metric_type='Volume' LIMIT 1"), {"id": did}).fetchone()
                     if not metric_exists:
-                        print(f"OPTIMA: Retro-aggregating {req.metric} for dataset {did}...")
-                        col = "Total" if req.metric == "Revenue" else "Quantity"
+                        print(f"OPTIMA: Retro-aggregating Volume for dataset {did}...")
+                        col = "Quantity"
                         raw = _read_sql(f"SELECT {_ident('ItemDescription')}, {_ident('OrderDate')}, {_ident(col)} FROM sales_transactions WHERE dataset_id = :dataset_id", {"dataset_id": did})
                         if not raw.empty:
                             raw['OrderDate'] = pd.to_datetime(raw['OrderDate'])
@@ -1657,15 +1656,15 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
                             agg = raw.groupby(['ItemDescription', 'ds'])[col].sum().reset_index()
                             for _, row in agg.iterrows():
                                 conn.execute(
-                                    text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y, metric_type) VALUES (:d, :item, :ds, :y, :m)"),
-                                    {"d": did, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row[col]), "m": req.metric}
+                                    text("INSERT INTO aggregated_sales (dataset_id, ItemDescription, ds, y, metric_type) VALUES (:d, :item, :ds, :y, 'Volume')"),
+                                    {"d": did, "item": row['ItemDescription'], "ds": row['ds'].strftime('%Y-%m-%d'), "y": float(row[col])}
                                 )
                             conn.commit()
             
             # Re-fetch
-            raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids AND metric_type = :metric", "dataset_ids", req.dataset_ids, metric=req.metric)
+            raw_df = _read_sql_in(f"SELECT {_agg_item_select()}, ds, y FROM aggregated_sales WHERE dataset_id IN :dataset_ids AND metric_type = 'Volume'", "dataset_ids", req.dataset_ids)
             if raw_df.empty:
-                raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated for the selected metric.")
+                raise HTTPException(status_code=400, detail="Datasets are empty or not aggregated.")
 
         # [NEW] Fetch metadata to filter out non-product items
         meta_df = _read_sql_in("SELECT ItemDescription, is_not_product FROM item_metadata WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)

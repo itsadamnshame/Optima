@@ -20,7 +20,7 @@ export default function Playbook({ recommendations = {}, forecastMetrics = {}, i
         <p className="text-base leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
           Based on the unified audit, the{' '}
           <span className="font-bold" style={{ color: 'var(--accent)' }}>{topItem}</span> segment is entering a statistically significant
-          demand phase. With a calculated forecast error rate (MAPE) of{' '}
+          demand phase. With a calculated forecast error percentage (MAPE) of{' '}
           <span className="font-bold" style={{ color: 'var(--text-heading)' }}>{errorRate}</span>, the risk of inventory stockout remains manageable, provided
           that the detected short-term buying patterns are used to guide weekend stocking levels.
         </p>
