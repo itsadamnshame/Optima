@@ -347,7 +347,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
                         <div className="space-y-4">
                           <div className="flex flex-wrap gap-2">
-                            {bundle.items && bundle.items.map(item => (
+                            {(bundle.items || (bundle.pair ? bundle.pair.split(' + ') : [])).map(item => (
                               <span key={item} className="px-3 py-1 rounded-lg border text-[10px] font-bold"
                                 style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                                 {item}
