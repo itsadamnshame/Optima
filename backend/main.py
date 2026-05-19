@@ -329,6 +329,20 @@ def setup_db():
             )
         """))
         conn.commit()
+
+        try:
+            conn.execute(text("ALTER TABLE item_metadata ADD COLUMN is_bundle INTEGER DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            _ignore_schema_error(conn)
+            pass
+
+        try:
+            conn.execute(text("ALTER TABLE item_metadata ADD COLUMN is_not_product INTEGER DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            _ignore_schema_error(conn)
+            pass
         
         # CHECK IF ADMIN EXISTS
         admin_exists = conn.execute(text("SELECT COUNT(*) FROM users WHERE username='admin'")).fetchone()[0]
