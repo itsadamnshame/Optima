@@ -88,13 +88,19 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
     if (simItemA && simItemB) runSimulation();
   }, [simItemA, simItemB]);
 
+  // Fetch saved runs whenever the active dataset changes
   useEffect(() => {
-    // Check if we arrived with staged bundles
+    if (!location.state?.stagedBundles) {
+      fetchBundlerRuns();
+    }
+  }, [activeDatasetId]);
+
+  // Handle navigation state (staged bundles from a run)
+  useEffect(() => {
     if (location.state?.stagedBundles) {
-      // If it was auto-saved by the dual-run, treat as non-sandbox
       if (location.state.autoSaved) {
         setIsSandbox(false);
-        fetchBundlerRuns(); // Refresh to find the new run
+        fetchBundlerRuns();
       } else {
         setIsSandbox(true);
         setBundles(location.state.stagedBundles);
@@ -104,10 +110,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           refId: location.state.stagedRefId
         });
       }
-    } else {
-      fetchBundlerRuns();
     }
-  }, [activeDatasetId, location.state]);
+  }, [location.state]);
 
   useEffect(() => {
     if (selectedRunId && !isSandbox) {
