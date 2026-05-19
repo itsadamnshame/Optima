@@ -93,120 +93,120 @@
 }
 
 /* ============================================
-   LIGHT THEME  — warm cream, easy on the eyes
+   LIGHT THEME  — neutral grays, clean and accessible
    ============================================ */
 [data-theme="light"] {
-  /* Backgrounds — warm cream, not pure white */
-  --bg-base:    #f5f4ef;   /* warm parchment */
-  --bg-surface: #faf9f5;   /* near-cream card surface */
-  --bg-elevated:#eeede6;   /* inset / recessed areas */
-  --bg-sidebar: #eceae2;   /* slightly deeper sidebar */
+  /* Backgrounds — clean neutral grays */
+  --bg-base:    #f3f4f6;   /* Gray 100 - slightly grayish background */
+  --bg-surface: #ffffff;   /* White for cards/surfaces */
+  --bg-elevated:#ffffff;   /* White for modals/popups */
+  --bg-sidebar: #f9fafb;   /* Gray 50 for sidebar */
 
   /* Borders */
-  --border:        rgba(0,0,0,0.08);
-  --border-subtle: rgba(0,0,0,0.05);
-  --border-strong: rgba(0,0,0,0.13);
+  --border:        #e5e7eb; /* Gray 200 */
+  --border-subtle: #f3f4f6; /* Gray 100 */
+  --border-strong: #d1d5db; /* Gray 300 */
 
-  /* Accent — indigo, same brand feel */
+  /* Accent — indigo */
   --accent:      #6366f1;
   --accent-alt:  #8b5cf6;
-  --accent-glow: rgba(99,102,241,0.18);
+  --accent-glow: rgba(99,102,241,0.15);
 
-  /* Text — warm neutrals, not cold slate */
-  --text-primary:   #3d3c38;   /* warm dark gray */
-  --text-secondary: #6b6a64;   /* medium warm gray */
-  --text-muted:     #9b9a94;   /* soft warm gray */
-  --text-faint:     #c8c6be;   /* very light warm gray */
-  --text-heading:   #1a1917;   /* near-black warm */
+  /* Text — high contrast dark grays */
+  --text-primary:   #111827;   /* Gray 900 */
+  --text-secondary: #374151;   /* Gray 700 */
+  --text-muted:     #6b7280;   /* Gray 500 */
+  --text-faint:     #9ca3af;   /* Gray 400 */
+  --text-heading:   #000000;   /* Black */
 
   /* Glass / overlays */
-  --glass-bg:       rgba(250,249,245,0.8);
-  --glass-bg-hover: rgba(250,249,245,0.95);
-  --glass-border:   rgba(0,0,0,0.07);
+  --glass-bg:       rgba(255,255,255,0.85);
+  --glass-bg-hover: rgba(255,255,255,0.95);
+  --glass-border:   rgba(0,0,0,0.05);
 
   /* Inputs */
-  --input-bg:     #eceae2;
-  --input-border: #d5d3ca;
-  --input-text:   #1a1917;
+  --input-bg:     #ffffff;
+  --input-border: #d1d5db;
+  --input-text:   #111827;
 
   /* Modals / tooltips */
-  --overlay-bg:  rgba(15,15,12,0.45);
-  --modal-bg:    #faf9f5;
-  --tooltip-bg:  #22211e;
+  --overlay-bg:  rgba(17,24,39,0.5); /* Gray 900 at 50% */
+  --modal-bg:    #ffffff;
+  --tooltip-bg:  #1f2937; /* Gray 800 */
 
   /* Tables */
-  --table-header-bg: #f0efe8;
-  --table-row-hover: #eceae2;
-  --table-border:    #dddbd2;
+  --table-header-bg: #f9fafb;
+  --table-row-hover: #f3f4f6;
+  --table-border:    #e5e7eb;
 
   /* Scrollbars */
-  --scrollbar-thumb: #ccc9bf;
-  --scrollbar-hover: #aaa89f;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-hover: #9ca3af;
 
   /* Gradients */
-  --gradient-hero:         linear-gradient(135deg, rgba(99,102,241,0.07) 0%, rgba(250,249,245,0.6) 100%);
-  --gradient-hero-overlay: rgba(99,102,241,0.03);
+  --gradient-hero:         linear-gradient(135deg, rgba(99,102,241,0.05) 0%, rgba(255,255,255,0.8) 100%);
+  --gradient-hero-overlay: rgba(99,102,241,0.02);
 
   /* Badges & cards */
-  --card-accent-bg:   rgba(99,102,241,0.07);
-  --badge-master-bg:  rgba(99,102,241,0.08);
-  --badge-yearly-bg:  rgba(245,158,11,0.09);
-  --badge-active-bg:  rgba(16,185,129,0.09);
+  --card-accent-bg:   rgba(99,102,241,0.05);
+  --badge-master-bg:  rgba(99,102,241,0.1);
+  --badge-yearly-bg:  rgba(245,158,11,0.1);
+  --badge-active-bg:  rgba(16,185,129,0.1);
 
   /* States */
-  --error-bg:      #fef3f2;
-  --error-border:  #fcd2ce;
-  --success-bg:    #f0fdf4;
-  --success-border:#bbf7d0;
+  --error-bg:      #fef2f2; /* Red 50 */
+  --error-border:  #fecaca; /* Red 200 */
+  --success-bg:    #f0fdf4; /* Green 50 */
+  --success-border:#bbf7d0; /* Green 200 */
 
   /* Menus */
-  --option-bg:       #faf9f5;
-  --profile-menu-bg: #faf9f5;
+  --option-bg:       #ffffff;
+  --profile-menu-bg: #ffffff;
 
   /* ── Chart Colors ─────────────────────────── */
-  --chart-grid:          rgba(0,0,0,0.04);
-  --chart-axis:          #ccc9bf;
-  --chart-label:         #6b6a64;
-  --chart-line-actual:   #9b9a94;
+  --chart-grid:          rgba(0,0,0,0.05);
+  --chart-axis:          #9ca3af;
+  --chart-label:         #6b7280;
+  --chart-line-actual:   #9ca3af;
   --chart-line-forecast: #6366f1;
-  --chart-area-fill:     rgba(99,102,241,0.09);
-  --chart-tooltip-bg:    #faf9f5;
-  --chart-tooltip-border:rgba(0,0,0,0.09);
-  --chart-tooltip-text:  #1a1917;
+  --chart-area-fill:     rgba(99,102,241,0.1);
+  --chart-tooltip-bg:    #ffffff;
+  --chart-tooltip-border:rgba(0,0,0,0.1);
+  --chart-tooltip-text:  #111827;
 
   /* ── Bundle Simulator ─────────────────────── */
-  --sim-bg:                #faf9f5;
-  --sim-border:            #dddbd2;
-  --sim-surface:           #f5f4ef;
-  --sim-input-bg:          #eceae2;
-  --sim-input-border:      #d5d3ca;
-  --sim-text-heading:      #1a1917;
-  --sim-text-primary:      #2d2c28;
-  --sim-text-secondary:    #4b4a46;
-  --sim-text-muted:        #6b6a64;
-  --sim-text-faint:        #9b9a94;
+  --sim-bg:                #ffffff;
+  --sim-border:            #e5e7eb;
+  --sim-surface:           #f9fafb;
+  --sim-input-bg:          #ffffff;
+  --sim-input-border:      #d1d5db;
+  --sim-text-heading:      #111827;
+  --sim-text-primary:      #111827;
+  --sim-text-secondary:    #374151;
+  --sim-text-muted:        #6b7280;
+  --sim-text-faint:        #9ca3af;
   --sim-item-checked-bg:   #6366f1;
-  --sim-item-hover-bg:     #eceae2;
-  --sim-item-text:         #4b4a46;
-  --sim-tag-bg:            rgba(99,102,241,0.08);
+  --sim-item-hover-bg:     #f3f4f6;
+  --sim-item-text:         #374151;
+  --sim-tag-bg:            rgba(99,102,241,0.1);
   --sim-tag-text:          #4338ca;
-  --sim-tag-border:        rgba(99,102,241,0.22);
+  --sim-tag-border:        rgba(99,102,241,0.2);
   --sim-btn-bg:            #6366f1;
   --sim-btn-text:          #ffffff;
-  --sim-btn-disabled-bg:   #dddbd2;
-  --sim-result-card-bg:    #f5f4ef;
+  --sim-btn-disabled-bg:   #e5e7eb;
+  --sim-result-card-bg:    #f9fafb;
   --sim-result-card-border:rgba(0,0,0,0.05);
-  --sim-result-text:       #2d2c28;
-  --sim-verdict-bg:        rgba(99,102,241,0.08);
-  --sim-scrollbar-thumb:   #ccc9bf;
-  --sim-empty-border:      #dddbd2;
-  --sim-checkbox-bg:       #faf9f5;
-  --sim-checkbox-border:   #ccc9bf;
+  --sim-result-text:       #111827;
+  --sim-verdict-bg:        rgba(99,102,241,0.1);
+  --sim-scrollbar-thumb:   #d1d5db;
+  --sim-empty-border:      #e5e7eb;
+  --sim-checkbox-bg:       #ffffff;
+  --sim-checkbox-border:   #d1d5db;
   --sim-checkbox-checked-dot:#6366f1;
-  --sim-error-bg:          #fef3f2;
-  --sim-error-border:      #fcd2ce;
+  --sim-error-bg:          #fef2f2;
+  --sim-error-border:      #fecaca;
   --sim-error-text:        #b91c1c;
-  --sim-shadow:            0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --sim-shadow:            0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 * { box-sizing: border-box; }
