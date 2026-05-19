@@ -283,7 +283,7 @@ export default function Analytics({
     const monthlyData = getMonthlyData(chartData);
     const meta = runDetails[currentItem]?.meta || {};
     const metrics = meta.metrics || {};
-    const stl = metrics.stl || null;
+    const stl = metrics.stl && metrics.stl.dates ? metrics.stl : null;
     const tags = metrics.tags || [];
 
     const getAvailableHistoricalYears = (data) => {
@@ -585,7 +585,7 @@ export default function Analytics({
             </div>
 
             {/* STRATEGIC STL HUB */}
-            {stl && (
+            {stl && stl.dates && (
               <div className="mt-8 space-y-4">
                 <div className="flex items-center gap-3 px-4">
                   <div className="p-2 rounded-xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}><Layers size={20} /></div>
