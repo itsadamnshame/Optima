@@ -1682,7 +1682,11 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
 
         # [NEW] Fetch metadata to filter out non-product items
         meta_df = _read_sql_in("SELECT ItemDescription, is_not_product FROM item_metadata WHERE dataset_id IN :dataset_ids", "dataset_ids", req.dataset_ids)
-        non_product_items = set(meta_df[meta_df['is_not_product'] == 1]['ItemDescription'].tolist())
+        if not meta_df.empty:
+            meta_df.columns = [c.lower() for c in meta_df.columns]
+            non_product_items = set(meta_df[meta_df['is_not_product'] == 1]['itemdescription'].tolist())
+        else:
+            non_product_items = set()
         
         # Filter raw_df
         raw_df = raw_df[~raw_df['ItemDescription'].isin(non_product_items)]
