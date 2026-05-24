@@ -606,7 +606,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                     <div className="flex items-center gap-4 py-4">
                       <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
                         <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Lift</p>
-                        <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{simResult.lift}</p>
+                        <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{simResult.lift ? Number(simResult.lift).toFixed(2) + 'x' : 'N/A'}</p>
                       </div>
                       <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
                         <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Confidence</p>

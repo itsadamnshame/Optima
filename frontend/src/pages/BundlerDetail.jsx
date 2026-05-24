@@ -60,9 +60,9 @@ export default function BundlerDetail() {
   const selectedBundle = bundles[selectedIndex] || bundles[0] || null;
 
   const factorRows = selectedBundle ? [
-    { label: 'Lift', value: selectedBundle.lift },
+    { label: 'Lift', value: selectedBundle.lift ? Number(selectedBundle.lift).toFixed(2) + 'x' : 'N/A' },
     { label: 'Confidence', value: `${((selectedBundle.confidence || 0) * 100).toFixed(1)}%` },
-    { label: 'Support', value: selectedBundle.support },
+    { label: 'Support', value: `${((selectedBundle.support || 0) * 100).toFixed(2)}%` },
     ...(selectedBundle.forecast_score !== undefined && selectedBundle.forecast_score !== null ? [
       { label: 'Forecast Alignment', value: selectedBundle.forecast_score },
       { label: 'Trend Momentum', value: selectedBundle.trend_slope },
