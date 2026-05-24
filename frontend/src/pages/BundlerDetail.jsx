@@ -63,9 +63,11 @@ export default function BundlerDetail() {
     { label: 'Lift', value: selectedBundle.lift },
     { label: 'Confidence', value: `${((selectedBundle.confidence || 0) * 100).toFixed(1)}%` },
     { label: 'Support', value: selectedBundle.support },
-    { label: 'Forecast Alignment', value: selectedBundle.forecast_score },
-    { label: 'Trend Momentum', value: selectedBundle.trend_slope },
-    { label: 'Seasonal Weight', value: selectedBundle.seasonal_weight }
+    ...(selectedBundle.forecast_score !== undefined && selectedBundle.forecast_score !== null ? [
+      { label: 'Forecast Alignment', value: selectedBundle.forecast_score },
+      { label: 'Trend Momentum', value: selectedBundle.trend_slope },
+      { label: 'Seasonal Weight', value: selectedBundle.seasonal_weight }
+    ] : [])
   ] : [];
 
   const getBadgeStyle = (badge) => badgeStyles[badge] || badgeStyles.DEFAULT;

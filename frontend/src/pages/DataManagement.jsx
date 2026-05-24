@@ -273,12 +273,6 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const toggleForecaster = () => {
     const newState = !trainForecast;
     setTrainForecast(newState);
-    if (!newState) {
-      // If we turned off forecaster, we can't use "auto"
-      setRefForecastId('none');
-    } else {
-      setRefForecastId('auto');
-    }
   };
 
   const resetIngestion = () => {
@@ -927,24 +921,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                         </div>
                       </div>
 
-                      <div className="space-y-2 py-2">
-                        <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
-                          Ranking Reference
-                          <Info size={10} style={{ color: 'var(--text-faint)' }} />
-                        </label>
-                        <select
-                          value={refForecastId}
-                          onChange={(e) => setRefForecastId(e.target.value)}
-                          className="w-full border rounded-2xl px-4 py-3 text-[10px] font-black outline-none transition-all appearance-none cursor-pointer"
-                          style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-heading)' }}
-                        >
-                          {trainForecast && <option value="auto">AUTO: CURRENT TRAINING</option>}
-                          <option value="none">NONE (HISTORICAL DISCOVERY)</option>
-                          {forecastRuns.map(run => (
-                            <option key={run.id} value={run.id}>{run.name.toUpperCase()}</option>
-                          ))}
-                        </select>
-                      </div>
+
 
                       <div className="space-y-2 py-2">
                         <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>

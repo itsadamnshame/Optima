@@ -65,44 +65,7 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         rules = rules.drop_duplicates(subset=['pair']).copy()
 
         # --- PHASE 2: FEATURE ENGINEERING (THE BRIDGE) ---
-        print(f"BUNDLER: Starting Phase 2 (Contextual Metrics)... Ref: {forecast_run_id}")
-        
-        item_metrics = {}
-        if forecast_run_id:
-            # Load Forecast Results for metrics
-            query_forecast = text("SELECT item_description, result_json FROM forecast_results WHERE run_id = :rid")
-            with engine.connect() as conn:
-                forecast_rows = conn.execute(query_forecast, {"rid": forecast_run_id}).fetchall()
-            
-            for row in forecast_rows:
-                item_name = row[0]
-                data = json.loads(row[1])
-                meta = data.get('meta', {}).get('metrics', {})
-                
-                # Extract Trend Slope
-                trend = meta.get('stl', {}).get('trend', [])
-                slope = 0
-                if len(trend) >= 3:
-                    slope = (trend[-1] - trend[-3]) / 3
-                
-                # Extract Seasonality Weight
-                seasonal = meta.get('stl', {}).get('seasonal', [])
-                seasonal_weight = 0
-                if seasonal:
-                    max_s = max(seasonal) if max(seasonal) != 0 else 1
-                    seasonal_weight = (seasonal[-1] / max_s) * 10
-                
-                # Forecast Volume
-                forecast_df = pd.DataFrame(data.get('data', []))
-                forecast_score = forecast_df['yhat'].tail(12).sum() if 'yhat' in forecast_df.columns else 0
-
-                item_metrics[item_name] = {
-                    "forecast_score": forecast_score,
-                    "trend_slope": slope,
-                    "seasonal_weight": seasonal_weight
-                }
-        else:
-            print("BUNDLER: No forecast reference provided. Skipping Phase 2 metrics.")
+        print("BUNDLER: Feature engineering based on historical association metrics...")
 
         # Build Bundle Features
         candidates = []
@@ -114,22 +77,12 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
             if is_bundle_map.get(item_a, 0) == 1 or is_bundle_map.get(item_b, 0) == 1:
                 continue
                 
-            m_a = item_metrics.get(item_a, {"forecast_score": 0, "trend_slope": 0, "seasonal_weight": 0})
-            m_b = item_metrics.get(item_b, {"forecast_score": 0, "trend_slope": 0, "seasonal_weight": 0})
-
-            avg_forecast = (m_a['forecast_score'] + m_b['forecast_score']) / 2
-            avg_slope = (m_a['trend_slope'] + m_b['trend_slope']) / 2
-            avg_seasonal = (m_a['seasonal_weight'] + m_b['seasonal_weight']) / 2
-
             candidates.append({
                 "item_a": item_a,
                 "item_b": item_b,
                 "lift": row['lift'],
                 "support": row['support'],
-                "confidence": row['confidence'],
-                "forecast_score": avg_forecast,
-                "trend_slope": avg_slope,
-                "seasonal_weight": avg_seasonal
+                "confidence": row['confidence']
             })
 
         if not candidates:
@@ -138,12 +91,12 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         # --- PHASE 3: THE RANKING STAGE (RANDOM FOREST) ---
         print("BUNDLER: Starting Phase 3 (Random Forest Ranking)...")
         df_candidates = pd.DataFrame(candidates)
-        X_feat = df_candidates[['lift', 'support', 'confidence', 'forecast_score', 'trend_slope', 'seasonal_weight']]
+        X_feat = df_candidates[['lift', 'support', 'confidence']]
         
         def calculate_success_label(r):
-            score = (r['lift'] * 2) + (r['trend_slope'] * 5) + (r['seasonal_weight'] * 2) + (r['confidence'] * 3)
+            score = (r['lift'] * 2) + (r['confidence'] * 3)
             # Threshold at 70th percentile
-            return 1 if score > np.percentile([ (c['lift']*2 + c['trend_slope']*5 + c['seasonal_weight']*2 + c['confidence']*3) for c in candidates ], 70) else 0
+            return 1 if score > np.percentile([ (c['lift']*2 + c['confidence']*3) for c in candidates ], 70) else 0
 
         y_labels = df_candidates.apply(calculate_success_label, axis=1)
         rf = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -165,13 +118,10 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
             
             if row['probability'] > 0.8:
                 badge = "STRATEGIC"
-                reason = "High historical Lift combined with Rising Trends and Seasonal Peaks."
-            elif row['trend_slope'] > 0.5:
+                reason = "High historical Lift combined with strong purchase confidence."
+            elif row['lift'] > 2.5:
                 badge = "EMERGING"
-                reason = "Rapidly growing demand for both items in recent months."
-            elif row['seasonal_weight'] > 7:
-                badge = "SEASONAL"
-                reason = "Both items entering peak seasonal cycle next month."
+                reason = "Strong purchasing affinity indicating an emerging bundle opportunity."
 
             results.append({
                 "rank": i + 1,
@@ -179,9 +129,6 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
                 "lift": round(row['lift'], 2),
                 "confidence": round(row['confidence'], 2),
                 "support": round(row['support'], 4),
-                "forecast_score": round(row['forecast_score'], 2),
-                "trend_slope": round(row['trend_slope'], 3),
-                "seasonal_weight": round(row['seasonal_weight'], 2),
                 "probability": round(row['probability'] * 100, 1),
                 "badge": badge,
                 "why": reason
