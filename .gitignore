@@ -89,3 +89,4 @@ Desktop.ini
 docs/
 backend.log
 frontend.log
+.env.example

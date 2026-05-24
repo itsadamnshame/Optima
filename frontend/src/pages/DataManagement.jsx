@@ -606,120 +606,6 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               )}
             </label>
 
-            {/* INVENTORY PANEL (SLIDE-OVER) */}
-            {showInventory && (
-              <div className="absolute inset-0 z-50 rounded-[2.5rem] p-8 animate-in fade-in duration-300 flex flex-col border shadow-2xl"
-                style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <Database style={{ color: 'var(--accent)' }} size={24} />
-                    <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Dataset Inventory</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowInventory(false)}
-                    className="p-2 rounded-xl transition-colors hover:opacity-70"
-                    style={{ background: 'var(--card-accent-bg)', color: 'var(--text-muted)' }}
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                  {datasets.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
-                      <EyeOff size={48} />
-                      <p className="text-[10px] font-black uppercase tracking-widest">No Datasets Available</p>
-                    </div>
-                  ) : (
-                    datasets.map(ds => (
-                      <div key={ds.id} className="p-4 rounded-2xl border flex flex-col group transition-colors text-left"
-                        style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="min-w-0 flex-1">
-                            {editingId === ds.id ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  className="rounded px-2 py-1 text-xs font-black uppercase outline-none w-full"
-                                  style={{ background: 'var(--input-bg)', border: '1px solid var(--accent)', color: 'var(--input-text)' }}
-                                  value={editTitle}
-                                  onChange={(e) => setEditTitle(e.target.value)}
-                                  autoFocus
-                                />
-                                <button onClick={() => saveTitle(ds.id)} className="text-emerald-400 hover:text-emerald-300 p-1 transition-colors"><Save size={14} /></button>
-                                <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1 transition-colors"><X size={14} /></button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <p className="text-xs font-black uppercase truncate" style={{ color: 'var(--text-heading)' }}>{ds.title}</p>
-                                <button onClick={() => startEditing(ds)} className="opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70" style={{ color: 'var(--accent)' }}><Edit3 size={10} /></button>
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-3 mt-1">
-                              <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }}>
-                                <Database size={8} /> {(ds.row_count || 0).toLocaleString()} ROWS
-                              </span>
-                              <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
-                              <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }} title="Uploaded At">
-                                <Calendar size={8} /> {new Date(ds.created_at).toLocaleString()}
-                              </span>
-                              {ds.last_edited_at && (
-                                <>
-                                  <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
-                                  <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--accent)' }} title="Last Modified">
-                                    <Edit3 size={8} /> {new Date(ds.last_edited_at).toLocaleString()}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleTogglePrivacy(ds.id, ds.is_private)}
-                              className={`p-2 rounded-lg transition-all ${ds.is_private ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'} hover:scale-110`}
-                              title={ds.is_private ? "Private Dataset" : "Public Dataset"}
-                            >
-                              {ds.is_private ? <Lock size={14} /> : <Globe size={14} />}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDataset(ds.id)}
-                              className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                              title="Purge Dataset"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => openViewer(ds.id, 1)}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80"
-                            style={{ background: 'var(--accent)', color: '#fff' }}
-                          >
-                            <Eye size={12} /> Explorer
-                          </button>
-                          <button
-                            onClick={() => openConfigModal([ds.id])}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl transition-all hover:opacity-70"
-                            style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}
-                          >
-                            <Package size={12} /> Configure
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="mt-8 pt-8 text-center" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
-                    Strategic Hub Active • {datasets.length} total repositories
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         ) : step === 2 ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -1152,6 +1038,123 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
           </div>
         )}
       </div>
+
+      {/* INVENTORY MODAL */}
+      {showInventory && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-[2.5rem] p-8 border shadow-2xl"
+            style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between mb-8 shrink-0">
+              <div className="flex items-center gap-3">
+                <Database style={{ color: 'var(--accent)' }} size={24} />
+                <h3 className="text-lg font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>Dataset Inventory</h3>
+              </div>
+              <button
+                onClick={() => setShowInventory(false)}
+                className="p-2 rounded-xl transition-colors hover:opacity-70"
+                style={{ background: 'var(--card-accent-bg)', color: 'var(--text-muted)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 min-h-0">
+              {datasets.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                  <EyeOff size={48} />
+                  <p className="text-[10px] font-black uppercase tracking-widest">No Datasets Available</p>
+                </div>
+              ) : (
+                datasets.map(ds => (
+                  <div key={ds.id} className="p-4 rounded-2xl border flex flex-col group transition-colors text-left"
+                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="min-w-0 flex-1">
+                        {editingId === ds.id ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              className="rounded px-2 py-1 text-xs font-black uppercase outline-none w-full"
+                              style={{ background: 'var(--input-bg)', border: '1px solid var(--accent)', color: 'var(--input-text)' }}
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              autoFocus
+                            />
+                            <button onClick={() => saveTitle(ds.id)} className="text-emerald-400 hover:text-emerald-300 p-1 transition-colors"><Save size={14} /></button>
+                            <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1 transition-colors"><X size={14} /></button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-black uppercase truncate" style={{ color: 'var(--text-heading)' }}>{ds.title}</p>
+                            <button onClick={() => startEditing(ds)} className="opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70" style={{ color: 'var(--accent)' }}><Edit3 size={10} /></button>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }}>
+                            <Database size={8} /> {(ds.row_count || 0).toLocaleString()} ROWS
+                          </span>
+                          <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
+                          <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--text-faint)' }} title="Uploaded At">
+                            <Calendar size={8} /> {new Date(ds.created_at).toLocaleString()}
+                          </span>
+                          {ds.last_edited_at && (
+                            <>
+                              <span className="w-1 h-1 rounded-full" style={{ background: 'var(--border)' }} />
+                              <span className="text-[8px] font-bold uppercase tracking-widest flex items-center gap-1" style={{ color: 'var(--accent)' }} title="Last Modified">
+                                <Edit3 size={8} /> {new Date(ds.last_edited_at).toLocaleString()}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleTogglePrivacy(ds.id, ds.is_private)}
+                          className={`p-2 rounded-lg transition-all ${ds.is_private ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'} hover:scale-110`}
+                          title={ds.is_private ? "Private Dataset" : "Public Dataset"}
+                        >
+                          {ds.is_private ? <Lock size={14} /> : <Globe size={14} />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDataset(ds.id)}
+                          className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                          title="Purge Dataset"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => openViewer(ds.id, 1)}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80"
+                        style={{ background: 'var(--accent)', color: '#fff' }}
+                      >
+                        <Eye size={12} /> Explorer
+                      </button>
+                      <button
+                        onClick={() => openConfigModal([ds.id])}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl transition-all hover:opacity-70"
+                        style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-muted)' }}
+                      >
+                        <Package size={12} /> Configure
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-8 pt-8 text-center shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>
+                Strategic Hub Active • {datasets.length} total repositories
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ITEM CONFIGURATION MODAL */}
       {showConfigModal && (
