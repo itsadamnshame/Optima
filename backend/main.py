@@ -699,8 +699,17 @@ async def get_session_logs(user=Depends(get_current_user)):
             )).fetchall()
             logs = []
             for r in res:
-                login_dt = datetime.datetime.fromisoformat(r[4])
-                logout_dt = datetime.datetime.fromisoformat(r[5]) if r[5] else None
+                login_str = r[4]
+                if login_str and not login_str.endswith("Z") and not "+" in login_str:
+                    login_str += "Z"
+                
+                logout_str = r[5]
+                if logout_str and not logout_str.endswith("Z") and not "+" in logout_str:
+                    logout_str += "Z"
+                
+                login_dt = datetime.datetime.fromisoformat(login_str)
+                logout_dt = datetime.datetime.fromisoformat(logout_str) if logout_str else None
+                
                 duration = None
                 if logout_dt:
                     secs = int((logout_dt - login_dt).total_seconds())
@@ -710,8 +719,8 @@ async def get_session_logs(user=Depends(get_current_user)):
                     "session_id": r[1],
                     "username": r[2],
                     "role": r[3],
-                    "login_time": r[4],
-                    "logout_time": r[5],
+                    "login_time": login_str,
+                    "logout_time": logout_str,
                     "force_end_at": r[6],
                     "duration": duration
                 })
@@ -940,14 +949,19 @@ async def get_my_account_activity(user=Depends(get_current_user)):
                         "id": r[0],
                         "session_id": r[1],
                         "role": r[2],
-                        "login_time": r[3],
-                        "logout_time": r[4],
+                        "login_time": r[3] + "Z" if r[3] and not r[3].endswith("Z") and "+" not in r[3] else r[3],
+                        "logout_time": r[4] + "Z" if r[4] and not r[4].endswith("Z") and "+" not in r[4] else r[4],
                         "force_end_at": r[5],
                     }
                     for r in sessions
                 ],
                 "audit_logs": [
-                    {"timestamp": r[0], "username": r[1], "action": r[2], "details": r[3]}
+                    {
+                        "timestamp": r[0] + "Z" if r[0] and not r[0].endswith("Z") and "+" not in r[0] else r[0],
+                        "username": r[1],
+                        "action": r[2],
+                        "details": r[3]
+                    }
                     for r in audits
                 ],
             }
@@ -989,14 +1003,19 @@ async def get_account_activity(target_username: str, user=Depends(get_current_us
                         "id": r[0],
                         "session_id": r[1],
                         "role": r[2],
-                        "login_time": r[3],
-                        "logout_time": r[4],
+                        "login_time": r[3] + "Z" if r[3] and not r[3].endswith("Z") and "+" not in r[3] else r[3],
+                        "logout_time": r[4] + "Z" if r[4] and not r[4].endswith("Z") and "+" not in r[4] else r[4],
                         "force_end_at": r[5],
                     }
                     for r in sessions
                 ],
                 "audit_logs": [
-                    {"timestamp": r[0], "username": r[1], "action": r[2], "details": r[3]}
+                    {
+                        "timestamp": r[0] + "Z" if r[0] and not r[0].endswith("Z") and "+" not in r[0] else r[0],
+                        "username": r[1], 
+                        "action": r[2], 
+                        "details": r[3]
+                    }
                     for r in audits
                 ]
             }
