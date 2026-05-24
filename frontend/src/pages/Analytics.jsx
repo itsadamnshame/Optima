@@ -76,7 +76,7 @@ export default function Analytics({
   
   // States
   const [recommendations, setRecommendations] = useState(existingMetrics?.recommendations || {});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState(existingChart || []);
   const [metrics, setMetrics] = useState(existingMetrics || {});
   const [runs, setRuns] = useState([]);
@@ -113,6 +113,7 @@ export default function Analytics({
   }, [token]);
 
   const fetchRuns = async () => {
+    setLoading(true);
     try {
       const res = await axios.get('/api/forecast/runs', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -702,7 +703,11 @@ export default function Analytics({
               <div className="pt-4 flex items-center gap-3">
                 <div className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
                   style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--border-subtle)', color: 'var(--accent)' }}>
-                  <PlayCircle size={14} /> Open Result
+                  {loadingDetails && selectedRun?.id === run.id ? (
+                    <><Activity size={14} className="animate-spin" /> Loading...</>
+                  ) : (
+                    <><PlayCircle size={14} /> Open Result</>
+                  )}
                 </div>
                 <button 
                   onClick={(e) => handleDeleteRun(e, run.id)}

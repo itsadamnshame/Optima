@@ -66,14 +66,12 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [configLoading, setConfigLoading] = useState(false);
 
   useEffect(() => {
-    if (selectedDatasetIds.length > 0) {
-      fetchForecastRuns(selectedDatasetIds[0]);
-    }
-  }, [selectedDatasetIds]);
+    fetchForecastRuns();
+  }, []);
 
-  const fetchForecastRuns = async (datasetId) => {
+  const fetchForecastRuns = async () => {
     try {
-      const res = await axios.get(`/api/forecast/runs?dataset_id=${datasetId}`, {
+      const res = await axios.get(`/api/forecast/runs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setForecastRuns(res.data.runs || []);
@@ -457,9 +455,9 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       const endpoint = type === 'forecast' ? `/api/forecast/runs/${id}/rename` : `/api/bundler/runs/${id}/rename`;
       await axios.put(endpoint, { name: newName }, { headers: { Authorization: `Bearer ${token}` } });
       if (type === 'forecast') {
-        fetchForecastRuns(selectedDatasetIds[0]);
+        fetchForecastRuns();
       } else {
-        fetchBundlerRuns(selectedDatasetIds[0]);
+        fetchBundlerRuns();
       }
     } catch (err) {
       setError(`Failed to rename ${type} run.`);
@@ -472,9 +470,9 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       const endpoint = type === 'forecast' ? `/api/forecast/runs/${id}` : `/api/bundler/runs/${id}`;
       await axios.delete(endpoint, { headers: { Authorization: `Bearer ${token}` } });
       if (type === 'forecast') {
-        fetchForecastRuns(selectedDatasetIds[0]);
+        fetchForecastRuns();
       } else {
-        fetchBundlerRuns(selectedDatasetIds[0]);
+        fetchBundlerRuns();
       }
     } catch (err) {
       setError(`Failed to delete ${type} run.`);
@@ -495,9 +493,9 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
     }
   };
 
-  const fetchBundlerRuns = async (datasetId) => {
+  const fetchBundlerRuns = async () => {
     try {
-      const res = await axios.get(`/api/bundler/runs?dataset_id=${datasetId}`, {
+      const res = await axios.get(`/api/bundler/runs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setBundlerRuns(res.data.runs || []);
@@ -507,10 +505,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   };
 
   useEffect(() => {
-    if (selectedDatasetIds.length > 0) {
-      fetchBundlerRuns(selectedDatasetIds[0]);
-    }
-  }, [selectedDatasetIds]);
+    fetchBundlerRuns();
+  }, []);
 
   const handleTogglePrivacy = async (id, currentPrivate) => {
     try {
