@@ -41,6 +41,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [persistBundler, setPersistBundler] = useState(false);
   const [error, setError] = useState(null);
   const [abortController, setAbortController] = useState(null);
+  const [showNavigationModal, setShowNavigationModal] = useState(false);
+  const [navigationData, setNavigationData] = useState(null);
 
   // Viewer State
   const [viewerData, setViewerData] = useState([]);
@@ -328,7 +330,16 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       setTrainingProgress(100);
       setTimeout(() => {
         setIsTraining(false);
-        if (trainBundler) {
+        if (trainForecast && trainBundler) {
+          setNavigationData({
+            bundles: res.data.bundles,
+            name: runName,
+            datasetId: selectedDatasetIds[0],
+            refId: refForecastId,
+            autoSaved: res.data.auto_saved
+          });
+          setShowNavigationModal(true);
+        } else if (trainBundler) {
           // Navigate to Qualitative with live results for tuning
           navigate('/qualitative', {
             state: {
@@ -381,7 +392,20 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               setError(null);
               setIsTraining(false);
               
-              if (trainBundler) {
+              if (trainForecast && trainBundler) {
+                // Fetch bundler results for this run to stage them
+                const resDetails = await axios.get(`/api/bundler/runs/${matchingRun.id}`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+                setNavigationData({
+                  bundles: resDetails.data.bundles,
+                  name: runName,
+                  datasetId: selectedDatasetIds[0],
+                  refId: refForecastId,
+                  autoSaved: true
+                });
+                setShowNavigationModal(true);
+              } else if (trainBundler) {
                 // Fetch bundler results for this run to stage them
                 const resDetails = await axios.get(`/api/bundler/runs/${matchingRun.id}`, {
                   headers: { 'Authorization': `Bearer ${token}` }
@@ -1332,6 +1356,66 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* STRATEGIC RUN COMPLETE NAVIGATION MODAL */}
+      {showNavigationModal && navigationData && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-300" style={{ background: 'var(--modal-bg)' }}>
+            <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto border shadow-2xl" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)', color: 'var(--accent)' }}>
+              <CheckCircle size={32} />
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>
+                Strategic Run Complete
+              </h3>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Both models have trained successfully. Where would you like to view the results first?
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowNavigationModal(false);
+                  navigate('/qualitative', {
+                    state: {
+                      stagedBundles: navigationData.bundles,
+                      stagedName: navigationData.name,
+                      stagedDatasetId: navigationData.datasetId,
+                      stagedRefId: navigationData.refId,
+                      autoSaved: navigationData.autoSaved
+                    }
+                  });
+                }}
+                className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
+              >
+                <Zap size={14} /> Product Bundler
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowNavigationModal(false);
+                  navigate('/analytics');
+                }}
+                className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 border flex items-center justify-center gap-2 cursor-pointer"
+                style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+              >
+                <TrendingUp size={14} /> Forecasting Analytics
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowNavigationModal(false)}
+              className="text-[9px] font-black uppercase tracking-widest hover:opacity-70 transition-opacity cursor-pointer"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Stay on Management Hub
+            </button>
           </div>
         </div>
       )}
