@@ -85,3 +85,7 @@ Desktop.ini
 
 # PyCharm / IntelliJ
 .idea/
+
+docs/
+backend.log
+frontend.log

@@ -157,7 +157,7 @@ export default function Analytics({
     }
   };
 
-  const formatMetric = (val, dec = 1) => {
+  const formatMetric = (val, dec = 0) => {
     if (val === undefined || val === null || val === 'N/A') return 'N/A';
     const num = typeof val === 'number' ? val : parseFloat(val);
     return isNaN(num) ? 'N/A' : num.toFixed(dec);
@@ -168,15 +168,19 @@ export default function Analytics({
   const getChartData = (itemKey) => {
     if (!runDetails || !runDetails[itemKey]) return [];
     const raw = runDetails[itemKey].data || [];
-    return raw.map(d => ({
-      ...d,
-      date: d.forecast_date ? new Date(d.forecast_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
-      timestamp: d.forecast_date,
-      actual: d.actual_value ?? d.actual_quantity ?? null,
-      forecast: d.predicted_value ?? d.predicted_quantity ?? null,
-      lower: d.yhat_lower,
-      upper: d.yhat_upper
-    }));
+    return raw.map(d => {
+      const act = d.actual_value ?? d.actual_quantity ?? null;
+      const fcast = d.predicted_value ?? d.predicted_quantity ?? null;
+      return {
+        ...d,
+        date: d.forecast_date ? new Date(d.forecast_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
+        timestamp: d.forecast_date,
+        actual: act !== null ? Math.round(act) : null,
+        forecast: fcast !== null ? Math.round(fcast) : null,
+        lower: d.yhat_lower !== null && d.yhat_lower !== undefined ? Math.round(d.yhat_lower) : null,
+        upper: d.yhat_upper !== null && d.yhat_upper !== undefined ? Math.round(d.yhat_upper) : null
+      };
+    });
   };
 
   const getMonthlyData = (fullData) => {
@@ -403,7 +407,7 @@ export default function Analytics({
                   <div className="flex flex-wrap gap-4">
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Error Percentage</p>
-                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct, 1)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
                     </div>
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Avg. Error Magnitude</p>
