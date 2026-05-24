@@ -358,6 +358,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         // The backend is almost certainly still processing. Check the runs endpoint periodically.
         // Keep isTraining active and do not set an error message; just poll in the background.
         setTrainingProgress(95);
+        setError(null);
         
         let attempts = 0;
         const maxAttempts = 120; // Poll for up to 600 seconds (120 * 5s)
