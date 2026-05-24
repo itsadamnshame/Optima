@@ -356,8 +356,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         // No response = network drop / connection reset while the backend was still running.
         // Or 500/502/504 gateway timeout / internal error.
         // The backend is almost certainly still processing. Check the runs endpoint periodically.
+        // Keep isTraining active and do not set an error message; just poll in the background.
         setTrainingProgress(95);
-        setError("Checking if training completes successfully on the server...");
         
         let attempts = 0;
         const maxAttempts = 20; // Poll for up to 100 seconds (20 * 5s)
