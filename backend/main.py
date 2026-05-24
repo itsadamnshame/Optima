@@ -970,12 +970,36 @@ async def get_account_activity(target_username: str, user=Depends(get_current_us
     _require_admin(user)
     try:
         with engine.connect() as conn:
-            res = conn.execute(
+            sessions = conn.execute(text("""
+                SELECT id, session_id, role, login_time, logout_time, force_end_at
+                FROM session_logs
+                WHERE username = :u
+                ORDER BY id DESC
+                LIMIT 100
+            """), {"u": target_username}).fetchall()
+            
+            audits = conn.execute(
                 text("SELECT timestamp, username, action, details FROM audit_logs WHERE username = :u OR details LIKE :needle ORDER BY id DESC LIMIT 100"),
                 {"u": target_username, "needle": f"%{target_username}%"}
             ).fetchall()
-            logs = [{"timestamp": r[0], "username": r[1], "action": r[2], "details": r[3]} for r in res]
-            return {"logs": logs}
+            
+            return {
+                "sessions": [
+                    {
+                        "id": r[0],
+                        "session_id": r[1],
+                        "role": r[2],
+                        "login_time": r[3],
+                        "logout_time": r[4],
+                        "force_end_at": r[5],
+                    }
+                    for r in sessions
+                ],
+                "audit_logs": [
+                    {"timestamp": r[0], "username": r[1], "action": r[2], "details": r[3]}
+                    for r in audits
+                ]
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
