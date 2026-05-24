@@ -413,7 +413,7 @@ def _validate_password(password: str):
 
 def log_audit(conn, username: str, action: str, details: str):
     try:
-        timestamp = (datetime.datetime.utcnow().isoformat() + "Z")
+        timestamp = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
         conn.execute(
             text("INSERT INTO audit_logs (timestamp, username, action, details) VALUES (:t, :u, :a, :d)"),
             {"t": timestamp, "u": username, "a": action, "d": details}
@@ -468,7 +468,7 @@ def _require_admin(user):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 def _terminate_user_sessions(conn, username: str, reason: str):
-    now = (datetime.datetime.utcnow().isoformat() + "Z")
+    now = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
     conn.execute(
         text("UPDATE session_logs SET logout_time = :lt, force_end_at = :lt WHERE username = :u AND logout_time IS NULL"),
         {"lt": now, "u": username}
@@ -641,7 +641,7 @@ async def login_user(data: LoginModel):
                 
             import uuid
             session_id = str(uuid.uuid4())
-            login_time = (datetime.datetime.utcnow().isoformat() + "Z")
+            login_time = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
 
             token = jwt.encode({
                 "username": user[1],
@@ -676,7 +676,7 @@ async def logout_user(user=Depends(get_current_user)):
     """Records the logout time for this session in session_logs."""
     try:
         session_id = user.get("session_id")
-        logout_time = (datetime.datetime.utcnow().isoformat() + "Z")
+        logout_time = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
         with engine.connect() as conn:
             if session_id:
                 conn.execute(
@@ -753,7 +753,7 @@ async def force_end_session(data: ForceEndModel, user=Depends(get_current_user))
             # Immediately terminate the session
             result = conn.execute(
                 text("UPDATE session_logs SET logout_time = :lt WHERE session_id = :sid AND logout_time IS NULL"),
-                {"lt": now.isoformat(), "sid": data.session_id}
+                {"lt": now.isoformat(timespec="milliseconds"), "sid": data.session_id}
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Active session not found")
@@ -1159,7 +1159,7 @@ async def process_sales_data(
         dr_start, dr_end, gap_info_str = analyze_dataset_gaps(valid_sales)
 
         with engine.connect() as conn:
-            now = datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
+            now = datetime.datetime.now(datetime.UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
             dataset_id = _insert_and_get_id(
                 conn,
                 "INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 0, :dt, :drs, :dre, :gap)",
@@ -1302,7 +1302,7 @@ async def combine_datasets(req: CombineRequest, user=Depends(get_current_user)):
         dr_start, dr_end, gap_info_str = analyze_dataset_gaps(combined_df)
         
         with engine.connect() as conn:
-            now = (datetime.datetime.utcnow().isoformat() + "Z")
+            now = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
             new_dataset_id = _insert_and_get_id(
                 conn,
                 "INSERT INTO datasets (title, filename, upload_date, uploader, row_count, is_private, dataset_type, date_range_start, date_range_end, gap_info) VALUES (:t, :f, :d, :u, :rc, 1, 'MASTER', :drs, :dre, :gap)",
@@ -1513,7 +1513,7 @@ async def patch_dataset(dataset_id: int, data: DatasetPatchModel, user=Depends(g
         raise HTTPException(status_code=403, detail="Admin access required")
     try:
         with engine.connect() as conn:
-            now = (datetime.datetime.utcnow().isoformat() + "Z")
+            now = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
             if data.title is not None:
 
                 conn.execute(text("UPDATE datasets SET title = :t, last_edited_at = :now WHERE id = :id"), {"t": data.title, "id": dataset_id, "now": now}
@@ -1831,7 +1831,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
 
             # 2. Persist to Database
             with engine.connect() as conn:
-                now = (datetime.datetime.utcnow().isoformat() + "Z")
+                now = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
                 run_id = _insert_and_get_id(
                     conn,
                     "INSERT INTO forecast_runs (name, dataset_id, created_at, config_json) VALUES (:n, :d, :c, :cj)",
@@ -1873,7 +1873,7 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
             should_save_bundler = req.train_bundler and (req.train_forecast or req.save_bundler)
             if should_save_bundler:
                 with engine.connect() as conn:
-                    now = (datetime.datetime.utcnow().isoformat() + "Z")
+                    now = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
                     # Resolve ref_id
                     if req.train_forecast:
                         ref_id = run_id
@@ -2161,7 +2161,7 @@ async def commit_bundler_run(req: CommitBundlerRequest, user=Depends(get_current
         raise HTTPException(status_code=403, detail="Admin access required")
     try:
         with engine.connect() as conn:
-            now = (datetime.datetime.utcnow().isoformat() + "Z")
+            now = (datetime.datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
             
             # Clean up ref_id
             ref_id = None
