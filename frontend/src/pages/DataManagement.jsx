@@ -360,7 +360,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         setTrainingProgress(95);
         
         let attempts = 0;
-        const maxAttempts = 20; // Poll for up to 100 seconds (20 * 5s)
+        const maxAttempts = 60; // Poll for up to 300 seconds (60 * 5s)
         const pollInterval = setInterval(async () => {
           attempts++;
           try {
