@@ -296,26 +296,28 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 {saveLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Commit Strategy
               </button>
             )}
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-              <Database size={14} style={{ color: 'var(--accent)' }} />
-              <select 
-                value={selectedRunId} 
-                onChange={(e) => { setSelectedRunId(e.target.value); setIsSandbox(false); }}
-                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                {isSandbox && <option value="sandbox">Sandbox: {stagedInfo?.name || 'New Result'}</option>}
-                {bundlerRuns.map(run => {
-                  const ds = sidebarDatasets.find(d => d.id === run.dataset_id);
-                  const dsLabel = ds ? ds.title : `Dataset ${run.dataset_id}`;
-                  return (
-                    <option key={run.id} value={run.id.toString()}>
-                      {(run.name || 'Unnamed Run').toUpperCase()} [{dsLabel}]
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+            {viewMode === 'discovery' && (
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                <Database size={14} style={{ color: 'var(--accent)' }} />
+                <select 
+                  value={selectedRunId} 
+                  onChange={(e) => { setSelectedRunId(e.target.value); setIsSandbox(false); }}
+                  className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {isSandbox && <option value="sandbox">Sandbox: {stagedInfo?.name || 'New Result'}</option>}
+                  {bundlerRuns.map(run => {
+                    const ds = sidebarDatasets.find(d => d.id === run.dataset_id);
+                    const dsLabel = ds ? ds.title : `Dataset ${run.dataset_id}`;
+                    return (
+                      <option key={run.id} value={run.id.toString()}>
+                        {(run.name || 'Unnamed Run').toUpperCase()} [{dsLabel}]
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>
