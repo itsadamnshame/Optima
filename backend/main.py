@@ -1743,16 +1743,20 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
                 target_items = eligible_items
                 
             def process_item(item):
-                item_df = raw_df[raw_df['ItemDescription'] == item].copy()
-                forecast = preprocess_and_forecast_item(item_df, target_end_date, item, history_end=last_dt)
-                
-                if not forecast.empty:
-                    forecast['ItemDescription'] = item
-                    metrics = forecast.attrs.get('metrics', {})
-                    metrics['stl'] = forecast.attrs.get('stl', {})
-                    metrics['tags'] = []
+                try:
+                    item_df = raw_df[raw_df['ItemDescription'] == item].copy()
+                    forecast = preprocess_and_forecast_item(item_df, target_end_date, item, history_end=last_dt)
                     
-                    return item, forecast, metrics
+                    if not forecast.empty:
+                        forecast['ItemDescription'] = item
+                        metrics = forecast.attrs.get('metrics', {})
+                        metrics['stl'] = forecast.attrs.get('stl', {})
+                        metrics['tags'] = []
+                        
+                        return item, forecast, metrics
+                except Exception as ex:
+                    print(f"OPTIMA: Error in process_item for {item}: {ex}")
+                    traceback.print_exc()
                 return None
 
             import os
@@ -1761,16 +1765,26 @@ async def train_and_save_model(req: ForecastTrainRequest, user=Depends(get_curre
             
             item_results = []
             
-            # We manually iterate to allow checking the cancellation flag
-            for item in target_items:
-                if temp_run_id in cancelled_runs:
-                    print(f"OPTIMA: Run {temp_run_id} was ABORTED by user. Stopping pipeline.")
-                    cancelled_runs.remove(temp_run_id)
-                    return {"status": "aborted"}
-                
-                res = process_item(item)
-                if res:
-                    item_results.append(res)
+            max_workers = min(8, os.cpu_count() or 4)
+            print(f"OPTIMA: Training {len(target_items)} items in parallel using {max_workers} threads...")
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {executor.submit(process_item, item): item for item in target_items}
+                for fut in futures:
+                    if temp_run_id in cancelled_runs:
+                        print(f"OPTIMA: Run {temp_run_id} was ABORTED by user. Stopping pipeline.")
+                        cancelled_runs.remove(temp_run_id)
+                        for f in futures:
+                            f.cancel()
+                        return {"status": "aborted"}
+                    
+                    try:
+                        res = fut.result()
+                        if res:
+                            item_results.append(res)
+                    except Exception as ex:
+                        item = futures[fut]
+                        print(f"OPTIMA: [{item}] thread raised exception: {ex}")
+                        traceback.print_exc()
                     
             for res in item_results:
                 item, forecast, metrics = res
