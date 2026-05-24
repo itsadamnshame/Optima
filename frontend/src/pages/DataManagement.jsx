@@ -352,14 +352,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         console.log("Training cancelled");
         setIsTraining(false);
         setTrainingProgress(0);
-      } else if (!err.response) {
+      } else if (!err.response || (err.response.status >= 500 && err.response.status <= 504)) {
         // No response = network drop / connection reset while the backend was still running.
+        // Or 500/502/504 gateway timeout / internal error.
         // The backend is almost certainly still processing. Check the runs endpoint periodically.
         setTrainingProgress(95);
-        setError("Connection lost. Checking if training completes successfully on the server...");
+        setError("Checking if training completes successfully on the server...");
         
         let attempts = 0;
-        const maxAttempts = 15; // Poll for up to 75 seconds (15 * 5s)
+        const maxAttempts = 20; // Poll for up to 100 seconds (20 * 5s)
         const pollInterval = setInterval(async () => {
           attempts++;
           try {
@@ -415,7 +416,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
           }
         }, 5000);
       } else {
-        // A real HTTP error (4xx/5xx) — the backend explicitly rejected or crashed.
+        // A real HTTP error (4xx) — the backend explicitly rejected or crashed.
         setError(err.response?.data?.detail || 'Training failed.');
         setIsTraining(false);
         setTrainingProgress(0);
