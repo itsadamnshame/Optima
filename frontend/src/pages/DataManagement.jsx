@@ -299,8 +299,9 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
     const controller = new AbortController();
     setAbortController(controller);
 
+    let progressInterval = null;
     try {
-      const interval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setTrainingProgress(prev => (prev < 90 ? prev + 1 : prev));
       }, 1500);
 
@@ -323,7 +324,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         timeout: 30 * 60 * 1000,
       });
 
-      clearInterval(interval);
+      clearInterval(progressInterval);
       setTrainingProgress(100);
       setTimeout(() => {
         setIsTraining(false);
@@ -345,6 +346,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         }
       }, 1000);
     } catch (err) {
+      if (progressInterval) clearInterval(progressInterval);
       if (axios.isCancel(err)) {
         // User explicitly cancelled — just reset
         console.log("Training cancelled");
@@ -352,14 +354,66 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         setTrainingProgress(0);
       } else if (!err.response) {
         // No response = network drop / connection reset while the backend was still running.
-        // The backend is almost certainly still processing. Show a non-destructive warning
-        // and keep the UI in a "check back" state rather than showing a hard "FAILED".
-        setIsTraining(false);
-        setTrainingProgress(0);
-        setError(
-          "Connection to the server was lost mid-run. The backend may still be processing. " +
-          "Wait a moment, then check the Forecasting or Product Bundler pages for results before retrying."
-        );
+        // The backend is almost certainly still processing. Check the runs endpoint periodically.
+        setTrainingProgress(95);
+        setError("Connection lost. Checking if training completes successfully on the server...");
+        
+        let attempts = 0;
+        const maxAttempts = 15; // Poll for up to 75 seconds (15 * 5s)
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const isBundlerRun = trainBundler;
+            const endpoint = isBundlerRun
+              ? `/api/bundler/runs?dataset_id=${selectedDatasetIds[0]}`
+              : `/api/forecast/runs?dataset_id=${selectedDatasetIds[0]}`;
+            
+            const checkRes = await axios.get(endpoint, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const runs = checkRes.data.runs || [];
+            const matchingRun = runs.find(r => r.name === runName);
+            if (matchingRun) {
+              clearInterval(pollInterval);
+              setTrainingProgress(100);
+              setError(null);
+              setIsTraining(false);
+              
+              if (trainBundler) {
+                // Fetch bundler results for this run to stage them
+                const resDetails = await axios.get(`/api/bundler/runs/${matchingRun.id}`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+                navigate('/qualitative', {
+                  state: {
+                    stagedBundles: resDetails.data.bundles,
+                    stagedName: runName,
+                    stagedDatasetId: selectedDatasetIds[0],
+                    stagedRefId: refForecastId,
+                    autoSaved: true
+                  }
+                });
+              } else if (trainForecast) {
+                navigate('/analytics');
+              } else {
+                window.location.href = '/';
+              }
+              return;
+            }
+          } catch (pollErr) {
+            console.error("Polling error", pollErr);
+          }
+          
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            setIsTraining(false);
+            setTrainingProgress(0);
+            setError(
+              "Connection to the server was lost mid-run and we could not verify completion. " +
+              "Please check the Forecasting or Product Bundler pages to see if the run eventually appears."
+            );
+          }
+        }, 5000);
       } else {
         // A real HTTP error (4xx/5xx) — the backend explicitly rejected or crashed.
         setError(err.response?.data?.detail || 'Training failed.');
