@@ -954,12 +954,26 @@ async def get_my_account_activity(user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/admin/audit-logs")
+async def get_all_audit_logs(user=Depends(get_current_user)):
+    _require_admin(user)
+    try:
+        with engine.connect() as conn:
+            res = conn.execute(text("SELECT timestamp, username, action, details FROM audit_logs ORDER BY id DESC LIMIT 100")).fetchall()
+            logs = [{"timestamp": r[0], "username": r[1], "action": r[2], "details": r[3]} for r in res]
+            return {"logs": logs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/admin/accounts/{target_username}/activity")
 async def get_account_activity(target_username: str, user=Depends(get_current_user)):
     _require_admin(user)
     try:
         with engine.connect() as conn:
-            res = conn.execute(text("SELECT timestamp, username, action, details FROM audit_logs ORDER BY id DESC LIMIT 100")).fetchall()
+            res = conn.execute(
+                text("SELECT timestamp, username, action, details FROM audit_logs WHERE username = :u OR details LIKE :needle ORDER BY id DESC LIMIT 100"),
+                {"u": target_username, "needle": f"%{target_username}%"}
+            ).fetchall()
             logs = [{"timestamp": r[0], "username": r[1], "action": r[2], "details": r[3]} for r in res]
             return {"logs": logs}
     except Exception as e:
