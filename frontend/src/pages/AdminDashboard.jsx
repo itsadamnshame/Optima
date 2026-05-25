@@ -110,19 +110,14 @@ export default function AdminDashboard() {
     <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl" style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)' }}>
-            <Shield size={24} style={{ color: 'var(--accent)' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>Admin Control Panel</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>Logged in as <span className="font-bold" style={{ color: 'var(--accent)' }}>{username}</span></p>
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-2xl" style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)' }}>
+          <Shield size={24} style={{ color: 'var(--accent)' }} />
         </div>
-        <button onClick={() => { fetchPendingUsers(); fetchAccounts(); fetchAuditLogs(); fetchSessionLogs(); }} className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all hover:opacity-70 shadow-lg flex items-center gap-2" style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 10px -2px var(--accent-glow)' }}>
-          Refresh Data
-        </button>
+        <div>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>Admin Control Panel</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>Logged in as <span className="font-bold" style={{ color: 'var(--accent)' }}>{username}</span></p>
+        </div>
       </div>
 
       {/* KPI Cards */}
