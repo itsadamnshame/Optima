@@ -572,13 +572,18 @@ export default function Analytics({
                 </div>
               </Card>
 
-              <Card title="Decomposition" subtitle="Trend Analysis" icon={Layers}>
+              <Card title="Decomposition" subtitle="Trend Analysis" icon={Layers} className="self-start">
                 <div className="space-y-4 pt-2">
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                     <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Status</p>
-                    <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
                       <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                       {metrics.is_zombie ? 'Stagnant' : 'Healthy Signal'}
+                    </p>
+                    <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
+                      {metrics.is_zombie 
+                        ? "The decomposed trend shows a flatline or declining momentum. Historical signals are weak, indicating a potential shift in consumer interest. We recommend reviewing the lifecycle of this item."
+                        : "The underlying trend decomposition exhibits a robust and active signal. The historical pattern suggests stable or growing market demand, providing a solid foundation for continued volume scaling."}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
