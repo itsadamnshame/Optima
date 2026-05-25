@@ -630,34 +630,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                     </div>
                   </div>
 
-                  <div className="p-6 bg-black/40 border-t border-white/5">
-                    <button 
-                      onClick={async () => {
-                        setSaveLoading(true);
-                        try {
-                          const token = localStorage.getItem('token');
-                          const res = await axios.post('/api/bundler/runs/commit', {
-                            name: `Manual: ${simResult.pair}`,
-                            dataset_id: activeDatasetId,
-                            forecast_ref_id: stagedInfo?.refId || selectedRunId,
-                            bundles: [simResult]
-                          }, { headers: { Authorization: `Bearer ${token}` } });
-                          setNotification({ type: 'success', message: 'Simulation results added to Strategy Vault.' });
-                          setTimeout(() => setNotification(null), 5000);
-                          fetchBundlerRuns(res.data?.run_id);
-                        } catch (err) {
-                          console.error("Save failed", err);
-                          setNotification({ type: 'error', message: 'Failed to save simulation. Integrity check failed.' });
-                        } finally {
-                          setSaveLoading(false);
-                        }
-                      }}
-                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-600/20"
-                    >
-                      {saveLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                      Add Simulation to Strategy Vault
-                    </button>
-                  </div>
+
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-10 rounded-[2.5rem] border border-white/5 bg-white/[0.02] border-dashed text-center">
