@@ -2068,6 +2068,23 @@ async def get_dataset_bundler_runs(dataset_id: int, user=Depends(get_current_use
 async def get_bundler_run_details(run_id: int, user=Depends(get_current_user)):
     try:
         with engine.connect() as conn:
+            run_res = conn.execute(
+                text("SELECT id, name, dataset_id, forecast_run_id, created_at, status FROM bundler_runs WHERE id = :rid"),
+                {"rid": run_id}
+            ).fetchone()
+            
+            if not run_res:
+                raise HTTPException(status_code=404, detail="Run not found")
+                
+            run_info = {
+                "id": run_res[0],
+                "name": run_res[1],
+                "dataset_id": run_res[2],
+                "forecast_run_id": run_res[3],
+                "created_at": run_res[4],
+                "status": run_res[5]
+            }
+            
             res = conn.execute(
                 text("SELECT bundle_pair, result_json FROM bundler_results WHERE run_id = :rid"),
                 {"rid": run_id}
@@ -2077,7 +2094,9 @@ async def get_bundler_run_details(run_id: int, user=Depends(get_current_user)):
             for pair, rj in res:
                 bundles.append(json.loads(rj))
             
-            return {"bundles": bundles}
+            return {"run": run_info, "bundles": bundles}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
