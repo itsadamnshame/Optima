@@ -307,11 +307,9 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 >
                   {isSandbox && <option value="sandbox">Sandbox: {stagedInfo?.name || 'New Result'}</option>}
                   {bundlerRuns.map(run => {
-                    const ds = sidebarDatasets.find(d => d.id === run.dataset_id);
-                    const dsLabel = ds ? ds.title : `Dataset ${run.dataset_id}`;
                     return (
                       <option key={run.id} value={run.id.toString()}>
-                        {(run.name || 'Unnamed Run').toUpperCase()} [{dsLabel}]
+                        {(run.name || 'Unnamed Run').toUpperCase()}
                       </option>
                     );
                   })}
