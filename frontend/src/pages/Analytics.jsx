@@ -572,21 +572,21 @@ export default function Analytics({
                 </div>
               </Card>
 
-              <Card title="Decomposition" subtitle="Trend Analysis" icon={Layers} className="self-start">
+              <Card title="Trend Forecast" subtitle="What to expect" icon={Layers} className="self-start">
                 <div className="space-y-4 pt-2">
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                     <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Status</p>
                     <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
-                      <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                      {metrics.is_zombie ? 'Stagnant' : 'Healthy Signal'}
+                      <div className={`w-2 h-2 rounded-full ${metrics.trend_status === 'STAGNANT' || metrics.trend_status === 'DECLINE' ? 'bg-rose-500' : metrics.trend_status === 'GROWTH' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                      {metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : 'UNKNOWN')}
                     </p>
                     <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
                       {metrics.story || "Forecast insights are unavailable for this run."}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Historical Depth</p>
-                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Active Coverage</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Data History</p>
+                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Sufficient</p>
                   </div>
                 </div>
               </Card>

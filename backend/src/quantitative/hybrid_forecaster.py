@@ -79,14 +79,6 @@ def detect_zombies(monthly_series):
     return False
 
 def generate_insight_story(df, is_zombie, item_name):
-    is_global = (item_name == "GLOBAL_STORE_TOTAL")
-    
-    if is_zombie:
-        if is_global:
-            return "The store-wide volume exhibits stagnant or near-zero historical sales. The model has flagged the macro trend as 'zombie' or inactive. Recommendation: Initiate a comprehensive operational review and verify data integrity."
-        else:
-            return f"The item '{item_name}' exhibits stagnant or near-zero historical sales. The model has flagged this as a 'zombie' product. Recommendation: Initiate lifecycle review, consider liquidation or strategic unbundling if bundled."
-            
     # Calculate historical vs forecast
     historical = df[df['type'] == 'historical']['actual_value']
     future = df[df['type'] == 'future']['predicted_value']
@@ -99,21 +91,34 @@ def generate_insight_story(df, is_zombie, item_name):
     else:
         growth = 0
         
-    if growth > 5:
+    is_global = (item_name == "GLOBAL_STORE_TOTAL")
+    
+    if is_zombie:
+        status = "STAGNANT"
         if is_global:
-            return f"The macro forecast projects a {growth:.1f}% increase in average store-wide volume. The decomposition signals a robust growth trend. Recommendation: Prepare supply chain capacity and macro inventory to capture expanding overall demand."
+            story = "Overall store sales have been flat or at zero. We recommend checking your data to see if there are any errors."
         else:
-            return f"The forecast for '{item_name}' projects a {growth:.1f}% increase in average volume. The decomposition signals a robust growth trend. Recommendation: Increase inventory depth to capture expanding demand and avoid stockouts."
+            story = f"Sales for '{item_name}' have completely stopped. Consider removing it from your active catalog or putting it on clearance."
+    elif growth > 5:
+        status = "GROWTH"
+        if is_global:
+            story = f"We expect total store sales to grow by {growth:.1f}%. Make sure you have enough stock across the board to handle the extra demand!"
+        else:
+            story = f"We expect sales for '{item_name}' to grow by {growth:.1f}%. Make sure to order more stock soon so you don't run out."
     elif growth < -5:
+        status = "DECLINE"
         if is_global:
-            return f"The macro forecast indicates a {abs(growth):.1f}% decline in expected average store-wide volume. Recommendation: Audit global inventory levels and deploy macro-level promotional strategies to stimulate store-wide demand."
+            story = f"We expect total store sales to drop by {abs(growth):.1f}%. You might want to run a store-wide promotion to bring more customers in."
         else:
-            return f"The forecast for '{item_name}' indicates a {abs(growth):.1f}% decline in expected average volume. Recommendation: Optimize inventory levels to prevent overstocking, and consider promotional strategies to stimulate demand."
+            story = f"We expect sales for '{item_name}' to drop by {abs(growth):.1f}%. Try putting it on discount to help clear out the inventory."
     else:
+        status = "STABLE"
         if is_global:
-            return f"The macro forecast indicates stable overall demand with a {growth:.1f}% variance from historical averages. Recommendation: Maintain current global replenishment cycles as the underlying store trend is steady."
+            story = f"Total store sales look very stable (only a {growth:.1f}% change). You can keep running things exactly as you are."
         else:
-            return f"The forecast for '{item_name}' indicates stable demand with a {growth:.1f}% variance from historical averages. Recommendation: Maintain current replenishment cycles as the underlying trend is steady."
+            story = f"Sales for '{item_name}' look very stable (only a {growth:.1f}% change). No urgent changes are needed right now."
+            
+    return status, story
 
 
 def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", history_end=None):
@@ -264,7 +269,9 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", his
             'status': 'optimal',
             'is_zombie': False
         }
-        metrics['story'] = generate_insight_story(final_forecast, False, item_name)
+        trend_status, story = generate_insight_story(final_forecast, False, item_name)
+        metrics['trend_status'] = trend_status
+        metrics['story'] = story
         final_forecast.attrs['metrics'] = metrics
 
         return final_forecast
@@ -288,8 +295,8 @@ def generate_dummy_forecast(monthly, forecast_end, item_name, status):
     df['predicted_value'] = 0.0
     df['type'] = df['actual_value'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
     df['forecast_date'] = df['forecast_date'].dt.strftime('%Y-%m-%d')
-    story = generate_insight_story(df, status == 'zombie', item_name)
-    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A', 'is_zombie': status == 'zombie', 'story': story}
+    trend_status, story = generate_insight_story(df, status == 'zombie', item_name)
+    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A', 'is_zombie': status == 'zombie', 'trend_status': trend_status, 'story': story}
     return df
 
 def calculate_metrics(actual, predicted):
