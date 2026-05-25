@@ -261,7 +261,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           <p className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: 'var(--accent)' }}>
             <Sparkles size={14} /> Intelligence Strategy Hub
           </p>
-          <div className="flex bg-white/5 p-1.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+          <div className="flex w-fit bg-white/5 p-1.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
             <button 
               onClick={() => setViewMode('discovery')}
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'discovery' ? 'text-white shadow-lg' : ''}`}
