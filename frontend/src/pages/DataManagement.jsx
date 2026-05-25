@@ -596,10 +596,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
             </div>
             <h3 className="text-xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Source Selection</h3>
             <p className="text-sm mt-2 mb-8 max-w-xs" style={{ color: 'var(--text-muted)' }}>Upload your transaction logs to begin the Optima ingestion pipeline.</p>
-            <input type="file" multiple id="file-upload" className="hidden" onChange={handleScan} accept=".csv,.xlsx,.xls" disabled={isScanning} />
-            <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer transition-all shadow-xl flex items-center gap-3 ${isScanning ? 'opacity-50 cursor-wait' : 'hover:scale-[1.02] active:scale-95'}`}
+            <input type="file" multiple id="file-upload" className="hidden" onChange={handleScan} accept=".csv,.xlsx,.xls" disabled={isScanning || role !== 'ADMIN'} />
+            <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl flex items-center gap-3 ${(isScanning || role !== 'ADMIN') ? 'opacity-50 cursor-not-allowed pointer-events-none grayscale' : 'cursor-pointer hover:scale-[1.02] active:scale-95'}`}
               style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
-              {isScanning ? (
+              {role !== 'ADMIN' ? (
+                <>
+                  <Lock size={16} />
+                  Admin Access Required
+                </>
+              ) : isScanning ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   Analyzing Files...
