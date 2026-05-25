@@ -581,9 +581,7 @@ export default function Analytics({
                       {metrics.is_zombie ? 'Stagnant' : 'Healthy Signal'}
                     </p>
                     <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
-                      {metrics.is_zombie 
-                        ? "The decomposed trend shows a flatline or declining momentum. Historical signals are weak, indicating a potential shift in consumer interest. We recommend reviewing the lifecycle of this item."
-                        : "The underlying trend decomposition exhibits a robust and active signal. The historical pattern suggests stable or growing market demand, providing a solid foundation for continued volume scaling."}
+                      {metrics.story || "Forecast insights are unavailable for this run."}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>

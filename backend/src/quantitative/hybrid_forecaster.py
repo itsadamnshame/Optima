@@ -78,6 +78,44 @@ def detect_zombies(monthly_series):
         pass
     return False
 
+def generate_insight_story(df, is_zombie, item_name):
+    is_global = (item_name == "GLOBAL_STORE_TOTAL")
+    
+    if is_zombie:
+        if is_global:
+            return "The store-wide volume exhibits stagnant or near-zero historical sales. The model has flagged the macro trend as 'zombie' or inactive. Recommendation: Initiate a comprehensive operational review and verify data integrity."
+        else:
+            return f"The item '{item_name}' exhibits stagnant or near-zero historical sales. The model has flagged this as a 'zombie' product. Recommendation: Initiate lifecycle review, consider liquidation or strategic unbundling if bundled."
+            
+    # Calculate historical vs forecast
+    historical = df[df['type'] == 'historical']['actual_value']
+    future = df[df['type'] == 'future']['predicted_value']
+    
+    hist_avg = historical.mean() if not historical.empty else 0
+    fut_avg = future.mean() if not future.empty else 0
+    
+    if hist_avg > 0:
+        growth = ((fut_avg - hist_avg) / hist_avg) * 100
+    else:
+        growth = 0
+        
+    if growth > 5:
+        if is_global:
+            return f"The macro forecast projects a {growth:.1f}% increase in average store-wide volume. The decomposition signals a robust growth trend. Recommendation: Prepare supply chain capacity and macro inventory to capture expanding overall demand."
+        else:
+            return f"The forecast for '{item_name}' projects a {growth:.1f}% increase in average volume. The decomposition signals a robust growth trend. Recommendation: Increase inventory depth to capture expanding demand and avoid stockouts."
+    elif growth < -5:
+        if is_global:
+            return f"The macro forecast indicates a {abs(growth):.1f}% decline in expected average store-wide volume. Recommendation: Audit global inventory levels and deploy macro-level promotional strategies to stimulate store-wide demand."
+        else:
+            return f"The forecast for '{item_name}' indicates a {abs(growth):.1f}% decline in expected average volume. Recommendation: Optimize inventory levels to prevent overstocking, and consider promotional strategies to stimulate demand."
+    else:
+        if is_global:
+            return f"The macro forecast indicates stable overall demand with a {growth:.1f}% variance from historical averages. Recommendation: Maintain current global replenishment cycles as the underlying store trend is steady."
+        else:
+            return f"The forecast for '{item_name}' indicates stable demand with a {growth:.1f}% variance from historical averages. Recommendation: Maintain current replenishment cycles as the underlying trend is steady."
+
+
 def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", history_end=None):
     """
     Main entry point for the Hybrid Forecaster (Phase 2).
@@ -220,11 +258,14 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", his
 
         # Attach STL and Metrics as attributes
         final_forecast.attrs['stl'] = stl_data
-        final_forecast.attrs['metrics'] = {
+        
+        metrics = {
             **calculate_metrics(prophet_df['y'].values, historical_pred),
             'status': 'optimal',
             'is_zombie': False
         }
+        metrics['story'] = generate_insight_story(final_forecast, False, item_name)
+        final_forecast.attrs['metrics'] = metrics
 
         return final_forecast
 
@@ -247,7 +288,8 @@ def generate_dummy_forecast(monthly, forecast_end, item_name, status):
     df['predicted_value'] = 0.0
     df['type'] = df['actual_value'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
     df['forecast_date'] = df['forecast_date'].dt.strftime('%Y-%m-%d')
-    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A', 'is_zombie': status == 'zombie'}
+    story = generate_insight_story(df, status == 'zombie', item_name)
+    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A', 'is_zombie': status == 'zombie', 'story': story}
     return df
 
 def calculate_metrics(actual, predicted):
