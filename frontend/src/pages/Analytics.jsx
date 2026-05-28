@@ -404,7 +404,7 @@ export default function Analytics({
               </div>
 
               <div className="flex items-center gap-4">
-                {metrics.mape_pct !== undefined && (
+                {metrics.mape_pct !== undefined && activeTab !== 'global' && (
                   <div className="flex flex-wrap gap-4">
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Error Percentage</p>
