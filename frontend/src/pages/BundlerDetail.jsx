@@ -87,7 +87,7 @@ export default function BundlerDetail() {
           <div className="space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.35em]" style={{ color: 'var(--accent)' }}>Bundle Intelligence Breakdown</p>
             <h1 className="text-3xl font-black" style={{ color: 'var(--text-heading)' }}>{run?.name || 'Bundle Run Detail'}</h1>
-            <p className="text-sm max-w-2xl" style={{ color: 'var(--text-muted)' }}>A detailed view of the selected recommendation, including the statistical factors, forecast alignment, and strategic rationale used to rank this pair.</p>
+            <p className="text-sm max-w-2xl" style={{ color: 'var(--text-muted)' }}>A detailed view of the selected recommendation, including the statistical factors, and strategic rationale used to rank this pair.</p>
           </div>
           <div className="rounded-3xl p-6 text-sm" style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>
             <p className="font-black uppercase text-[9px] tracking-[0.35em] mb-3" style={{ color: 'var(--text-faint)' }}>Run Info</p>
@@ -153,7 +153,7 @@ export default function BundlerDetail() {
                       key={index}
                       onClick={() => setSelectedIndex(index)}
                       className={`w-full text-left rounded-3xl border p-4 transition-all ${index === selectedIndex ? 'border-emerald-500/40 bg-emerald-500/10' : 'hover:opacity-70'}`}
-                      style={{ 
+                      style={{
                         background: index === selectedIndex ? 'var(--card-accent-bg)' : 'transparent',
                         borderColor: index === selectedIndex ? 'var(--accent)' : 'var(--glass-border)'
                       }}
