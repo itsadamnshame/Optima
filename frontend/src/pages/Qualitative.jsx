@@ -268,20 +268,20 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'discovery' ? 'text-white shadow-lg' : ''}`}
               style={{ background: viewMode === 'discovery' ? 'var(--accent)' : 'transparent', color: viewMode === 'discovery' ? '#fff' : 'var(--text-faint)', boxShadow: viewMode === 'discovery' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              Discovery Matrix
+              Product Pairing Insights
             </button>
             <button
               onClick={() => setViewMode('simulator')}
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'simulator' ? 'text-white shadow-lg' : ''}`}
               style={{ background: viewMode === 'simulator' ? 'var(--accent)' : 'transparent', color: viewMode === 'simulator' ? '#fff' : 'var(--text-faint)', boxShadow: viewMode === 'simulator' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              Affinity Simulator
+              Test a Pair
             </button>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {viewMode === 'discovery'
               ? <span>Reviewing association patterns identified via <strong>Apriori</strong><InfoTooltip term="Apriori Algorithm" size={11} side="bottom" /> and ranked by Random Forest logic.</span>
-              : <span>Manually test bundling hypotheses.<InfoTooltip term="Bundle Hypothesis" size={11} side="bottom" /></span>}
+              : <span>Manually test bundling hypotheses.<InfoTooltip term="Choose Two Items" size={11} side="bottom" /></span>}
           </p>
         </div>
 
@@ -294,7 +294,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 className="flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50"
                 style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
               >
-                {saveLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Commit Strategy
+                {saveLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save to Vault
               </button>
             )}
             {viewMode === 'discovery' && (
@@ -345,9 +345,11 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
             {!loading && bundles.length > 0 ? (
               <div className="rounded-[2.5rem] border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700" style={cardStyle}>
                 <div className="p-8 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--glass-bg-hover)' }}>
-                  <div>
-                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Discovery Matrix</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Identified Product Affinity Bundles</p>
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Product Pairing Insights</h3>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white/5 border-white/10">
+                      <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Identified Product Bundles</p>
+                    </div>
                   </div>
                   <div className="flex gap-4">
                     <div className="px-5 py-3 rounded-2xl border flex flex-col items-center" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
@@ -489,7 +491,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       <Target size={20} style={{ color: 'var(--accent)' }} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Bundle Hypothesis <InfoTooltip term="Bundle Hypothesis" size={11} /></h4>
+                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Choose Two Items <InfoTooltip term="Choose Two Items" size={11} /></h4>
                       <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>Manual Pair Selection</p>
                     </div>
                   </div>

@@ -600,7 +600,7 @@ export default function Analytics({
                 <div className="flex items-center gap-3 px-4">
                   <div className="p-2 rounded-xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}><Layers size={20} /></div>
                   <div>
-                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Strategic STL Hub</h3>
+                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Trend Breakdown</h3>
                     <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Seasonal-Trend-Loess Decomposition</p>
                   </div>
                 </div>
@@ -668,10 +668,10 @@ export default function Analytics({
         <div className="relative z-10">
           <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2" style={{ color: 'var(--accent)' }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block" style={{ background: 'var(--accent)' }} />
-            Audit Repository
+            Run History
           </p>
           <h2 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--text-heading)' }}>
-            <TrendingUp size={36} style={{ color: 'var(--accent)' }} /> Analytics Vault
+            <TrendingUp size={36} style={{ color: 'var(--accent)' }} /> Saved Forecasts
           </h2>
           <p className="text-sm font-medium mt-2 ml-1" style={{ color: 'var(--text-muted)' }}>
             Persisted 12-month hybrid models and strategic audit trails.

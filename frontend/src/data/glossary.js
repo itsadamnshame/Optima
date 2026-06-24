@@ -220,7 +220,7 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Discovery Matrix',
+    term: 'Product Pairing Insights',
     plain: 'Product Pairing Insights',
     category: 'Navigation',
     definition:
@@ -228,7 +228,7 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Affinity Simulator',
+    term: 'Test a Pair',
     plain: 'Test a Pair',
     category: 'Navigation',
     definition:
@@ -236,7 +236,7 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Bundle Hypothesis',
+    term: 'Choose Two Items',
     plain: 'Manual Pair Test',
     category: 'Bundle Analysis',
     definition:
@@ -284,7 +284,7 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Commit Strategy',
+    term: 'Save to Vault',
     plain: 'Save to Vault',
     category: 'Navigation',
     definition:
@@ -630,7 +630,7 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Analytics Vault',
+    term: 'Saved Forecasts',
     plain: 'Saved Forecasts',
     category: 'Navigation',
     definition:
@@ -638,7 +638,7 @@ export const GLOSSARY = [
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Intelligence Hub',
+    term: 'Train Models',
     plain: 'Model Training',
     category: 'Navigation',
     definition:
@@ -646,7 +646,7 @@ export const GLOSSARY = [
     usedIn: ['Data & Training'],
   },
   {
-    term: 'Audit Repository',
+    term: 'Run History',
     plain: 'Run History',
     category: 'Navigation',
     definition:

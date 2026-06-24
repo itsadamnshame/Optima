@@ -34,7 +34,7 @@ const MANUAL_SECTIONS = [
           {
             step: '02',
             title: 'Train the Models',
-            description: 'In the Intelligence Hub (Model Training tab), select your datasets and choose which models to run — the Forecaster for demand predictions, the Bundler for co-purchase analysis, or both.',
+            description: 'In the Train Models section, select your datasets and choose which models to run — the Forecaster for demand predictions, the Bundler for co-purchase analysis, or both.',
             link: '/',
             linkLabel: 'Go to Model Training',
           },
@@ -48,7 +48,7 @@ const MANUAL_SECTIONS = [
           {
             step: '04',
             title: 'Explore Product Bundles',
-            description: 'Visit the Product Bundler to see which products are frequently bought together, test custom pairings in the Affinity Simulator, and save your bundle strategies.',
+            description: 'Visit the Product Bundler to see which products are frequently bought together, test custom pairings in the Test a Pair tab, and save your bundle strategies.',
             link: '/qualitative',
             linkLabel: 'Go to Product Bundler',
           },
@@ -129,7 +129,7 @@ const MANUAL_SECTIONS = [
           {
             step: '1',
             title: 'Select datasets',
-            description: 'Under "Data Mastery", check the datasets you want to train on. For best results, use a Master Dataset spanning 2+ years.',
+            description: 'Under "Select Datasets", check the datasets you want to train on. For best results, use a Master Dataset spanning 2+ years.',
           },
           {
             step: '2',
@@ -139,7 +139,7 @@ const MANUAL_SECTIONS = [
           {
             step: '3',
             title: 'Set a run name',
-            description: 'Give this training run a descriptive name (e.g. "June 2026 Full Run"). This name will appear in the Analytics Vault and Strategy Vault.',
+            description: 'Give this training run a descriptive name (e.g. "June 2026 Full Run"). This name will appear in the Saved Forecasts and Strategy Vault.',
           },
           {
             step: '4',
@@ -215,18 +215,18 @@ const MANUAL_SECTIONS = [
     content: [
       {
         type: 'intro',
-        text: 'The Product Bundler page has two modes: Discovery Matrix (browse saved bundle results) and Affinity Simulator (test custom pairings).',
+        text: 'The Product Bundler page has two modes: Product Pairing Insights (browse saved bundle results) and Test a Pair (test custom pairings).',
       },
       {
         type: 'blocks',
         items: [
           {
-            title: 'Discovery Matrix',
+            title: 'Product Pairing Insights',
             icon: '🔬',
             description: 'Shows all product pairs identified from the selected bundling run, ranked by probability score. Each card shows the pair, its badge (STRATEGIC, EMERGING, SEASONAL, RISK), and key metrics.',
           },
           {
-            title: 'Affinity Simulator',
+            title: 'Test a Pair',
             icon: '⚗️',
             description: 'A manual tool to test any two products from your catalog. Select a primary and secondary item, and the system instantly calculates their Lift, Confidence, and a strategic rationale.',
           },
@@ -242,13 +242,13 @@ const MANUAL_SECTIONS = [
           },
           {
             step: '→',
-            title: 'Using the Affinity Simulator',
-            description: 'Switch to the Affinity Simulator tab. Search and select a primary product (Item A) and a secondary product (Item B). Results appear automatically once both are selected.',
+            title: 'Using the Test a Pair feature',
+            description: 'Switch to the Test a Pair tab. Search and select a primary product (Item A) and a secondary product (Item B). Results appear automatically once both are selected.',
           },
           {
             step: '→',
             title: 'Committing a strategy',
-            description: 'After training, bundle results appear in a Sandbox preview. Review the pairs, then click "Commit Strategy" to permanently save them to the Strategy Vault for future reference.',
+            description: 'After training, bundle results appear in a Sandbox preview. Review the pairs, then click "Save to Vault" to permanently save them to the Strategy Vault for future reference.',
           },
         ],
       },

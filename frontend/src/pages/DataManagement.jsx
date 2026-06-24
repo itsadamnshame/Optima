@@ -698,7 +698,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border shadow-2xl" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)', color: 'var(--accent)' }}>
                 <Brain size={32} />
               </div>
-              <h3 className="text-4xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Intelligence Hub</h3>
+              <h3 className="text-4xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Train Models</h3>
               <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Architecting persistent strategic models across your data landscape.</p>
             </div>
 
@@ -706,7 +706,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               {/* COLUMN 1: DATA MASTERY */}
               <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>1. Data Mastery</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>1. Select Datasets</label>
                   <Database size={14} style={{ color: 'var(--text-faint)' }} />
                 </div>
 
@@ -754,7 +754,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               {/* COLUMN 2: PREDICTIVE INTELLIGENCE */}
               <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>2. Predictive Intelligence</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: 'var(--text-faint)' }}>2. Forecast Settings</label>
                   <TrendingUp size={14} style={{ color: 'var(--text-faint)' }} />
                 </div>
 
