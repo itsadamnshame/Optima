@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   TrendingUp, Clock, FileBarChart, PlayCircle, 
   Trash2, Search, ArrowLeft, Activity, Sparkles,
-  Layers, Package, ChevronRight, AlertCircle, Info,
+  Layers, Package, ChevronRight, AlertCircle, Info, ChevronDown, X,
   Calendar, Maximize2, Download, Filter, BookOpen, ArrowRight
 } from 'lucide-react';
 import { 
@@ -90,6 +90,7 @@ export default function Analytics({
   const [activeTab, setActiveTab] = useState('global'); 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get dynamic colors from CSS variables
   const getChartColors = () => {
@@ -352,55 +353,74 @@ export default function Analytics({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* SIDEBAR */}
-          {activeTab === 'product' && (
-            <div className="lg:col-span-1 space-y-4 sticky top-4 self-start">
-              <Card title="Product Library" subtitle={`${filteredItems.length} active items`}>
-                <div className="relative">
-                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-faint)' }} />
-                  <input 
-                    type="text" 
-                    placeholder="Search catalog..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-2xl pl-10 pr-4 py-3 text-xs font-bold outline-none transition-all"
-                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border-subtle)', color: 'var(--input-text)' }}
-                  />
-                </div>
-                <div className="space-y-1 mt-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2 custom-scrollbar">
-                  {filteredItems.map(item => (
-                    <button 
-                      key={item}
-                      onClick={() => setSelectedProduct(item)}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all ${selectedProduct === item ? 'shadow-sm' : 'hover:opacity-70'}`}
-                      style={{ 
-                        background: selectedProduct === item ? 'var(--card-accent-bg)' : 'transparent',
-                        border: `1px solid ${selectedProduct === item ? 'var(--accent)' : 'transparent'}`,
-                        color: selectedProduct === item ? 'var(--text-primary)' : 'var(--text-muted)'
-                      }}
-                    >
-                      <span className="text-[11px] font-bold truncate uppercase">{item}</span>
-                      {selectedProduct === item && <ChevronRight size={14} style={{ color: 'var(--accent)' }} />}
-                    </button>
-                  ))}
-                </div>
-              </Card>
-
-            </div>
-          )}
-
+        <div className="space-y-8">
           {/* MAIN CHARTS */}
-          <div className={activeTab === 'product' ? "lg:col-span-3 space-y-8" : "lg:col-span-4 space-y-8"}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="w-full space-y-8">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+                <div className="p-3 rounded-2xl flex-shrink-0" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
                   <Calendar size={24} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>
-                    {activeTab === 'global' ? 'Store-Wide Outlook' : 'Item Strategy Hub'}
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-2xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>
+                      {activeTab === 'global' ? 'Store-Wide Outlook' : 'Item Strategy Hub'}
+                    </h3>
+                    {activeTab === 'product' && (
+                      <div className="relative z-50">
+                        <button 
+                          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
+                          style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 8px 20px -4px var(--accent-glow)' }}
+                        >
+                          <Package size={14} /> {selectedProduct || 'Select Item'} <ChevronDown size={14} />
+                        </button>
+                        
+                        {isSidebarOpen && (
+                          <div className="absolute top-full left-0 mt-4 w-80 rounded-[2rem] p-6 shadow-2xl border animate-in fade-in slide-in-from-top-2"
+                            style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(16px)', borderColor: 'var(--glass-border)' }}>
+                            <div className="flex justify-between items-center mb-4">
+                              <div>
+                                <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Product Library</h4>
+                                <p className="text-[10px] font-bold" style={{ color: 'var(--text-faint)' }}>{filteredItems.length} ACTIVE ITEMS</p>
+                              </div>
+                              <button onClick={() => setIsSidebarOpen(false)} style={{ color: 'var(--text-faint)' }} className="hover:opacity-70 transition-opacity">
+                                <X size={16} />
+                              </button>
+                            </div>
+                            <div className="relative mb-4">
+                              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-faint)' }} />
+                              <input 
+                                type="text" 
+                                placeholder="Search catalog..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full rounded-2xl pl-10 pr-4 py-3 text-xs font-bold outline-none transition-all border"
+                                style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--input-text)' }}
+                              />
+                            </div>
+                            <div className="space-y-1 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                              {filteredItems.map(item => (
+                                <button 
+                                  key={item}
+                                  onClick={() => { setSelectedProduct(item); setIsSidebarOpen(false); }}
+                                  className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all ${selectedProduct === item ? 'shadow-sm' : 'hover:opacity-70'}`}
+                                  style={{ 
+                                    background: selectedProduct === item ? 'var(--card-accent-bg)' : 'transparent',
+                                    border: `1px solid ${selectedProduct === item ? 'var(--accent)' : 'transparent'}`,
+                                    color: selectedProduct === item ? 'var(--text-primary)' : 'var(--text-muted)'
+                                  }}
+                                >
+                                  <span className="text-[11px] font-bold truncate uppercase">{item}</span>
+                                  {selectedProduct === item && <ChevronRight size={14} style={{ color: 'var(--accent)' }} />}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>12-Month Forecast Horizon</p>
                 </div>
               </div>
