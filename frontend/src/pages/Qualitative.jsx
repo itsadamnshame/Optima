@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import {
   Trophy, Target, Zap, Activity, Package, TrendingUp, Calculator,
-  AlertCircle, Sparkles, Brain, CheckCircle2, ArrowRight, Loader2, Info, Calendar, Save, RefreshCw, Sliders, Search, X, ChevronLeft, PlusCircle, Database
+  AlertCircle, Sparkles, Brain, CheckCircle2, ArrowRight, Loader2, Info, Calendar, Save, RefreshCw, Sliders, Search, X, ChevronLeft, PlusCircle, Database, BookOpen
 } from 'lucide-react';
+import InfoTooltip from '../components/InfoTooltip';
 
 const cardStyle = { background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' };
 
@@ -279,8 +280,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           </div>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {viewMode === 'discovery'
-              ? 'Reviewing association patterns identified via Apriori and ranked by Random Forest logic.'
-              : 'Manually test bundling hypotheses.'}
+              ? <span>Reviewing association patterns identified via <strong>Apriori</strong><InfoTooltip term="Apriori Algorithm" size={11} side="bottom" /> and ranked by Random Forest logic.</span>
+              : <span>Manually test bundling hypotheses.<InfoTooltip term="Bundle Hypothesis" size={11} side="bottom" /></span>}
           </p>
         </div>
 
@@ -423,7 +424,15 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 </div>
                 <div>
                   <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>No Saved Bundles</h3>
-                  <p className="text-sm max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>No bundle runs have been saved for this dataset. You may need to switch datasets or run a new Strategic Forecast to generate results.</p>
+                  <p className="text-sm max-w-xs mx-auto mt-2" style={{ color: 'var(--text-muted)' }}>Bundle strategies are generated during model training. Head to the Management Hub, enable the <strong>Bundler</strong>, and run a training session first.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Link to="/" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:opacity-80" style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 8px 20px -4px var(--accent-glow)' }}>
+                    Go to Management Hub <ArrowRight size={13} />
+                  </Link>
+                  <Link to="/help" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border transition-all hover:opacity-80" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
+                    <BookOpen size={13} /> Learn More
+                  </Link>
                 </div>
               </div>
             )}
@@ -477,7 +486,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       <Target size={20} style={{ color: 'var(--accent)' }} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Bundle Hypothesis</h4>
+                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Bundle Hypothesis <InfoTooltip term="Bundle Hypothesis" size={11} /></h4>
                       <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>Manual Pair Selection</p>
                     </div>
                   </div>
