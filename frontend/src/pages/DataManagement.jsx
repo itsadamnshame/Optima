@@ -1050,8 +1050,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
       {/* INVENTORY MODAL */}
       {showInventory && (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-[2.5rem] p-8 border shadow-2xl"
+        <div className="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" onClick={() => setShowInventory(false)}>
+          <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-[2.5rem] p-8 border shadow-2xl" onClick={(e) => e.stopPropagation()}
             style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between mb-8 shrink-0">
               <div className="flex items-center gap-3">
@@ -1167,8 +1167,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
       {/* ITEM CONFIGURATION MODAL */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl" style={{ background: 'var(--modal-bg)' }}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in" onClick={() => setShowConfigModal(false)}>
+          <div className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl" style={{ background: 'var(--modal-bg)' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-xl font-black flex items-center gap-2 uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>
@@ -1231,8 +1231,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
       {/* VIEWER MODAL */}
       {showViewer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-6xl max-h-[90vh] flex flex-col rounded-3xl p-6" style={{ background: 'var(--modal-bg)', border: `1px solid var(--border-strong)` }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" onClick={() => setShowViewer(false)}>
+          <div className="w-full max-w-6xl max-h-[90vh] flex flex-col rounded-3xl p-6" style={{ background: 'var(--modal-bg)', border: `1px solid var(--border-strong)` }} onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-6">
                 <div>
@@ -1374,8 +1374,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
       {/* STRATEGIC RUN COMPLETE NAVIGATION MODAL */}
       {showNavigationModal && navigationData && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-md flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-300" style={{ background: 'var(--modal-bg)' }}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in" onClick={() => setShowNavigationModal(false)}>
+          <div className="w-full max-w-md flex flex-col rounded-[2.5rem] p-8 border border-white/10 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-300" style={{ background: 'var(--modal-bg)' }} onClick={(e) => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-3xl flex items-center justify-center mx-auto border shadow-2xl" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)', color: 'var(--accent)' }}>
               <CheckCircle size={32} />
             </div>

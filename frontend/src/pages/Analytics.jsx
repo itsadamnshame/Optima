@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Link } from 'react-router-dom';
 import InfoTooltip from '../components/InfoTooltip';
+import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 // --- UI COMPONENTS ---
 
@@ -91,6 +92,9 @@ export default function Analytics({
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  const sidebarRef = React.useRef();
+  useOnClickOutside(sidebarRef, () => setIsSidebarOpen(false));
 
   // Get dynamic colors from CSS variables
   const getChartColors = () => {
@@ -412,7 +416,7 @@ export default function Analytics({
 
             {/* PRODUCT SELECTOR DROPDOWN */}
             {activeTab === 'product' && (
-              <div className="flex justify-start relative z-40 mt-6 mb-2">
+              <div className="flex justify-start relative z-40 mt-6 mb-2" ref={sidebarRef}>
                 <div className="relative">
                   <button 
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}

@@ -6,6 +6,7 @@ import {
   AlertCircle, Sparkles, Brain, CheckCircle2, ArrowRight, Loader2, Info, Calendar, Save, RefreshCw, Sliders, Search, X, ChevronLeft, PlusCircle, Database, BookOpen
 } from 'lucide-react';
 import InfoTooltip from '../components/InfoTooltip';
+import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 const cardStyle = { background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' };
 
