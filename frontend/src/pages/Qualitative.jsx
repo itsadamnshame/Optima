@@ -280,7 +280,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           </div>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {viewMode === 'discovery'
-              ? <span>Reviewing association patterns identified via <strong>Apriori</strong><InfoTooltip term="Apriori Algorithm" size={11} side="bottom" /> and ranked by Random Forest logic.</span>
+              ? <span>Reviewing association patterns identified via <strong>Apriori</strong><InfoTooltip term="Apriori Algorithm" size={11} side="bottom" /> and ranked by <strong>Random Forest</strong><InfoTooltip term="Random Forest" size={11} side="bottom" /> logic.</span>
               : <span>Manually test bundling hypotheses.<InfoTooltip term="Choose Two Items" size={11} side="bottom" /></span>}
           </p>
         </div>

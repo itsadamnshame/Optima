@@ -68,7 +68,7 @@ export const GLOSSARY = [
   },
   {
     term: 'DeepAR',
-    plain: 'AI Forecasting Model',
+    plain: 'Advanced Forecasting Model',
     category: 'Forecasting',
     definition:
       'A deep learning forecasting algorithm developed by Amazon. It learns demand patterns across multiple products simultaneously and can handle seasonality, trends, and external influences. Optima uses it as the core prediction engine.',
@@ -217,6 +217,14 @@ export const GLOSSARY = [
     category: 'Bundle Analysis',
     definition:
       'A technique for discovering interesting relationships between items in large transaction datasets. Optima applies this to identify which products tend to be purchased together, and how strong and reliable those relationships are.',
+    usedIn: ['Bundle Analysis'],
+  },
+  {
+    term: 'Random Forest',
+    plain: 'Advanced Ranking Model',
+    category: 'Bundle Analysis',
+    definition:
+      'An advanced machine learning algorithm that analyzes multiple factors (like lift, confidence, and forecast alignment) to score and categorize product bundles into strategic tiers.',
     usedIn: ['Bundle Analysis'],
   },
   {
@@ -401,7 +409,7 @@ export const GLOSSARY = [
   },
   {
     term: 'Model Training',
-    plain: 'Running the AI',
+    plain: 'Running the Models',
     category: 'Data & Training',
     definition:
       'The process of running the selected forecasting or bundling model against your dataset. Training can take several minutes depending on the number of products and the length of the historical record.',
@@ -412,7 +420,7 @@ export const GLOSSARY = [
     plain: 'Demand Prediction Engine',
     category: 'Data & Training',
     definition:
-      'The AI model that analyzes your transaction history to generate 12-month demand predictions for each product. It uses a hybrid of deep learning and statistical decomposition to identify trends and seasonality.',
+      'The advanced model that analyzes your transaction history to generate 12-month demand predictions for each product. It uses a hybrid of deep learning and statistical decomposition to identify trends and seasonality.',
     usedIn: ['Data & Training', 'Forecasting'],
   },
   {
@@ -658,7 +666,7 @@ export const GLOSSARY = [
     plain: 'Model Training',
     category: 'Navigation',
     definition:
-      'The section within the Management Hub where you configure and launch AI model training. You select datasets, choose which models to run (Forecaster, Bundler, or both), and name the run.',
+      'The section within the Management Hub where you configure and launch model training. You select datasets, choose which models to run (Forecaster, Bundler, or both), and name the run.',
     usedIn: ['Data & Training'],
   },
   {

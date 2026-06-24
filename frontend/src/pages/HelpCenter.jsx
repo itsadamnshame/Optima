@@ -106,7 +106,7 @@ const MANUAL_SECTIONS = [
     content: [
       {
         type: 'intro',
-        text: 'From the Management Hub, switch to the Model Training tab to launch AI model training. You can train the Forecaster, the Bundler, or both in the same run.',
+        text: 'From the Management Hub, switch to the Model Training tab to launch model training. You can train the Forecaster, the Bundler, or both in the same run.',
       },
       {
         type: 'blocks',
