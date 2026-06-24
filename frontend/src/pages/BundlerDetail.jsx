@@ -114,7 +114,10 @@ export default function BundlerDetail() {
                     <h2 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-heading)' }}>{selectedBundle.pair}</h2>
                   </div>
                   <div className="text-right">
-                    <span className={`inline-flex items-center rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] ${getBadgeStyle(selectedBundle.badge)}`}>{selectedBundle.badge}</span>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span className={`inline-flex items-center rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] ${getBadgeStyle(selectedBundle.badge)}`}>{selectedBundle.badge}</span>
+                      <InfoTooltip term={selectedBundle.badge} size={12} side="left" />
+                    </div>
                     <p className="text-[10px] mt-2" style={{ color: 'var(--text-faint)' }}>Probability of success</p>
                     <p className="text-4xl font-black mt-1" style={{ color: 'var(--accent)' }}>{selectedBundle.probability}%</p>
                   </div>

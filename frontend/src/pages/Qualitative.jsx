@@ -367,13 +367,16 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                           </div>
                           <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Bundle #{idx + 1}</span>
                         </div>
-                        <div className="px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest"
-                          style={{
-                            background: getBadgeStyle(bundle.badge).background,
-                            color: getBadgeStyle(bundle.badge).color,
-                            borderColor: getBadgeStyle(bundle.badge).borderColor
-                          }}>
-                          {bundle.badge}
+                        <div className="flex items-center gap-1.5">
+                          <div className="px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest"
+                            style={{
+                              background: getBadgeStyle(bundle.badge).background,
+                              color: getBadgeStyle(bundle.badge).color,
+                              borderColor: getBadgeStyle(bundle.badge).borderColor
+                            }}>
+                            {bundle.badge}
+                          </div>
+                          <InfoTooltip term={bundle.badge} size={11} side="left" />
                         </div>
                       </div>
 
@@ -389,11 +392,11 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Confidence</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Confidence <InfoTooltip term="Confidence" size={10} side="bottom" /></p>
                             <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.confidence || 0) * 100).toFixed(1)}%</p>
                           </div>
                           <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Support</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Support <InfoTooltip term="Support" size={10} side="bottom" /></p>
                             <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.support || 0) * 100).toFixed(2)}%</p>
                           </div>
                         </div>
