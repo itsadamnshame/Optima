@@ -405,22 +405,22 @@ export default function Analytics({
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col xl:flex-row xl:items-center gap-4 w-full xl:w-auto mt-4 md:mt-0">
                 {metrics.mape_pct !== undefined && (
-                  <div className="flex flex-wrap gap-4">
-                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full xl:w-auto">
+                    <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Error Percentage <InfoTooltip term="MAPE" size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct, 1)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
                     </div>
-                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Avg. Error Magnitude <InfoTooltip term="MAE" size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.mae, 2)} <span className="text-[10px] text-zinc-500 ml-1">MAE</span></p>
                     </div>
-                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Peak Error Sensitivity <InfoTooltip term="RMSE" size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} <span className="text-[10px] text-zinc-500 ml-1">RMSE</span></p>
                     </div>
-                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Model Health <InfoTooltip term={metrics.is_zombie ? "Stagnant Trend" : "Healthy Trend"} size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
