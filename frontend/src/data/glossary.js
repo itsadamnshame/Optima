@@ -129,6 +129,13 @@ export const GLOSSARY = [
     usedIn: ['Forecasting'],
   },
   {
+    term: 'Healthy Trend',
+    category: 'Forecasting',
+    definition:
+      'A product flagged as "HEALTHY" has a detected meaningful trend or seasonal pattern. Forecasts for these items are generally reliable and the model has successfully identified the demand signal.',
+    usedIn: ['Forecasting'],
+  },
+  {
     term: 'YoY',
     plain: 'Year-Over-Year Comparison',
     category: 'Forecasting',
