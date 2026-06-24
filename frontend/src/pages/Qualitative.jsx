@@ -255,9 +255,9 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
       )}
 
       {/* HEADER SECTION */}
-      <div className="relative rounded-[2.5rem] p-10 overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-8"
+      <div className="relative rounded-[2.5rem] p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8"
         style={{ background: 'var(--glass-bg)', border: `1px solid var(--glass-border)` }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-hero)' }} />
+        <div className="absolute inset-0 pointer-events-none rounded-[2.5rem]" style={{ background: 'var(--gradient-hero)' }} />
         <div className="relative z-10 space-y-4 max-w-xl">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: 'var(--accent)' }}>
             <Sparkles size={14} /> Intelligence Strategy Hub
@@ -268,7 +268,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'discovery' ? 'text-white shadow-lg' : ''}`}
               style={{ background: viewMode === 'discovery' ? 'var(--accent)' : 'transparent', color: viewMode === 'discovery' ? '#fff' : 'var(--text-faint)', boxShadow: viewMode === 'discovery' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              Product Pairing Insights
+              Product Bundling Insights
             </button>
             <button
               onClick={() => setViewMode('simulator')}
