@@ -408,6 +408,22 @@ export const GLOSSARY = [
     usedIn: ['Data & Training'],
   },
   {
+    term: 'Forecaster',
+    plain: 'Demand Prediction Engine',
+    category: 'Data & Training',
+    definition:
+      'The AI model that analyzes your transaction history to generate 12-month demand predictions for each product. It uses a hybrid of deep learning and statistical decomposition to identify trends and seasonality.',
+    usedIn: ['Data & Training', 'Forecasting'],
+  },
+  {
+    term: 'Bundler',
+    plain: 'Co-Purchase Analyzer',
+    category: 'Data & Training',
+    definition:
+      'The engine that mines your sales data for product affinities. It identifies which products are frequently bought together and scores them based on statistical reliability to recommend strategic product bundles.',
+    usedIn: ['Data & Training', 'Bundle Analysis'],
+  },
+  {
     term: 'Sandbox',
     plain: 'Preview Mode',
     category: 'Data & Training',

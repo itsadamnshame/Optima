@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import InfoTooltip from '../components/InfoTooltip';
 
 const glass = { background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(12px)' };
 const glassHover = 'hover:bg-[var(--glass-bg-hover)] transition-all';
@@ -778,7 +779,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                         <Brain size={20} />
                       </div>
                       <div className="flex flex-col text-left">
-                        <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainForecast ? 'var(--accent)' : 'var(--text-muted)' }}>Forecaster</span>
+                        <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5`} style={{ color: trainForecast ? 'var(--accent)' : 'var(--text-muted)' }}>Forecaster <InfoTooltip term="Forecaster" size={11} side="right" /></span>
                         <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Demand Predictions</span>
                       </div>
                     </div>
@@ -851,7 +852,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                         <Zap size={20} />
                       </div>
                       <div className="flex flex-col text-left">
-                        <span className={`text-xs font-black uppercase tracking-widest`} style={{ color: trainBundler ? 'var(--success-border)' : 'var(--text-muted)' }}>Bundler</span>
+                        <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5`} style={{ color: trainBundler ? 'var(--success-border)' : 'var(--text-muted)' }}>Bundler <InfoTooltip term="Bundler" size={11} side="right" /></span>
                         <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Affinity Logic</span>
                       </div>
                     </div>

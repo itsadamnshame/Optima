@@ -275,7 +275,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'simulator' ? 'text-white shadow-lg' : ''}`}
               style={{ background: viewMode === 'simulator' ? 'var(--accent)' : 'transparent', color: viewMode === 'simulator' ? '#fff' : 'var(--text-faint)', boxShadow: viewMode === 'simulator' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              Test a Pair
+              Test a Bundle
             </button>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -346,7 +346,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
               <div className="rounded-[2.5rem] border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700" style={cardStyle}>
                 <div className="p-8 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--glass-bg-hover)' }}>
                   <div className="flex items-center gap-4">
-                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Product Pairing Insights</h3>
+                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Product Bundling Insights</h3>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white/5 border-white/10">
                       <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Identified Product Bundles</p>
                     </div>
