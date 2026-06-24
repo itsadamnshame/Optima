@@ -42,6 +42,10 @@ export default function InfoTooltip({ term, text, size = 12, side = 'top' }) {
     bottom: 'top-full mt-2 left-1/2 -translate-x-1/2',
     left: 'right-full mr-2 top-1/2 -translate-y-1/2',
     right: 'left-full ml-2 top-1/2 -translate-y-1/2',
+    'bottom-right': 'top-full mt-2 left-0',
+    'bottom-left': 'top-full mt-2 right-0',
+    'top-right': 'bottom-full mb-2 left-0',
+    'top-left': 'bottom-full mb-2 right-0',
   };
 
   return (
