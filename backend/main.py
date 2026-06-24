@@ -791,7 +791,7 @@ async def get_pending_users(user=Depends(get_current_user)):
     _require_admin(user)
     try:
         with engine.connect() as conn:
-            res = conn.execute(text("SELECT username, status FROM users WHERE status='under_review' AND role='USER'")).fetchall()
+            res = conn.execute(text("SELECT username, status FROM users WHERE status='under_review'")).fetchall()
             return {"users": [{"username": r[0], "status": r[1]} for r in res]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -78,6 +78,49 @@ def detect_zombies(monthly_series):
         pass
     return False
 
+def generate_insight_story(df, is_zombie, item_name):
+    # Calculate historical vs forecast
+    historical = df[df['type'] == 'historical']['actual_value']
+    future = df[df['type'] == 'future']['predicted_value']
+    
+    hist_avg = historical.mean() if not historical.empty else 0
+    fut_avg = future.mean() if not future.empty else 0
+    
+    if hist_avg > 0:
+        growth = ((fut_avg - hist_avg) / hist_avg) * 100
+    else:
+        growth = 0
+        
+    is_global = (item_name == "GLOBAL_STORE_TOTAL")
+    
+    if is_zombie:
+        status = "STAGNANT"
+        if is_global:
+            story = "Overall store sales have been flat or at zero. We recommend checking your data to see if there are any errors."
+        else:
+            story = f"Sales for '{item_name}' have completely stopped. Consider removing it from your active catalog or putting it on clearance."
+    elif growth > 5:
+        status = "GROWTH"
+        if is_global:
+            story = f"We expect total store sales to grow by {growth:.1f}%. Make sure you have enough stock across the board to handle the extra demand!"
+        else:
+            story = f"We expect sales for '{item_name}' to grow by {growth:.1f}%. Make sure to order more stock soon so you don't run out."
+    elif growth < -5:
+        status = "DECLINE"
+        if is_global:
+            story = f"We expect total store sales to drop by {abs(growth):.1f}%. You might want to run a store-wide promotion to bring more customers in."
+        else:
+            story = f"We expect sales for '{item_name}' to drop by {abs(growth):.1f}%. Try putting it on discount to help clear out the inventory."
+    else:
+        status = "STABLE"
+        if is_global:
+            story = f"Total store sales look very stable (only a {growth:.1f}% change). You can keep running things exactly as you are."
+        else:
+            story = f"Sales for '{item_name}' look very stable (only a {growth:.1f}% change). No urgent changes are needed right now."
+            
+    return status, story
+
+
 def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", history_end=None):
     """
     Main entry point for the Hybrid Forecaster (Phase 2).
@@ -220,11 +263,16 @@ def preprocess_and_forecast_item(item_df, forecast_end, item_name="unknown", his
 
         # Attach STL and Metrics as attributes
         final_forecast.attrs['stl'] = stl_data
-        final_forecast.attrs['metrics'] = {
+        
+        metrics = {
             **calculate_metrics(prophet_df['y'].values, historical_pred),
             'status': 'optimal',
             'is_zombie': False
         }
+        trend_status, story = generate_insight_story(final_forecast, False, item_name)
+        metrics['trend_status'] = trend_status
+        metrics['story'] = story
+        final_forecast.attrs['metrics'] = metrics
 
         return final_forecast
 
@@ -247,7 +295,8 @@ def generate_dummy_forecast(monthly, forecast_end, item_name, status):
     df['predicted_value'] = 0.0
     df['type'] = df['actual_value'].apply(lambda x: 'historical' if pd.notnull(x) else 'future')
     df['forecast_date'] = df['forecast_date'].dt.strftime('%Y-%m-%d')
-    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A', 'is_zombie': status == 'zombie'}
+    trend_status, story = generate_insight_story(df, status == 'zombie', item_name)
+    df.attrs['metrics'] = {'status': status, 'mape_pct': 'N/A', 'mae': 'N/A', 'rmse': 'N/A', 'is_zombie': status == 'zombie', 'trend_status': trend_status, 'story': story}
     return df
 
 def calculate_metrics(actual, predicted):

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Info, Activity, TrendingUp, Zap, ShieldOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import InfoTooltip from '../components/InfoTooltip';
 
 const badgeStyles = {
   STRATEGIC: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
@@ -60,13 +61,13 @@ export default function BundlerDetail() {
   const selectedBundle = bundles[selectedIndex] || bundles[0] || null;
 
   const factorRows = selectedBundle ? [
-    { label: 'Lift', value: selectedBundle.lift ? Number(selectedBundle.lift).toFixed(2) + 'x' : 'N/A' },
-    { label: 'Confidence', value: `${((selectedBundle.confidence || 0) * 100).toFixed(1)}%` },
-    { label: 'Support', value: `${((selectedBundle.support || 0) * 100).toFixed(2)}%` },
+    { label: 'Lift', term: 'Lift', value: selectedBundle.lift ? Number(selectedBundle.lift).toFixed(2) + 'x' : 'N/A' },
+    { label: 'Confidence', term: 'Confidence', value: `${((selectedBundle.confidence || 0) * 100).toFixed(1)}%` },
+    { label: 'Support', term: 'Support', value: `${((selectedBundle.support || 0) * 100).toFixed(2)}%` },
     ...(selectedBundle.forecast_score !== undefined && selectedBundle.forecast_score !== null ? [
-      { label: 'Forecast Alignment', value: selectedBundle.forecast_score },
-      { label: 'Trend Momentum', value: selectedBundle.trend_slope },
-      { label: 'Seasonal Weight', value: selectedBundle.seasonal_weight }
+      { label: 'Forecast Alignment', term: 'Forecast Alignment', value: selectedBundle.forecast_score },
+      { label: 'Trend Momentum', term: 'Trend Momentum', value: selectedBundle.trend_slope },
+      { label: 'Seasonal Weight', term: 'Seasonal Weight', value: selectedBundle.seasonal_weight }
     ] : [])
   ] : [];
 
@@ -87,7 +88,7 @@ export default function BundlerDetail() {
           <div className="space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.35em]" style={{ color: 'var(--accent)' }}>Bundle Intelligence Breakdown</p>
             <h1 className="text-3xl font-black" style={{ color: 'var(--text-heading)' }}>{run?.name || 'Bundle Run Detail'}</h1>
-            <p className="text-sm max-w-2xl" style={{ color: 'var(--text-muted)' }}>A detailed view of the selected recommendation, including the statistical factors, forecast alignment, and strategic rationale used to rank this pair.</p>
+            <p className="text-sm max-w-2xl" style={{ color: 'var(--text-muted)' }}>A detailed view of the selected recommendation, including the statistical factors, and strategic rationale used to rank this pair.</p>
           </div>
           <div className="rounded-3xl p-6 text-sm" style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}>
             <p className="font-black uppercase text-[9px] tracking-[0.35em] mb-3" style={{ color: 'var(--text-faint)' }}>Run Info</p>
@@ -121,7 +122,10 @@ export default function BundlerDetail() {
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   {factorRows.map(f => (
                     <div key={f.label} className="rounded-3xl p-4 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-                      <p className="text-[9px] uppercase tracking-[0.35em] mb-2" style={{ color: 'var(--text-faint)' }}>{f.label}</p>
+                      <p className="text-[9px] uppercase tracking-[0.35em] mb-2 flex items-center" style={{ color: 'var(--text-faint)' }}>
+                        {f.label}
+                        {f.term && <InfoTooltip term={f.term} size={10} side="bottom" />}
+                      </p>
                       <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{f.value}</p>
                     </div>
                   ))}
@@ -136,9 +140,9 @@ export default function BundlerDetail() {
               <div className="rounded-3xl p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
                 <p className="text-[10px] font-black uppercase tracking-[0.35em] mb-4" style={{ color: 'var(--text-faint)' }}>Calculation Summary</p>
                 <ul className="space-y-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li className="flex items-start gap-3"><Zap size={16} style={{ color: 'var(--accent)' }} className="mt-1" /><span><strong>Lift</strong> measures the strength of the historical item association.</span></li>
-                  <li className="flex items-start gap-3"><TrendingUp size={16} className="mt-1" style={{ color: 'var(--accent-alt)' }} /><span><strong>Confidence</strong> quantifies how often the rule is true in historical transactions.</span></li>
-                  <li className="flex items-start gap-3"><Activity size={16} className="mt-1" style={{ color: 'var(--accent)' }} /><span><strong>Forecast alignment</strong> shows how well item demand signals match predicted future volume.</span></li>
+                  <li className="flex items-start gap-3"><Zap size={16} style={{ color: 'var(--accent)' }} className="mt-1" /><span><strong>Lift</strong> measures the strength of the historical item association. <InfoTooltip term="Lift" size={11} side="right" /></span></li>
+                  <li className="flex items-start gap-3"><TrendingUp size={16} className="mt-1" style={{ color: 'var(--accent-alt)' }} /><span><strong>Confidence</strong> quantifies how often the rule is true in historical transactions. <InfoTooltip term="Confidence" size={11} side="right" /></span></li>
+                  <li className="flex items-start gap-3"><Activity size={16} className="mt-1" style={{ color: 'var(--accent)' }} /><span><strong>Forecast alignment</strong> shows how well item demand signals match predicted future volume. <InfoTooltip term="Forecast Alignment" size={11} side="right" /></span></li>
                   <li className="flex items-start gap-3"><ShieldOff size={16} className="mt-1 text-rose-500" /><span><strong>Availability</strong> filters out discontinued or unavailable products from strategic ranking.</span></li>
                 </ul>
               </div>
@@ -153,7 +157,7 @@ export default function BundlerDetail() {
                       key={index}
                       onClick={() => setSelectedIndex(index)}
                       className={`w-full text-left rounded-3xl border p-4 transition-all ${index === selectedIndex ? 'border-emerald-500/40 bg-emerald-500/10' : 'hover:opacity-70'}`}
-                      style={{ 
+                      style={{
                         background: index === selectedIndex ? 'var(--card-accent-bg)' : 'transparent',
                         borderColor: index === selectedIndex ? 'var(--accent)' : 'var(--glass-border)'
                       }}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2, Sun, Moon } from 'lucide-react';
+import { Database, BarChart2, Brain, Sparkles, Zap, Shield, LogOut, ChevronDown, X, Loader2, CheckCircle, AlertCircle, User, Settings, Eye, ChevronUp, CheckCircle2, Sun, Moon, BookOpen } from 'lucide-react';
 
 import DataManagement from './pages/DataManagement';
 import Analytics from './pages/Analytics';
@@ -9,6 +9,7 @@ import BundlerDetail from './pages/BundlerDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
+import HelpCenter from './pages/HelpCenter';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
@@ -17,6 +18,7 @@ const PAGE_TITLES = {
   '/': 'Data & Models — Optima',
   '/analytics': 'Analytics — Optima',
   '/qualitative': 'Product Bundler — Optima',
+  '/help': 'Help Center — Optima',
   '/admin': 'Admin Panel — Optima',
   '/login': 'Sign In — Optima',
   '/register': 'Register — Optima',
@@ -385,6 +387,11 @@ function AppContent() {
             <NavLink to="/analytics" icon={BarChart2}>Forecasting</NavLink>
             <NavLink to="/qualitative" icon={Brain}>Product Bundler</NavLink>
 
+            <div className="pt-4 mt-4" style={{ borderTop: `1px solid var(--border-subtle)` }}>
+              <p className="px-4 text-[9px] font-black uppercase tracking-[0.25em] mb-3" style={{ color: 'var(--text-muted)' }}>Resources</p>
+              <NavLink to="/help" icon={BookOpen}>Help Center</NavLink>
+            </div>
+
             {role === 'ADMIN' && (
               <div className="pt-4 mt-4" style={{ borderTop: `1px solid var(--border-subtle)` }}>
                 <p className="px-4 text-[9px] font-black text-rose-500 uppercase tracking-[0.25em] mb-3">System</p>
@@ -501,6 +508,11 @@ function AppContent() {
           <Route path="/bundler/runs/:runId" element={
             <ProtectedRoute>
               <BundlerDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/help" element={
+            <ProtectedRoute>
+              <HelpCenter />
             </ProtectedRoute>
           } />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

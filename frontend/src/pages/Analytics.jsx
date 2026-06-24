@@ -4,7 +4,7 @@ import {
   TrendingUp, Clock, FileBarChart, PlayCircle, 
   Trash2, Search, ArrowLeft, Activity, Sparkles,
   Layers, Package, ChevronRight, AlertCircle, Info,
-  Calendar, Maximize2, Download, Filter
+  Calendar, Maximize2, Download, Filter, BookOpen, ArrowRight
 } from 'lucide-react';
 import { 
   LineChart, Line, AreaChart, Area, XAxis, YAxis, 
@@ -13,6 +13,8 @@ import {
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { Link } from 'react-router-dom';
+import InfoTooltip from '../components/InfoTooltip';
 
 // --- UI COMPONENTS ---
 
@@ -404,18 +406,18 @@ export default function Analytics({
               </div>
 
               <div className="flex items-center gap-4">
-                {metrics.mape_pct !== undefined && (
+                {metrics.mape_pct !== undefined && activeTab !== 'global' && (
                   <div className="flex flex-wrap gap-4">
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Error Percentage</p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Error Percentage <InfoTooltip term="MAPE" size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct, 1)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
                     </div>
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Avg. Error Magnitude</p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Avg. Error Magnitude <InfoTooltip term="MAE" size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.mae, 2)} <span className="text-[10px] text-zinc-500 ml-1">MAE</span></p>
                     </div>
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Peak Error Sensitivity</p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Peak Error Sensitivity <InfoTooltip term="RMSE" size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} <span className="text-[10px] text-zinc-500 ml-1">RMSE</span></p>
                     </div>
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
@@ -572,18 +574,21 @@ export default function Analytics({
                 </div>
               </Card>
 
-              <Card title="Decomposition" subtitle="Trend Analysis" icon={Layers}>
+              <Card title="Trend Forecast" subtitle="What to expect" icon={Layers} className="self-start">
                 <div className="space-y-4 pt-2">
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                     <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Status</p>
-                    <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                      <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                      {metrics.is_zombie ? 'Stagnant' : 'Healthy Signal'}
+                    <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
+                      <div className={`w-2 h-2 rounded-full ${metrics.trend_status === 'STAGNANT' || metrics.trend_status === 'DECLINE' ? 'bg-rose-500' : metrics.trend_status === 'GROWTH' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                      {metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : 'UNKNOWN')}
+                    </p>
+                    <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
+                      {metrics.story || "Forecast insights are unavailable for this run."}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Historical Depth</p>
-                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Active Coverage</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Data History</p>
+                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Sufficient</p>
                   </div>
                 </div>
               </Card>
@@ -720,14 +725,22 @@ export default function Analytics({
             </div>
           ))
         ) : (
-          <div className="col-span-full py-20 rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center space-y-4"
+          <div className="col-span-full py-20 rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center space-y-5"
             style={{ borderColor: 'var(--border-subtle)', background: 'var(--glass-bg)' }}>
             <div className="p-5 rounded-full" style={{ background: 'var(--input-bg)', color: 'var(--text-faint)' }}>
               <Search size={40} />
             </div>
             <div className="text-center">
               <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-heading)' }}>No saved runs found</h3>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Head over to the Management Hub to train your first model.</p>
+              <p className="text-sm mt-1 max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>Head to the Management Hub to train your first forecast model. Once complete, your results will appear here.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to="/" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:opacity-80" style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 8px 20px -4px var(--accent-glow)' }}>
+                Go to Management Hub <ArrowRight size={13} />
+              </Link>
+              <Link to="/help" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border transition-all hover:opacity-80" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
+                <BookOpen size={13} /> Help Center
+              </Link>
             </div>
           </div>
         )}

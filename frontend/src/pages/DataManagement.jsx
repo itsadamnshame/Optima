@@ -328,31 +328,34 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       setTrainingProgress(100);
       setTimeout(() => {
         setIsTraining(false);
-        if (trainForecast && trainBundler) {
-          setNavigationData({
-            bundles: res.data.bundles,
-            name: runName,
-            datasetId: selectedDatasetIds[0],
-            refId: refForecastId,
-            autoSaved: res.data.auto_saved
-          });
-          setShowNavigationModal(true);
-        } else if (trainBundler) {
-          // Navigate to Qualitative with live results for tuning
-          navigate('/qualitative', {
-            state: {
-              stagedBundles: res.data.bundles,
-              stagedName: runName,
-              stagedDatasetId: selectedDatasetIds[0],
-              stagedRefId: refForecastId,
-              autoSaved: res.data.auto_saved
-            }
-          });
-        } else if (trainForecast) {
-          navigate('/analytics');
-        } else {
-          window.location.href = '/';
-        }
+              if (trainForecast && trainBundler) {
+                setNavigationData({
+                  bundles: res.data.bundles,
+                  name: runName,
+                  datasetId: selectedDatasetIds[0],
+                  refId: refForecastId,
+                  autoSaved: res.data.auto_saved,
+                  mode: 'both'
+                });
+                setShowNavigationModal(true);
+              } else if (trainBundler) {
+                setNavigationData({
+                  bundles: res.data.bundles,
+                  name: runName,
+                  datasetId: selectedDatasetIds[0],
+                  refId: refForecastId,
+                  autoSaved: res.data.auto_saved,
+                  mode: 'bundler'
+                });
+                setShowNavigationModal(true);
+              } else if (trainForecast) {
+                setNavigationData({
+                  mode: 'forecast'
+                });
+                setShowNavigationModal(true);
+              } else {
+                window.location.href = '/';
+              }
       }, 1000);
     } catch (err) {
       if (progressInterval) clearInterval(progressInterval);
@@ -400,7 +403,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                   name: runName,
                   datasetId: selectedDatasetIds[0],
                   refId: refForecastId,
-                  autoSaved: true
+                  autoSaved: true,
+                  mode: 'both'
                 });
                 setShowNavigationModal(true);
               } else if (trainBundler) {
@@ -408,17 +412,20 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 const resDetails = await axios.get(`/api/bundler/runs/${matchingRun.id}`, {
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
-                navigate('/qualitative', {
-                  state: {
-                    stagedBundles: resDetails.data.bundles,
-                    stagedName: runName,
-                    stagedDatasetId: selectedDatasetIds[0],
-                    stagedRefId: refForecastId,
-                    autoSaved: true
-                  }
+                setNavigationData({
+                  bundles: resDetails.data.bundles,
+                  name: runName,
+                  datasetId: selectedDatasetIds[0],
+                  refId: refForecastId,
+                  autoSaved: true,
+                  mode: 'bundler'
                 });
+                setShowNavigationModal(true);
               } else if (trainForecast) {
-                navigate('/analytics');
+                setNavigationData({
+                  mode: 'forecast'
+                });
+                setShowNavigationModal(true);
               } else {
                 window.location.href = '/';
               }
@@ -589,10 +596,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
             </div>
             <h3 className="text-xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Source Selection</h3>
             <p className="text-sm mt-2 mb-8 max-w-xs" style={{ color: 'var(--text-muted)' }}>Upload your transaction logs to begin the Optima ingestion pipeline.</p>
-            <input type="file" multiple id="file-upload" className="hidden" onChange={handleScan} accept=".csv,.xlsx,.xls" disabled={isScanning} />
-            <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer transition-all shadow-xl flex items-center gap-3 ${isScanning ? 'opacity-50 cursor-wait' : 'hover:scale-[1.02] active:scale-95'}`}
+            <input type="file" multiple id="file-upload" className="hidden" onChange={handleScan} accept=".csv,.xlsx,.xls" disabled={isScanning || role !== 'ADMIN'} />
+            <label htmlFor="file-upload" className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl flex items-center gap-3 ${(isScanning || role !== 'ADMIN') ? 'opacity-50 cursor-not-allowed pointer-events-none grayscale' : 'cursor-pointer hover:scale-[1.02] active:scale-95'}`}
               style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}>
-              {isScanning ? (
+              {role !== 'ADMIN' ? (
+                <>
+                  <Lock size={16} />
+                  Admin Access Required
+                </>
+              ) : isScanning ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   Analyzing Files...
@@ -1372,40 +1384,50 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 Strategic Run Complete
               </h3>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Both models have trained successfully. Where would you like to view the results first?
+                {navigationData.mode === 'both' 
+                  ? 'Both models have trained successfully. Where would you like to view the results first?'
+                  : navigationData.mode === 'bundler'
+                  ? 'Bundling model has trained successfully. Where would you like to view the results first?'
+                  : 'Forecasting model has trained successfully. Where would you like to view the results first?'}
               </p>
             </div>
 
             <div className="flex flex-col gap-3 pt-2">
-              <button
-                onClick={() => {
-                  setShowNavigationModal(false);
-                  navigate('/qualitative', {
-                    state: {
-                      stagedBundles: navigationData.bundles,
-                      stagedName: navigationData.name,
-                      stagedDatasetId: navigationData.datasetId,
-                      stagedRefId: navigationData.refId,
-                      autoSaved: navigationData.autoSaved
-                    }
-                  });
-                }}
-                className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
-              >
-                <Zap size={14} /> Product Bundler
-              </button>
+              {(navigationData.mode === 'both' || navigationData.mode === 'bundler') && (
+                <button
+                  onClick={() => {
+                    setShowNavigationModal(false);
+                    navigate('/qualitative', {
+                      state: {
+                        stagedBundles: navigationData.bundles,
+                        stagedName: navigationData.name,
+                        stagedDatasetId: navigationData.datasetId,
+                        stagedRefId: navigationData.refId,
+                        autoSaved: navigationData.autoSaved
+                      }
+                    });
+                  }}
+                  className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                  style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)' }}
+                >
+                  <Zap size={14} /> Product Bundler
+                </button>
+              )}
               
-              <button
-                onClick={() => {
-                  setShowNavigationModal(false);
-                  navigate('/analytics');
-                }}
-                className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 border flex items-center justify-center gap-2 cursor-pointer"
-                style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
-              >
-                <TrendingUp size={14} /> Forecasting Analytics
-              </button>
+              {(navigationData.mode === 'both' || navigationData.mode === 'forecast') && (
+                <button
+                  onClick={() => {
+                    setShowNavigationModal(false);
+                    navigate('/analytics');
+                  }}
+                  className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 border flex items-center justify-center gap-2 cursor-pointer ${navigationData.mode === 'forecast' ? 'shadow-lg text-white' : ''}`}
+                  style={navigationData.mode === 'forecast' 
+                    ? { background: 'var(--accent)', color: '#fff', boxShadow: '0 10px 15px -3px var(--accent-glow)', borderColor: 'transparent' }
+                    : { background: 'var(--input-bg)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+                >
+                  <TrendingUp size={14} /> Forecasting Analytics
+                </button>
+              )}
             </div>
 
             <button
