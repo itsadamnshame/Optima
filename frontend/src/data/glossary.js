@@ -121,6 +121,14 @@ export const GLOSSARY = [
     usedIn: ['Forecasting'],
   },
   {
+    term: 'Model Health',
+    category: 'Forecasting',
+    definition:
+      'An overall classification of how well a product\'s demand is behaving. HEALTHY means the model detected a meaningful trend or seasonal pattern and the forecast is reliable. STAGNANT (also called Zombie) means the product has near-zero or flat demand with no clear direction — forecasts for these items are less reliable and the product may need intervention.',
+    example: 'A product consistently selling 0–2 units per month with no seasonal pattern would be flagged STAGNANT.',
+    usedIn: ['Forecasting'],
+  },
+  {
     term: 'YoY',
     plain: 'Year-Over-Year Comparison',
     category: 'Forecasting',

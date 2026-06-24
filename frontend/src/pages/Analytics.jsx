@@ -421,7 +421,7 @@ export default function Analytics({
                       <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} <span className="text-[10px] text-zinc-500 ml-1">RMSE</span></p>
                     </div>
                     <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/5">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Model Health <InfoTooltip term="Stagnant Trend" size={10} side="bottom" /></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Model Health <InfoTooltip term="Model Health" size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                         {metrics.is_zombie ? 'STAGNANT' : 'HEALTHY'}
