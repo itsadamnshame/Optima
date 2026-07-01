@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   UploadCloud, Loader2, Database, Lock,
   Trash2, Globe, EyeOff, Edit3, Save, X, FileSpreadsheet, Calendar, Check, Package,
-  User, ShieldOff, Eye, ChevronLeft, ChevronRight, AlertTriangle, Sparkles, CheckCircle, Info, AlertCircle, Brain, Zap, TrendingUp
+  User, ShieldOff, Eye, ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Sparkles, CheckCircle, Info, AlertCircle, Brain, Zap, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -60,6 +60,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [viewerType, setViewerType] = useState('raw');
   const [viewerSort, setViewerSort] = useState({ key: '', dir: 'DESC' });
   const [showInventory, setShowInventory] = useState(false);
+  const [showGuardrailsGuide, setShowGuardrailsGuide] = useState(false);
 
   // Metadata State
   const [itemConfigs, setItemConfigs] = useState({});
@@ -646,61 +647,84 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
         {step === 1 ? (
           <div className="space-y-6 animate-in fade-in duration-500">
-            {/* INGESTION GUARDRAILS / REQUIRED COLUMNS GUIDE */}
-            <div className="p-8 rounded-[2.5rem] border shadow-xl space-y-6" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-2xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
-                    <FileSpreadsheet size={24} />
+            {/* INGESTION GUARDRAILS / REQUIRED COLUMNS COMPACT BANNER */}
+            <div className="p-5 rounded-[2rem] border shadow-xl transition-all" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="p-2.5 rounded-2xl shrink-0" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+                    <FileSpreadsheet size={20} />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Required Dataset Structure & Guardrails</h3>
-                    <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Ensure your Excel (.xlsx, .xls) or CSV files contain these 6 mandatory columns for automated ingestion</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border"
-                  style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-                  <CheckCircle size={14} /> Auto-Mapping Active
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { name: 'CustomerID', alias: 'Customer ID, Customer, Client ID, Buyer', desc: 'Unique identifier for the buyer or client account.' },
-                  { name: 'OrderID', alias: 'Order ID, Invoice, InvoiceNo', desc: 'Unique number identifying the transaction or invoice.' },
-                  { name: 'OrderDate', alias: 'Order Date, Date, TransactionDate', desc: 'Date and timestamp of when the purchase occurred.' },
-                  { name: 'ItemDescription', alias: 'Item Description, Product, Item Name, Desc', desc: 'Name or description of the specific product sold.' },
-                  { name: 'Quantity', alias: 'Qty, Count, Units Sold', desc: 'Number of individual units purchased in this line item.' },
-                  { name: 'Total', alias: 'Price, Amount, Sales, Revenue, Total Amount', desc: 'Total financial sale value or revenue for the line item.' }
-                ].map((col, idx) => (
-                  <div key={idx} className="p-4 rounded-2xl border flex flex-col justify-between space-y-2 transition-all hover:border-indigo-500/30"
-                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg"
-                        style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
-                        {col.name}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Required Dataset Structure & Guardrails</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border"
+                        style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+                        <CheckCircle size={10} className="inline mr-1 -mt-0.5" /> Auto-Mapping Active
                       </span>
-                      <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Required</span>
                     </div>
-                    <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>{col.desc}</p>
-                    <div className="pt-2 border-t border-white/5">
-                      <span className="text-[9px] font-black uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>Accepted Headers: </span>
-                      <span className="text-[10px] font-bold italic" style={{ color: 'var(--text-muted)' }}>{col.alias}</span>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span className="text-[9px] font-bold uppercase mr-1" style={{ color: 'var(--text-faint)' }}>6 Mandatory Columns:</span>
+                      {['CustomerID', 'OrderID', 'OrderDate', 'ItemDescription', 'Quantity', 'Total'].map((col, idx) => (
+                        <span key={idx} className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider" style={{ background: 'var(--input-bg)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+                          {col}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowGuardrailsGuide(!showGuardrailsGuide)}
+                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 flex items-center justify-center gap-2 hover:opacity-80 cursor-pointer w-full lg:w-auto"
+                  style={{ background: showGuardrailsGuide ? 'var(--card-accent-bg)' : 'var(--input-bg)', borderColor: showGuardrailsGuide ? 'var(--accent)' : 'var(--border-subtle)', color: showGuardrailsGuide ? 'var(--accent)' : 'var(--text-secondary)' }}
+                >
+                  {showGuardrailsGuide ? 'Hide Specifications' : 'View Specifications'}
+                  <ChevronDown size={14} className={`transition-transform duration-300 ${showGuardrailsGuide ? 'rotate-180' : ''}`} />
+                </button>
               </div>
 
-              <div className="p-4 rounded-2xl border flex items-start gap-3 text-[11px] leading-relaxed font-medium"
-                style={{ background: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.2)', color: 'var(--text-secondary)' }}>
-                <Info size={16} className="shrink-0 mt-0.5" style={{ color: 'var(--accent)' }} />
-                <div>
-                  <strong style={{ color: 'var(--text-heading)' }}>Automated Ingestion Guardrails:</strong> The system automatically strips extra whitespace, ignores case sensitivity, removes special characters, and maps synonymous column headers to match our schema. Blank rows and missing mandatory IDs are automatically flagged and filtered during validation.
+              {showGuardrailsGuide && (
+                <div className="mt-5 pt-5 border-t space-y-4 animate-in slide-in-from-top-2 fade-in duration-300" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[
+                      { name: 'CustomerID', alias: 'Customer ID, Customer, Client ID, Buyer', desc: 'Unique identifier for the buyer or client account.' },
+                      { name: 'OrderID', alias: 'Order ID, Invoice, InvoiceNo', desc: 'Unique number identifying the transaction or invoice.' },
+                      { name: 'OrderDate', alias: 'Order Date, Date, TransactionDate', desc: 'Date and timestamp of when the purchase occurred.' },
+                      { name: 'ItemDescription', alias: 'Item Description, Product, Item Name, Desc', desc: 'Name or description of the specific product sold.' },
+                      { name: 'Quantity', alias: 'Qty, Count, Units Sold', desc: 'Number of individual units purchased in this line item.' },
+                      { name: 'Total', alias: 'Price, Amount, Sales, Revenue, Total Amount', desc: 'Total financial sale value or revenue for the line item.' }
+                    ].map((col, idx) => (
+                      <div key={idx} className="p-3.5 rounded-xl border flex flex-col justify-between space-y-1.5 transition-all"
+                        style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
+                            style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+                            {col.name}
+                          </span>
+                          <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest">Required</span>
+                        </div>
+                        <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>{col.desc}</p>
+                        <div className="pt-1.5 border-t border-white/5">
+                          <span className="text-[8px] font-black uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>Accepted Headers: </span>
+                          <span className="text-[9px] font-bold italic" style={{ color: 'var(--text-muted)' }}>{col.alias}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border flex items-start gap-2.5 text-[10px] leading-relaxed font-medium"
+                    style={{ background: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.2)', color: 'var(--text-secondary)' }}>
+                    <Info size={14} className="shrink-0 mt-0.5" style={{ color: 'var(--accent)' }} />
+                    <div>
+                      <strong style={{ color: 'var(--text-heading)' }}>Automated Ingestion Guardrails:</strong> The system automatically strips extra whitespace, ignores case sensitivity, removes special characters, and maps synonymous column headers to match our schema. Blank rows and missing mandatory IDs are automatically flagged and filtered during validation.
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <div className="relative p-20 min-h-[500px] rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center transition-all group" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border)' }}>
+            <div className="relative p-12 min-h-[300px] rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center transition-all group" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border)' }}>
 
             <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
               <UploadCloud size={32} />
