@@ -33,13 +33,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [runName, setRunName] = useState('');
   const [isTraining, setIsTraining] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState(0);
-  const [trainForecast, setTrainForecast] = useState(false);
-  const [trainBundler, setTrainBundler] = useState(false);
+  const [isAutoConfig, setIsAutoConfig] = useState(true);
+  const [hasAutoSelectedDs, setHasAutoSelectedDs] = useState(false);
+  const [trainForecast, setTrainForecast] = useState(true);
+  const [trainBundler, setTrainBundler] = useState(true);
   const [forecastRuns, setForecastRuns] = useState([]);
   const [bundlerRuns, setBundlerRuns] = useState([]);
   const [refForecastId, setRefForecastId] = useState('none');
   const [minSupport, setMinSupport] = useState(1.0);
-  const [persistBundler, setPersistBundler] = useState(false);
+  const [persistBundler, setPersistBundler] = useState(true);
   const [error, setError] = useState(null);
   const [abortController, setAbortController] = useState(null);
   const [showNavigationModal, setShowNavigationModal] = useState(false);
@@ -65,6 +67,29 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const [defaultItemConfigs, setDefaultItemConfigs] = useState({});
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
+
+  const handleToggleAutoConfig = (auto) => {
+    setIsAutoConfig(auto);
+    if (auto) {
+      setTrainForecast(true);
+      setTrainBundler(true);
+      setPersistBundler(true);
+      setMinSupport(1.0);
+    }
+  };
+
+  useEffect(() => {
+    if (step === 3 && selectedDatasetIds.length === 0 && datasets.length > 0 && !hasAutoSelectedDs) {
+      const activeDs = datasets.find(d => d.is_active) || datasets.find(d => d.dataset_type === 'MASTER' || !d.dataset_type) || datasets[0];
+      if (activeDs) {
+        setSelectedDatasetIds([activeDs.id]);
+        setHasAutoSelectedDs(true);
+      }
+    }
+    if (step !== 3) {
+      setHasAutoSelectedDs(false);
+    }
+  }, [step, datasets, selectedDatasetIds.length, hasAutoSelectedDs]);
 
   useEffect(() => {
     fetchForecastRuns();
@@ -285,7 +310,14 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
   const handleTrain = async () => {
     setError(null);
-    if (!runName) {
+    let effectiveRunName = runName.trim();
+    if (!effectiveRunName && isAutoConfig) {
+      const activeDs = datasets.find(d => selectedDatasetIds.includes(d.id)) || datasets[0];
+      const dsTitle = activeDs ? activeDs.title : 'Master Dataset';
+      effectiveRunName = `Auto Run: ${dsTitle} (${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })})`;
+      setRunName(effectiveRunName);
+    }
+    if (!effectiveRunName) {
       setError("Please provide a name for the forecast run.");
       return;
     }
@@ -307,14 +339,14 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       }, 1500);
 
       const payload = {
-        run_name: runName,
+        run_name: effectiveRunName,
         dataset_ids: selectedDatasetIds.map(id => parseInt(id)),
         item_configs: itemConfigs,
-        train_forecast: trainForecast,
-        train_bundler: trainBundler,
-        save_bundler: persistBundler,
+        train_forecast: isAutoConfig ? true : trainForecast,
+        train_bundler: isAutoConfig ? true : trainBundler,
+        save_bundler: isAutoConfig ? true : persistBundler,
         ref_forecast_id: refForecastId === 'auto' ? 'auto' : (refForecastId === 'none' ? 'none' : parseInt(refForecastId)),
-        min_support: minSupport / 100
+        min_support: (isAutoConfig ? 1.0 : minSupport) / 100
       };
       const res = await axios.post('/api/forecast/train', payload, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -703,6 +735,62 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Architecting persistent strategic models across your data landscape.</p>
             </div>
 
+            {/* CONFIGURATION MODE TOGGLE */}
+            <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-[2rem] border transition-all shadow-xl" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+              <div className="flex items-center gap-4">
+                <div className="p-3.5 rounded-2xl border flex items-center justify-center shrink-0" style={{ background: isAutoConfig ? 'var(--card-accent-bg)' : 'var(--input-bg)', borderColor: isAutoConfig ? 'var(--accent)' : 'var(--border-subtle)', color: isAutoConfig ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {isAutoConfig ? <Sparkles size={22} className="animate-pulse" /> : <TrendingUp size={22} />}
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>
+                      {isAutoConfig ? 'Automatic Configuration' : 'Manual Configuration'}
+                    </h4>
+                    <span className="px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border"
+                      style={{
+                        background: isAutoConfig ? 'var(--card-accent-bg)' : 'var(--input-bg)',
+                        color: isAutoConfig ? 'var(--accent)' : 'var(--text-muted)',
+                        borderColor: isAutoConfig ? 'var(--accent)' : 'var(--border-subtle)'
+                    }}>
+                      {isAutoConfig ? 'Default / Recommended' : 'Advanced Mode'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                    {isAutoConfig 
+                      ? 'Optima automatically configures Forecaster and Bundler models with optimal hyperparameters.'
+                      : 'Manually select target models, adjust discovery sensitivity, and configure persistence rules.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center p-1 rounded-2xl border shrink-0 w-full sm:w-auto justify-center" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                <button
+                  type="button"
+                  onClick={() => handleToggleAutoConfig(true)}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${isAutoConfig ? 'text-white shadow-lg' : 'hover:opacity-70'}`}
+                  style={{
+                    background: isAutoConfig ? 'var(--accent)' : 'transparent',
+                    color: isAutoConfig ? '#fff' : 'var(--text-faint)',
+                    boxShadow: isAutoConfig ? '0 8px 20px -4px var(--accent-glow)' : 'none'
+                  }}
+                >
+                  <Sparkles size={13} /> Automatic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleAutoConfig(false)}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${!isAutoConfig ? 'text-white shadow-lg' : 'hover:opacity-70'}`}
+                  style={{
+                    background: !isAutoConfig ? 'var(--accent)' : 'transparent',
+                    color: !isAutoConfig ? '#fff' : 'var(--text-faint)',
+                    boxShadow: !isAutoConfig ? '0 8px 20px -4px var(--accent-glow)' : 'none'
+                  }}
+                >
+                  <TrendingUp size={13} /> Manual
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
               {/* COLUMN 1: DATA MASTERY */}
               <div className="p-8 rounded-[2.5rem] space-y-6 flex flex-col h-full" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
@@ -760,34 +848,59 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 </div>
 
                 <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                  <button
-                    onClick={toggleForecaster}
-                    className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
-                    style={{
-                      background: trainForecast ? 'var(--card-accent-bg)' : 'var(--input-bg)',
-                      borderColor: trainForecast ? 'var(--accent)' : 'var(--border-subtle)',
-                      boxShadow: trainForecast ? '0 0 25px var(--accent-glow)' : 'none'
-                    }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300`}
-                        style={{
-                          background: trainForecast ? 'var(--accent)' : 'var(--card-accent-bg)',
-                          color: trainForecast ? '#fff' : 'var(--text-muted)',
-                          boxShadow: trainForecast ? '0 4px 10px -2px var(--accent-glow)' : 'none'
-                        }}>
-                        <Brain size={20} />
+                  {isAutoConfig ? (
+                    <div className="p-6 rounded-[2rem] border transition-all duration-300"
+                      style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--accent)', boxShadow: '0 0 25px var(--accent-glow)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: 'var(--accent)', boxShadow: '0 4px 10px -2px var(--accent-glow)' }}>
+                            <Brain size={20} />
+                          </div>
+                          <div className="flex flex-col text-left">
+                            <span className="text-xs font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'var(--accent)' }}>
+                              Forecaster <span className="px-2 py-0.5 rounded text-[8px] bg-indigo-500/20 text-indigo-400 font-bold">AUTO</span>
+                            </span>
+                            <span className="text-[9px] font-bold opacity-60 uppercase" style={{ color: 'var(--text-primary)' }}>Demand Predictions Enabled</span>
+                          </div>
+                        </div>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white" style={{ background: 'var(--accent)' }}>
+                          <Check size={14} />
+                        </div>
                       </div>
-                      <div className="flex flex-col text-left">
-                        <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5`} style={{ color: trainForecast ? 'var(--accent)' : 'var(--text-muted)' }}>Forecaster <InfoTooltip term="Forecaster" size={11} side="right" /></span>
-                        <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Demand Predictions</span>
+                      <p className="text-[11px] mt-4 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                        Automatically trains volume forecasting models across all active items using optimized time-series parameters.
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={toggleForecaster}
+                      className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
+                      style={{
+                        background: trainForecast ? 'var(--card-accent-bg)' : 'var(--input-bg)',
+                        borderColor: trainForecast ? 'var(--accent)' : 'var(--border-subtle)',
+                        boxShadow: trainForecast ? '0 0 25px var(--accent-glow)' : 'none'
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300`}
+                          style={{
+                            background: trainForecast ? 'var(--accent)' : 'var(--card-accent-bg)',
+                            color: trainForecast ? '#fff' : 'var(--text-muted)',
+                            boxShadow: trainForecast ? '0 4px 10px -2px var(--accent-glow)' : 'none'
+                          }}>
+                          <Brain size={20} />
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5`} style={{ color: trainForecast ? 'var(--accent)' : 'var(--text-muted)' }}>Forecaster <InfoTooltip term="Forecaster" size={11} side="right" /></span>
+                          <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Demand Predictions</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
-                      style={{ borderColor: trainForecast ? 'var(--accent)' : 'var(--border)', background: trainForecast ? 'var(--accent)' : 'transparent' }}>
-                      {trainForecast && <Check size={14} className="text-white" />}
-                    </div>
-                  </button>
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
+                        style={{ borderColor: trainForecast ? 'var(--accent)' : 'var(--border)', background: trainForecast ? 'var(--accent)' : 'transparent' }}>
+                        {trainForecast && <Check size={14} className="text-white" />}
+                      </div>
+                    </button>
+                  )}
 
                   <div className="pt-4 flex-1 flex flex-col min-h-0">
                     <p className="text-[9px] font-bold uppercase ml-1 mb-2" style={{ color: 'var(--text-faint)' }}>Forecasting Records</p>
@@ -831,102 +944,133 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 </div>
 
                 <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                  <button
-                    onClick={() => setTrainBundler(!trainBundler)}
-                    className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
-                    style={{
-                      background: trainBundler ? 'var(--success-bg)' : 'var(--input-bg)',
-                      borderColor: trainBundler ? '#10b981' : 'var(--border-subtle)',
-                      borderColor: trainBundler ? 'var(--success-border)' : 'var(--border-subtle)',
-                      boxShadow: trainBundler ? '0 0 25px var(--success-glow)' : 'none'
-                    }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+                  {isAutoConfig ? (
+                    <div className="p-6 rounded-[2rem] border transition-all duration-300"
+                      style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)', boxShadow: '0 0 25px var(--success-glow)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ background: 'var(--success-border)', boxShadow: '0 4px 10px -2px var(--success-glow)' }}>
+                            <Zap size={20} />
+                          </div>
+                          <div className="flex flex-col text-left">
+                            <span className="text-xs font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#10b981' }}>
+                              Bundler <span className="px-2 py-0.5 rounded text-[8px] bg-emerald-500/20 text-emerald-400 font-bold">AUTO</span>
+                            </span>
+                            <span className="text-[9px] font-bold opacity-60 uppercase" style={{ color: 'var(--text-primary)' }}>Affinity Logic Enabled</span>
+                          </div>
+                        </div>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white" style={{ background: 'var(--success-border)' }}>
+                          <Check size={14} />
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-[10px] font-bold">
+                        <span style={{ color: 'var(--text-muted)' }}>Discovery Sensitivity:</span>
+                        <span className="font-black text-emerald-400">Optimal (1.0%)</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[10px] font-bold">
+                        <span style={{ color: 'var(--text-muted)' }}>Vault Persistence:</span>
+                        <span className="font-black text-emerald-400">Auto-Save Enabled</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setTrainBundler(!trainBundler)}
+                        className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
                         style={{
-                          background: trainBundler ? 'var(--success-border)' : 'var(--card-accent-bg)',
-                          color: trainBundler ? '#fff' : 'var(--text-muted)',
-                          boxShadow: trainBundler ? '0 4px 10px -2px var(--success-glow)' : 'none'
+                          background: trainBundler ? 'var(--success-bg)' : 'var(--input-bg)',
+                          borderColor: trainBundler ? 'var(--success-border)' : 'var(--border-subtle)',
+                          boxShadow: trainBundler ? '0 0 25px var(--success-glow)' : 'none'
                         }}
                       >
-                        <Zap size={20} />
-                      </div>
-                      <div className="flex flex-col text-left">
-                        <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5`} style={{ color: trainBundler ? 'var(--success-border)' : 'var(--text-muted)' }}>Bundler <InfoTooltip term="Bundler" size={11} side="right" /></span>
-                        <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Affinity Logic</span>
-                      </div>
-                    </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
-                      style={{ borderColor: trainBundler ? 'var(--success-border)' : 'var(--border)', background: trainBundler ? 'var(--success-border)' : 'transparent' }}>
-                      {trainBundler && <Check size={14} className="text-white" />}
-                    </div>
-                  </button>
-
-                  {trainBundler && (
-                    <div className="space-y-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center px-1">
-                          <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Discovery Sensitivity</label>
-                          <div className="flex items-center gap-2 rounded-full px-3 py-1 shadow-lg" style={{ background: 'var(--success-border)', boxShadow: '0 4px 10px -2px var(--success-glow)' }}>
-                            <CheckCircle size={10} className="text-white" />
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0.001"
-                              value={minSupport}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value);
-                                setMinSupport(isNaN(val) ? 0.001 : Math.max(0.001, val));
-                              }}
-                              className="bg-transparent border-none outline-none text-[10px] font-black text-white w-10 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                            <span className="text-[10px] font-black text-white/60">%</span>
-                          </div>
-                        </div>
-                        <input
-                          type="range" min="0.1" max="10" step="0.1"
-                          value={minSupport > 10 ? 10 : minSupport}
-                          onChange={(e) => setMinSupport(parseFloat(e.target.value))}
-                          className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                          style={{ background: 'var(--input-bg)' }}
-                        />
-                        <div className="flex justify-between text-[8px] font-bold uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>
-                          <span>Broad Discovery</span>
-                          <span>Conservative</span>
-                        </div>
-                      </div>
-
-
-
-                      <div className="space-y-2 py-2">
-                        <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
-                          Bundler Persistence
-                          <Info size={10} style={{ color: 'var(--text-faint)' }} />
-                        </label>
-                        {trainForecast ? (
-                          <div className="px-4 py-3 rounded-2xl border text-[10px] font-black" style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)', color: 'var(--success-border)' }}>
-                            Bundler results are automatically saved when Forecast training is enabled.
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setPersistBundler(!persistBundler)}
-                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300`}
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
                             style={{
-                              background: persistBundler ? 'var(--success-bg)' : 'var(--input-bg)',
-                              borderColor: persistBundler ? 'var(--success-border)' : 'var(--border-subtle)',
-                              color: persistBundler ? 'var(--success-border)' : 'var(--text-muted)'
+                              background: trainBundler ? 'var(--success-border)' : 'var(--card-accent-bg)',
+                              color: trainBundler ? '#fff' : 'var(--text-muted)',
+                              boxShadow: trainBundler ? '0 4px 10px -2px var(--success-glow)' : 'none'
                             }}
                           >
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Save Bundler Run</span>
-                            <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center`}
-                              style={{ borderColor: persistBundler ? 'var(--success-border)' : 'var(--border)', background: persistBundler ? 'var(--success-border)' : 'transparent', color: persistBundler ? '#fff' : 'transparent' }}>
-                              <Check size={12} />
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                            <Zap size={20} />
+                          </div>
+                          <div className="flex flex-col text-left">
+                            <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5`} style={{ color: trainBundler ? 'var(--success-border)' : 'var(--text-muted)' }}>Bundler <InfoTooltip term="Bundler" size={11} side="right" /></span>
+                            <span className="text-[9px] font-bold opacity-40 uppercase" style={{ color: 'var(--text-muted)' }}>Affinity Logic</span>
+                          </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all`}
+                          style={{ borderColor: trainBundler ? 'var(--success-border)' : 'var(--border)', background: trainBundler ? 'var(--success-border)' : 'transparent' }}>
+                          {trainBundler && <Check size={14} className="text-white" />}
+                        </div>
+                      </button>
+
+                      {trainBundler && (
+                        <div className="space-y-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center px-1">
+                              <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Discovery Sensitivity</label>
+                              <div className="flex items-center gap-2 rounded-full px-3 py-1 shadow-lg" style={{ background: 'var(--success-border)', boxShadow: '0 4px 10px -2px var(--success-glow)' }}>
+                                <CheckCircle size={10} className="text-white" />
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.001"
+                                  value={minSupport}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    setMinSupport(isNaN(val) ? 0.001 : Math.max(0.001, val));
+                                  }}
+                                  className="bg-transparent border-none outline-none text-[10px] font-black text-white w-10 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-[10px] font-black text-white/60">%</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range" min="0.1" max="10" step="0.1"
+                              value={minSupport > 10 ? 10 : minSupport}
+                              onChange={(e) => setMinSupport(parseFloat(e.target.value))}
+                              className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                              style={{ background: 'var(--input-bg)' }}
+                            />
+                            <div className="flex justify-between text-[8px] font-bold uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>
+                              <span>Broad Discovery</span>
+                              <span>Conservative</span>
+                            </div>
+                          </div>
+
+
+
+                          <div className="space-y-2 py-2">
+                            <label className="text-[9px] font-bold uppercase ml-1 flex items-center gap-2" style={{ color: 'var(--text-faint)' }}>
+                              Bundler Persistence
+                              <Info size={10} style={{ color: 'var(--text-faint)' }} />
+                            </label>
+                            {trainForecast ? (
+                              <div className="px-4 py-3 rounded-2xl border text-[10px] font-black" style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)', color: 'var(--success-border)' }}>
+                                Bundler results are automatically saved when Forecast training is enabled.
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setPersistBundler(!persistBundler)}
+                                className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300`}
+                                style={{
+                                  background: persistBundler ? 'var(--success-bg)' : 'var(--input-bg)',
+                                  borderColor: persistBundler ? 'var(--success-border)' : 'var(--border-subtle)',
+                                  color: persistBundler ? 'var(--success-border)' : 'var(--text-muted)'
+                                }}
+                              >
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Save Bundler Run</span>
+                                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center`}
+                                  style={{ borderColor: persistBundler ? 'var(--success-border)' : 'var(--border)', background: persistBundler ? 'var(--success-border)' : 'transparent', color: persistBundler ? '#fff' : 'transparent' }}>
+                                  <Check size={12} />
+                                </span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div className="pt-2 flex-1 flex flex-col min-h-0">
@@ -967,10 +1111,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
             {/* ACTION BAR */}
             <div className="p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-4 duration-700" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
               <div className="flex-1 space-y-2 w-full md:w-auto">
-                <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest ml-1 block">Active Run Title</label>
+                <div className="flex items-center gap-2">
+                  <label className="text-[9px] font-black text-zinc-600 uppercase tracking-widest ml-1 block">Active Run Title</label>
+                  {isAutoConfig && !runName.trim() && (
+                    <span className="text-[9px] font-bold text-indigo-400">(Auto-generated if left blank)</span>
+                  )}
+                </div>
                 <input
                   type="text"
-                  placeholder="E.g. Yearly Baseline Simulation..."
+                  placeholder={isAutoConfig ? "Auto-generated if left blank (e.g. Auto Run: Master Dataset)..." : "E.g. Yearly Baseline Simulation..."}
                   value={runName}
                   onChange={(e) => setRunName(e.target.value)}
                   className="w-full border rounded-2xl px-6 py-4 text-xs font-black outline-none focus:border-indigo-500/50 transition-all shadow-xl"
@@ -1009,11 +1158,11 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 ) : (
                   <button
                     onClick={handleTrain}
-                    disabled={selectedDatasetIds.length === 0 || !runName || (!trainForecast && !trainBundler)}
-                    className="w-full md:w-80 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-20 disabled:grayscale"
+                    disabled={selectedDatasetIds.length === 0 || (!isAutoConfig && !runName.trim()) || (!isAutoConfig && !trainForecast && !trainBundler)}
+                    className="w-full md:w-80 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-20 disabled:grayscale cursor-pointer"
                     style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 20px 50px -10px var(--accent-glow)' }}
                   >
-                    Initialize Strategic Run
+                    {isAutoConfig ? 'Run Automatic Training' : 'Initialize Strategic Run'}
                   </button>
                 )}
               </div>
