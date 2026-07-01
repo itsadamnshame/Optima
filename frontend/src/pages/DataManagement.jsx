@@ -71,6 +71,12 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   const handleToggleAutoConfig = (auto) => {
     setIsAutoConfig(auto);
     if (auto) {
+      const masterIds = datasets
+        .filter(ds => ds.dataset_type === 'MASTER' || !ds.dataset_type)
+        .map(ds => ds.id);
+      if (masterIds.length > 0) {
+        setSelectedDatasetIds(masterIds);
+      }
       setTrainForecast(true);
       setTrainBundler(true);
       setPersistBundler(true);
@@ -79,17 +85,26 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
   };
 
   useEffect(() => {
-    if (step === 3 && selectedDatasetIds.length === 0 && datasets.length > 0 && !hasAutoSelectedDs) {
-      const activeDs = datasets.find(d => d.is_active) || datasets.find(d => d.dataset_type === 'MASTER' || !d.dataset_type) || datasets[0];
-      if (activeDs) {
-        setSelectedDatasetIds([activeDs.id]);
-        setHasAutoSelectedDs(true);
+    if (step === 3 && datasets.length > 0) {
+      if (isAutoConfig) {
+        const masterIds = datasets
+          .filter(ds => ds.dataset_type === 'MASTER' || !ds.dataset_type)
+          .map(ds => ds.id);
+        if (masterIds.length > 0 && JSON.stringify(masterIds) !== JSON.stringify(selectedDatasetIds)) {
+          setSelectedDatasetIds(masterIds);
+        }
+      } else if (selectedDatasetIds.length === 0 && !hasAutoSelectedDs) {
+        const activeDs = datasets.find(d => d.is_active) || datasets.find(d => d.dataset_type === 'MASTER' || !d.dataset_type) || datasets[0];
+        if (activeDs) {
+          setSelectedDatasetIds([activeDs.id]);
+          setHasAutoSelectedDs(true);
+        }
       }
     }
     if (step !== 3) {
       setHasAutoSelectedDs(false);
     }
-  }, [step, datasets, selectedDatasetIds.length, hasAutoSelectedDs]);
+  }, [step, isAutoConfig, datasets, selectedDatasetIds, hasAutoSelectedDs]);
 
   useEffect(() => {
     fetchForecastRuns();
@@ -864,43 +879,69 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 </div>
 
                 <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                  <div className="space-y-2">
-                    <p className="text-[9px] font-bold uppercase ml-1" style={{ color: 'var(--text-faint)' }}>Active Sources</p>
-                    <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
-                      {datasets.filter(ds => ds.dataset_type === 'MASTER' || !ds.dataset_type).map(ds => (
-                        <label key={ds.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${selectedDatasetIds.includes(ds.id) ? 'shadow-lg' : 'hover:opacity-80'}`}
-                          style={{
-                            background: selectedDatasetIds.includes(ds.id) ? 'var(--card-accent-bg)' : 'var(--input-bg)',
-                            borderColor: selectedDatasetIds.includes(ds.id) ? 'var(--accent)' : 'var(--border-subtle)',
-                            color: selectedDatasetIds.includes(ds.id) ? 'var(--text-primary)' : 'var(--text-muted)'
-                          }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedDatasetIds.includes(ds.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedDatasetIds([...selectedDatasetIds, ds.id]);
-                              else setSelectedDatasetIds(selectedDatasetIds.filter(id => id !== ds.id));
-                            }}
-                            className="rounded accent-indigo-500"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-bold truncate uppercase">{ds.title}</p>
-                            <p className="text-[9px] tracking-wider uppercase" style={{ color: 'var(--text-faint)' }}>{ds.row_count.toLocaleString()} ROWS</p>
+                  {isAutoConfig ? (
+                    <div className="p-6 rounded-[2rem] border space-y-4" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--accent)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--accent)', color: '#fff' }}>
+                            <Sparkles size={20} className="animate-pulse" />
                           </div>
-                        </label>
-                      ))}
+                          <div className="flex flex-col text-left">
+                            <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--accent)' }}>Auto-Selected</span>
+                            <span className="text-[9px] font-bold opacity-60 uppercase" style={{ color: 'var(--text-primary)' }}>
+                              {selectedDatasetIds.length} {selectedDatasetIds.length === 1 ? 'Master Dataset' : 'Master Datasets'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'var(--accent)' }}>
+                          <Check size={14} className="text-white" />
+                        </div>
+                      </div>
+                      <p className="text-[11px] font-medium leading-relaxed text-left" style={{ color: 'var(--text-secondary)' }}>
+                        Automatically pools and deduplicates all active master datasets ({datasets.filter(ds => selectedDatasetIds.includes(ds.id)).reduce((acc, curr) => acc + (curr.row_count || 0), 0).toLocaleString()} total records) for unified pipeline training.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <p className="text-[9px] font-bold uppercase ml-1" style={{ color: 'var(--text-faint)' }}>Active Sources</p>
+                        <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+                          {datasets.filter(ds => ds.dataset_type === 'MASTER' || !ds.dataset_type).map(ds => (
+                            <label key={ds.id} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${selectedDatasetIds.includes(ds.id) ? 'shadow-lg' : 'hover:opacity-80'}`}
+                              style={{
+                                background: selectedDatasetIds.includes(ds.id) ? 'var(--card-accent-bg)' : 'var(--input-bg)',
+                                borderColor: selectedDatasetIds.includes(ds.id) ? 'var(--accent)' : 'var(--border-subtle)',
+                                color: selectedDatasetIds.includes(ds.id) ? 'var(--text-primary)' : 'var(--text-muted)'
+                              }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedDatasetIds.includes(ds.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedDatasetIds([...selectedDatasetIds, ds.id]);
+                                  else setSelectedDatasetIds(selectedDatasetIds.filter(id => id !== ds.id));
+                                }}
+                                className="rounded accent-indigo-500"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-bold truncate uppercase">{ds.title}</p>
+                                <p className="text-[9px] tracking-wider uppercase" style={{ color: 'var(--text-faint)' }}>{ds.row_count.toLocaleString()} ROWS</p>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
 
-                  <button
-                    onClick={() => openConfigModal(selectedDatasetIds)}
-                    disabled={selectedDatasetIds.length === 0}
-                    className="w-full py-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-20 hover:opacity-80"
-                    style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}
-                  >
-                    <Package size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Configure Selections</span>
-                  </button>
+                      <button
+                        onClick={() => openConfigModal(selectedDatasetIds)}
+                        disabled={selectedDatasetIds.length === 0}
+                        className="w-full py-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-20 hover:opacity-80"
+                        style={{ background: 'var(--card-accent-bg)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}
+                      >
+                        <Package size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Configure Selections</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
