@@ -571,7 +571,7 @@ export default function Analytics({
 
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Delta Variance</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Year-over-Year Growth Rate</p>
                             <div className="flex items-baseline gap-2">
                               <p className={`text-xl font-black ${yoy.diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {yoy.diff >= 0 ? '+' : ''}{Number(yoy.diff || 0).toFixed(1)}%
@@ -584,7 +584,7 @@ export default function Analytics({
                           <div className="text-right">
                             <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Analysis</p>
                             <p className="text-xs font-bold uppercase italic" style={{ color: 'var(--text-primary)' }}>
-                              {yoy.diff >= 0 ? 'Exceeding Baseline' : 'Underperforming'}
+                              {yoy.diff >= 0 ? 'Outperforming Past Sales' : 'Below Historical Average'}
                             </p>
                           </div>
                         </div>
@@ -626,8 +626,8 @@ export default function Analytics({
                 <div className="flex items-center gap-3 px-4">
                   <div className="p-2 rounded-xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}><Layers size={20} /></div>
                   <div>
-                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Trend Breakdown</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Seasonal-Trend-Loess Decomposition</p>
+                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Sales Driver Analysis</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Breaking down what drives your sales (Trend, Seasonality, & Anomalies)</p>
                   </div>
                 </div>
 
@@ -635,8 +635,13 @@ export default function Analytics({
                   <div className="space-y-1">
                     {['observed', 'trend', 'seasonal', 'remainder'].map((component, idx) => (
                       <div key={component} className="relative group">
-                        <div className="absolute left-4 top-4 z-20 flex items-center gap-2">
-                          <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{component}</span>
+                        <div className="absolute left-4 top-3 z-20 flex flex-col bg-[var(--glass-bg)] px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] backdrop-blur-md shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>
+                            {component === 'observed' ? 'Actual Historical Sales' : component === 'trend' ? 'Long-Term Trajectory (Trend)' : component === 'seasonal' ? 'Recurring Peak Cycles (Seasonality)' : 'Random Market Noise (Anomalies)'}
+                          </span>
+                          <span className="text-[8px] font-bold text-[var(--text-faint)]">
+                            {component === 'observed' ? 'Raw recorded sales volume' : component === 'trend' ? 'Underlying upward/downward business growth' : component === 'seasonal' ? 'Repeating monthly or seasonal fluctuations' : 'Unexpected one-off spikes or drops'}
+                          </span>
                         </div>
                         <div className="h-32 w-full bg-white/[0.02] rounded-xl relative">
                           <ResponsiveContainer width="100%" height="100%">

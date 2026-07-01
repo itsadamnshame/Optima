@@ -229,10 +229,21 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
     }
   };
 
+  const formatBadge = (badge) => {
+    if (badge === 'STRATEGIC') return 'TOP SYNERGY';
+    if (badge === 'EMERGING') return 'RISING TREND';
+    if (badge === 'OPPORTUNITY') return 'POTENTIAL MATCH';
+    return badge;
+  };
+
   const getBadgeStyle = (badge) => {
     switch (badge) {
-      case 'STRATEGIC': return { background: 'var(--success-bg)', color: '#10b981', borderColor: 'var(--success-border)' };
-      case 'EMERGING': return { background: 'var(--card-accent-bg)', color: 'var(--accent)', borderColor: 'var(--border-subtle)' };
+      case 'STRATEGIC':
+      case 'TOP SYNERGY': return { background: 'var(--success-bg)', color: '#10b981', borderColor: 'var(--success-border)' };
+      case 'EMERGING':
+      case 'RISING TREND': return { background: 'var(--card-accent-bg)', color: 'var(--accent)', borderColor: 'var(--border-subtle)' };
+      case 'OPPORTUNITY':
+      case 'POTENTIAL MATCH': return { background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)' };
       case 'SEASONAL': return { background: 'var(--badge-yearly-bg)', color: '#fbbf24', borderColor: 'rgba(251,191,36,0.3)' };
       case 'RISK': return { background: 'var(--error-bg)', color: '#f43f5e', borderColor: 'var(--error-border)' };
       default: return { background: 'var(--glass-bg)', color: 'var(--text-muted)', borderColor: 'var(--glass-border)' };
@@ -377,7 +388,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                               color: getBadgeStyle(bundle.badge).color,
                               borderColor: getBadgeStyle(bundle.badge).borderColor
                             }}>
-                            {bundle.badge}
+                            {formatBadge(bundle.badge)}
                           </div>
                           <InfoTooltip term={bundle.badge} size={11} side="left" />
                         </div>
@@ -395,11 +406,11 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Confidence <InfoTooltip term="Confidence" size={10} side="bottom" /></p>
+                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Co-Purchase Rate <InfoTooltip term="Confidence" size={10} side="bottom" /></p>
                             <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.confidence || 0) * 100).toFixed(1)}%</p>
                           </div>
                           <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Support <InfoTooltip term="Support" size={10} side="bottom" /></p>
+                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Purchase Frequency <InfoTooltip term="Support" size={10} side="bottom" /></p>
                             <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.support || 0) * 100).toFixed(2)}%</p>
                           </div>
                         </div>
@@ -454,7 +465,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       <Database size={20} style={{ color: 'var(--accent)' }} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Strategic Scoping</h4>
+                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Synergy Scoping</h4>
                       <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>Select Year Ranges / Models</p>
                     </div>
                   </div>
@@ -610,7 +621,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                           color: getBadgeStyle(simResult.badge).color,
                           borderColor: getBadgeStyle(simResult.badge).borderColor
                         }}>
-                        {simResult.badge}
+                        {formatBadge(simResult.badge)}
                       </span>
                       <div className="text-right">
                         <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Model Score</p>
@@ -620,11 +631,11 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
                     <div className="flex items-center gap-4 py-4">
                       <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
-                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Lift</p>
+                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Synergy Boost</p>
                         <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{simResult.lift ? Number(simResult.lift).toFixed(2) + 'x' : 'N/A'}</p>
                       </div>
                       <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
-                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Confidence</p>
+                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Co-Purchase Rate</p>
                         <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{Math.round(simResult.confidence * 100)}%</p>
                       </div>
                     </div>
@@ -633,7 +644,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                   <div className="p-8 space-y-6 flex-1 bg-white/[0.01]">
                     <div className="space-y-3">
                       <label className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-                        <Brain size={12} style={{ color: 'var(--accent)' }} /> Strategic Rationale
+                        <Brain size={12} style={{ color: 'var(--accent)' }} /> Synergy Analysis
                       </label>
                       <div className="p-6 rounded-3xl border shadow-inner" style={{ background: 'var(--sim-input-bg)', border: '1px solid var(--sim-input-border)' }}>
                         <p className="text-sm font-bold leading-relaxed italic" style={{ color: 'var(--sim-text-primary)' }}>

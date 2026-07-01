@@ -113,15 +113,15 @@ def generate_strategic_bundles(engine, dataset_id: int, bundler_run_id: int = No
         # --- PHASE 4: INTEGRATION (BADGES) ---
         results = []
         for i, (_, row) in enumerate(df_candidates.iterrows()):
-            badge = "OPPORTUNITY"
+            badge = "POTENTIAL MATCH"
             reason = "Solid historical association with stable demand."
             
             if row['probability'] > 0.8:
-                badge = "STRATEGIC"
-                reason = "High historical Lift combined with strong purchase confidence."
+                badge = "TOP SYNERGY"
+                reason = "High Synergy Boost combined with strong Co-Purchase Rate."
             elif row['lift'] > 2.5:
-                badge = "EMERGING"
-                reason = "Strong purchasing affinity indicating an emerging bundle opportunity."
+                badge = "RISING TREND"
+                reason = "Strong purchasing affinity indicating a rising bundle trend."
 
             results.append({
                 "rank": i + 1,
@@ -200,15 +200,15 @@ def score_single_pair(engine, dataset_ids, item_a: str, item_b: str, forecast_ru
                 }
 
         reasons = []
-        if lift > 2: reasons.append("High historical Lift")
-        if confidence > 0.5: reasons.append("Strong purchase confidence")
+        if lift > 2: reasons.append("High Synergy Boost")
+        if confidence > 0.5: reasons.append("Strong Co-Purchase Rate")
         
-        badge = "STRATEGIC"
+        badge = "TOP SYNERGY"
         if item_metrics.get(item_a, {}).get("is_rising") and item_metrics.get(item_b, {}).get("is_rising"):
-            badge = "EMERGING"
+            badge = "RISING TREND"
             reasons.append("Both items show rising demand trends")
         
-        prob = (confidence * 0.4 + (min(lift, 10)/10) * 0.4 + (0.2 if badge == "EMERGING" else 0.1)) * 100
+        prob = (confidence * 0.4 + (min(lift, 10)/10) * 0.4 + (0.2 if badge == "RISING TREND" else 0.1)) * 100
         
         return {
             "pair": f"{item_a} + {item_b}",

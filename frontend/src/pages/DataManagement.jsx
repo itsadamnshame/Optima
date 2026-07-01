@@ -310,9 +310,17 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
   const handleTrain = async () => {
     setError(null);
+    let effectiveDatasetIds = [...selectedDatasetIds];
+    if (effectiveDatasetIds.length === 0 && isAutoConfig) {
+      const activeDs = datasets.find(d => d.is_active) || datasets.find(d => d.dataset_type === 'MASTER' || !d.dataset_type) || datasets[0];
+      if (activeDs) {
+        effectiveDatasetIds = [activeDs.id];
+        setSelectedDatasetIds(effectiveDatasetIds);
+      }
+    }
     let effectiveRunName = runName.trim();
     if (!effectiveRunName && isAutoConfig) {
-      const activeDs = datasets.find(d => selectedDatasetIds.includes(d.id)) || datasets[0];
+      const activeDs = datasets.find(d => effectiveDatasetIds.includes(d.id)) || datasets[0];
       const dsTitle = activeDs ? activeDs.title : 'Master Dataset';
       effectiveRunName = `Auto Run: ${dsTitle} (${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })})`;
       setRunName(effectiveRunName);
@@ -321,8 +329,8 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
       setError("Please provide a name for the forecast run.");
       return;
     }
-    if (selectedDatasetIds.length === 0) {
-      setError("Please select at least one dataset to train on.");
+    if (effectiveDatasetIds.length === 0) {
+      setError("Please select at least one dataset in Column 1 or upload a dataset first.");
       return;
     }
 
@@ -340,7 +348,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
 
       const payload = {
         run_name: effectiveRunName,
-        dataset_ids: selectedDatasetIds.map(id => parseInt(id)),
+        dataset_ids: effectiveDatasetIds.map(id => parseInt(id)),
         item_configs: itemConfigs,
         train_forecast: isAutoConfig ? true : trainForecast,
         train_bundler: isAutoConfig ? true : trainBundler,
@@ -622,7 +630,62 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         </div>
 
         {step === 1 ? (
-          <div className="relative p-20 min-h-[500px] rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center transition-all group" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border)' }}>
+          <div className="space-y-6 animate-in fade-in duration-500">
+            {/* INGESTION GUARDRAILS / REQUIRED COLUMNS GUIDE */}
+            <div className="p-8 rounded-[2.5rem] border shadow-xl space-y-6" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+                    <FileSpreadsheet size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Required Dataset Structure & Guardrails</h3>
+                    <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Ensure your Excel (.xlsx, .xls) or CSV files contain these 6 mandatory columns for automated ingestion</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border"
+                  style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+                  <CheckCircle size={14} /> Auto-Mapping Active
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { name: 'CustomerID', alias: 'Customer ID, Customer, Client ID, Buyer', desc: 'Unique identifier for the buyer or client account.' },
+                  { name: 'OrderID', alias: 'Order ID, Invoice, InvoiceNo', desc: 'Unique number identifying the transaction or invoice.' },
+                  { name: 'OrderDate', alias: 'Order Date, Date, TransactionDate', desc: 'Date and timestamp of when the purchase occurred.' },
+                  { name: 'ItemDescription', alias: 'Item Description, Product, Item Name, Desc', desc: 'Name or description of the specific product sold.' },
+                  { name: 'Quantity', alias: 'Qty, Count, Units Sold', desc: 'Number of individual units purchased in this line item.' },
+                  { name: 'Total', alias: 'Price, Amount, Sales, Revenue, Total Amount', desc: 'Total financial sale value or revenue for the line item.' }
+                ].map((col, idx) => (
+                  <div key={idx} className="p-4 rounded-2xl border flex flex-col justify-between space-y-2 transition-all hover:border-indigo-500/30"
+                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg"
+                        style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
+                        {col.name}
+                      </span>
+                      <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Required</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>{col.desc}</p>
+                    <div className="pt-2 border-t border-white/5">
+                      <span className="text-[9px] font-black uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>Accepted Headers: </span>
+                      <span className="text-[10px] font-bold italic" style={{ color: 'var(--text-muted)' }}>{col.alias}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 rounded-2xl border flex items-start gap-3 text-[11px] leading-relaxed font-medium"
+                style={{ background: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.2)', color: 'var(--text-secondary)' }}>
+                <Info size={16} className="shrink-0 mt-0.5" style={{ color: 'var(--accent)' }} />
+                <div>
+                  <strong style={{ color: 'var(--text-heading)' }}>Automated Ingestion Guardrails:</strong> The system automatically strips extra whitespace, ignores case sensitivity, removes special characters, and maps synonymous column headers to match our schema. Blank rows and missing mandatory IDs are automatically flagged and filtered during validation.
+                </div>
+              </div>
+            </div>
+
+            <div className="relative p-20 min-h-[500px] rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center transition-all group" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border)' }}>
 
             <div className="w-16 h-16 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
               <UploadCloud size={32} />
@@ -967,6 +1030,15 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                         <span style={{ color: 'var(--text-muted)' }}>Discovery Sensitivity:</span>
                         <span className="font-black text-emerald-400">Optimal (1.0%)</span>
                       </div>
+                      <div className="mt-3 p-3 rounded-xl border text-[10px] leading-relaxed space-y-1" style={{ background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.2)', color: 'var(--text-secondary)' }}>
+                        <div className="flex items-center gap-1.5 font-black text-emerald-400 uppercase tracking-wider text-[9px]">
+                          <Info size={12} />
+                          <span>Why Optimal (1.0%)?</span>
+                        </div>
+                        <p>
+                          A 1.0% threshold strikes the ideal balance between uncovering hidden customer buying habits and filtering out random one-off transaction noise.
+                        </p>
+                      </div>
                       <div className="mt-2 flex items-center justify-between text-[10px] font-bold">
                         <span style={{ color: 'var(--text-muted)' }}>Vault Persistence:</span>
                         <span className="font-black text-emerald-400">Auto-Save Enabled</span>
@@ -1008,7 +1080,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                         <div className="space-y-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
                           <div className="space-y-3">
                             <div className="flex justify-between items-center px-1">
-                              <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Discovery Sensitivity</label>
+                              <label className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Min Purchase Frequency (Support)</label>
                               <div className="flex items-center gap-2 rounded-full px-3 py-1 shadow-lg" style={{ background: 'var(--success-border)', boxShadow: '0 4px 10px -2px var(--success-glow)' }}>
                                 <CheckCircle size={10} className="text-white" />
                                 <input
@@ -1035,6 +1107,29 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                             <div className="flex justify-between text-[8px] font-bold uppercase tracking-tighter" style={{ color: 'var(--text-faint)' }}>
                               <span>Broad Discovery</span>
                               <span>Conservative</span>
+                            </div>
+
+                            {/* ABE'S COMMENT #3: CLEAR EXPLANATION FOR SENSITIVITY/CONFIDENCE THRESHOLD */}
+                            <div className="p-3.5 rounded-xl border text-[10px] leading-relaxed space-y-1.5" style={{ background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.2)', color: 'var(--text-secondary)' }}>
+                              <div className="flex items-center gap-1.5 font-black text-emerald-400 uppercase tracking-wider text-[9px]">
+                                <Info size={12} />
+                                <span>Threshold Impact Guide</span>
+                              </div>
+                              <p>
+                                {minSupport <= 1.0 ? (
+                                  <>
+                                    <strong className="text-emerald-300">Lower Threshold ({minSupport}%):</strong> Uncovers rare, niche product combinations and hidden customer buying habits. Ideal for broad exploration, though it may capture occasional one-off purchases.
+                                  </>
+                                ) : minSupport <= 3.0 ? (
+                                  <>
+                                    <strong className="text-emerald-300">Balanced Threshold ({minSupport}%):</strong> Focuses on reliable, moderately frequent product pairings while filtering out random transaction noise. Recommended for standard marketing campaigns.
+                                  </>
+                                ) : (
+                                  <>
+                                    <strong className="text-emerald-300">High Threshold ({minSupport}%):</strong> Strictly targets your most popular, high-volume bestsellers. Filters out niche items to highlight only guaranteed volume drivers.
+                                  </>
+                                )}
+                              </p>
                             </div>
                           </div>
 
@@ -1158,7 +1253,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 ) : (
                   <button
                     onClick={handleTrain}
-                    disabled={selectedDatasetIds.length === 0 || (!isAutoConfig && !runName.trim()) || (!isAutoConfig && !trainForecast && !trainBundler)}
+                    disabled={(selectedDatasetIds.length === 0 && (!isAutoConfig || datasets.length === 0)) || (!isAutoConfig && !runName.trim()) || (!isAutoConfig && !trainForecast && !trainBundler)}
                     className="w-full md:w-80 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-20 disabled:grayscale cursor-pointer"
                     style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 20px 50px -10px var(--accent-glow)' }}
                   >

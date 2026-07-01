@@ -145,11 +145,19 @@ export const GLOSSARY = [
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Delta Variance',
-    plain: 'Year-over-Year Change',
+    term: 'Year-over-Year Growth Rate',
+    plain: 'YoY Growth Rate / Delta Variance',
     category: 'Forecasting',
     definition:
       'The percentage and absolute unit difference between the current forecast and the historical benchmark for the same period. A positive delta means demand is expected to grow; negative means it is expected to fall.',
+    usedIn: ['Forecasting'],
+  },
+  {
+    term: 'Outperforming Past Sales',
+    plain: 'Exceeding Baseline',
+    category: 'Forecasting',
+    definition:
+      'Indicates that the predicted sales volume for the forecast period is higher than the historical benchmark from prior years.',
     usedIn: ['Forecasting'],
   },
   {
@@ -177,8 +185,8 @@ export const GLOSSARY = [
   // ─── BUNDLE ANALYSIS ──────────────────────────────────────────────────────
 
   {
-    term: 'Lift',
-    plain: 'Purchase Link Strength',
+    term: 'Synergy Boost (Lift)',
+    plain: 'Synergy Boost',
     category: 'Bundle Analysis',
     definition:
       'Measures how much more likely two products are to be purchased together compared to if customers chose randomly. A Lift above 1.0 indicates a real positive relationship between the items.',
@@ -186,21 +194,21 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Confidence',
-    plain: 'Rule Reliability',
+    term: 'Co-Purchase Rate (Confidence)',
+    plain: 'Co-Purchase Rate',
     category: 'Bundle Analysis',
     definition:
       'In the context of bundle analysis: the percentage of transactions containing Product A that also contain Product B. High confidence means the pairing rule is consistently true in the historical data.',
-    example: 'A Confidence of 72% means that in 72 out of 100 transactions where Product A was purchased, Product B was also purchased.',
+    example: 'A Co-Purchase Rate of 72% means that in 72 out of 100 transactions where Product A was purchased, Product B was also purchased.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Support',
-    plain: 'Pairing Frequency',
+    term: 'Purchase Frequency (Support)',
+    plain: 'Purchase Frequency',
     category: 'Bundle Analysis',
     definition:
-      'The percentage of all transactions that contain both products together. Support tells you how common a pairing is — low support means the pair appears rarely, even if it has high lift.',
-    example: 'A Support of 3.5% means the pair appears together in 3.5% of all recorded transactions.',
+      'The percentage of all transactions that contain both products together. Support tells you how common a pairing is — low support means the pair appears rarely, even if it has high synergy boost.',
+    example: 'A Purchase Frequency of 3.5% means the pair appears together in 3.5% of all recorded transactions.',
     usedIn: ['Bundle Analysis'],
   },
   {
@@ -260,19 +268,27 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'STRATEGIC',
-    plain: 'High-Confidence Bundle',
+    term: 'TOP SYNERGY (STRATEGIC)',
+    plain: 'Top Synergy Bundle',
     category: 'Bundle Analysis',
     definition:
       'A bundle badge indicating the product pair has strong, consistent historical co-purchase patterns and good forecast alignment. These are the highest-confidence recommendations for promotions or shelf placement.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'EMERGING',
-    plain: 'Growing Opportunity',
+    term: 'RISING TREND (EMERGING)',
+    plain: 'Rising Trend Bundle',
     category: 'Bundle Analysis',
     definition:
-      'A bundle badge indicating the product pair shows a rising co-purchase trend. Not yet as established as STRATEGIC bundles, but gaining momentum and worth watching or promoting.',
+      'A bundle badge indicating the product pair shows a rising co-purchase trend. Not yet as established as Top Synergy bundles, but gaining momentum and worth watching or promoting.',
+    usedIn: ['Bundle Analysis'],
+  },
+  {
+    term: 'POTENTIAL MATCH (OPPORTUNITY)',
+    plain: 'Potential Match Bundle',
+    category: 'Bundle Analysis',
+    definition:
+      'A bundle badge indicating solid historical association with stable demand. Good candidates for standard cross-selling and bundling testing.',
     usedIn: ['Bundle Analysis'],
   },
   {
@@ -719,7 +735,10 @@ export const GLOSSARY = [
  */
 export function lookupTerm(termName) {
   if (!termName) return null;
+  const target = termName.toLowerCase().trim();
   return GLOSSARY.find(
-    (entry) => entry.term.toLowerCase() === termName.toLowerCase()
+    (entry) => entry.term.toLowerCase() === target || 
+               entry.term.toLowerCase().includes(target) || 
+               (entry.plain && entry.plain.toLowerCase().includes(target))
   ) || null;
 }

@@ -150,8 +150,8 @@ const MANUAL_SECTIONS = [
       },
       {
         type: 'tip',
-        title: 'Min Support Setting',
-        text: 'When running the Bundler, the Min Support value controls how common a product pair must be to appear in results. Start with 1–2% for most retail datasets. Lower it if you have fewer transactions.',
+        title: 'Min Purchase Frequency (Support) Setting',
+        text: 'When running the Bundler, the Min Purchase Frequency (Support) value controls how common a product pair must be across your total transactions to appear in results. Start with 1–2% for most retail datasets. Lower it if you have fewer transactions or niche products.',
       },
     ],
   },
@@ -223,12 +223,12 @@ const MANUAL_SECTIONS = [
           {
             title: 'Product Pairing Insights',
             icon: '🔬',
-            description: 'Shows all product pairs identified from the selected bundling run, ranked by probability score. Each card shows the pair, its badge (STRATEGIC, EMERGING, SEASONAL, RISK), and key metrics.',
+            description: 'Shows all product pairs identified from the selected bundling run, ranked by probability score. Each card shows the pair, its badge (TOP SYNERGY, RISING TREND, POTENTIAL MATCH, SEASONAL, RISK), and key metrics.',
           },
           {
             title: 'Test a Pair',
             icon: '⚗️',
-            description: 'A manual tool to test any two products from your catalog. Select a primary and secondary item, and the system instantly calculates their Lift, Confidence, and a strategic rationale.',
+            description: 'A manual tool to test any two products from your catalog. Select a primary and secondary item, and the system instantly calculates their Synergy Boost (Lift), Co-Purchase Rate (Confidence), and a synergy rationale.',
           },
         ],
       },
@@ -238,7 +238,7 @@ const MANUAL_SECTIONS = [
           {
             step: '→',
             title: 'Reading a bundle card',
-            description: 'Each bundle card shows the product pair name, its badge, Confidence %, and Support %. Click "Deep Dive Result" to see full metrics including Lift, Forecast Alignment, and the strategic rationale.',
+            description: 'Each bundle card shows the product pair name, its badge, Co-Purchase Rate %, and Purchase Frequency %. Click "Deep Dive Result" to see full metrics including Synergy Boost, Forecast Alignment, and the synergy analysis.',
           },
           {
             step: '→',

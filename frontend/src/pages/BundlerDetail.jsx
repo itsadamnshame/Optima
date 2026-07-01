@@ -7,10 +7,21 @@ import InfoTooltip from '../components/InfoTooltip';
 
 const badgeStyles = {
   STRATEGIC: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+  'TOP SYNERGY': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
   EMERGING: 'var(--card-accent-bg) var(--accent) var(--glass-border)',
+  'RISING TREND': 'var(--card-accent-bg) var(--accent) var(--glass-border)',
+  OPPORTUNITY: 'rgba(99,102,241,0.1) text-indigo-400 border-indigo-500/30',
+  'POTENTIAL MATCH': 'rgba(99,102,241,0.1) text-indigo-400 border-indigo-500/30',
   SEASONAL: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
   RISK: 'var(--error-bg) var(--sim-error-text) var(--error-border)',
   DEFAULT: 'var(--glass-bg) var(--text-muted) var(--glass-border)'
+};
+
+const formatBadge = (badge) => {
+  if (badge === 'STRATEGIC') return 'TOP SYNERGY';
+  if (badge === 'EMERGING') return 'RISING TREND';
+  if (badge === 'OPPORTUNITY') return 'POTENTIAL MATCH';
+  return badge;
 };
 
 export default function BundlerDetail() {
@@ -61,9 +72,9 @@ export default function BundlerDetail() {
   const selectedBundle = bundles[selectedIndex] || bundles[0] || null;
 
   const factorRows = selectedBundle ? [
-    { label: 'Lift', term: 'Lift', value: selectedBundle.lift ? Number(selectedBundle.lift).toFixed(2) + 'x' : 'N/A' },
-    { label: 'Confidence', term: 'Confidence', value: `${((selectedBundle.confidence || 0) * 100).toFixed(1)}%` },
-    { label: 'Support', term: 'Support', value: `${((selectedBundle.support || 0) * 100).toFixed(2)}%` },
+    { label: 'Synergy Boost', term: 'Lift', value: selectedBundle.lift ? Number(selectedBundle.lift).toFixed(2) + 'x' : 'N/A' },
+    { label: 'Co-Purchase Rate', term: 'Confidence', value: `${((selectedBundle.confidence || 0) * 100).toFixed(1)}%` },
+    { label: 'Purchase Frequency', term: 'Support', value: `${((selectedBundle.support || 0) * 100).toFixed(2)}%` },
     ...(selectedBundle.forecast_score !== undefined && selectedBundle.forecast_score !== null ? [
       { label: 'Forecast Alignment', term: 'Forecast Alignment', value: selectedBundle.forecast_score },
       { label: 'Trend Momentum', term: 'Trend Momentum', value: selectedBundle.trend_slope },
@@ -115,7 +126,7 @@ export default function BundlerDetail() {
                   </div>
                   <div className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      <span className={`inline-flex items-center rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] ${getBadgeStyle(selectedBundle.badge)}`}>{selectedBundle.badge}</span>
+                      <span className={`inline-flex items-center rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] ${getBadgeStyle(selectedBundle.badge)}`}>{formatBadge(selectedBundle.badge)}</span>
                       <InfoTooltip term={selectedBundle.badge} size={12} side="left" />
                     </div>
                     <p className="text-[10px] mt-2" style={{ color: 'var(--text-faint)' }}>Probability of success</p>
@@ -136,15 +147,15 @@ export default function BundlerDetail() {
               </div>
 
               <div className="rounded-3xl p-8 border" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)' }}>
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] mb-3" style={{ color: 'var(--text-faint)' }}>Strategic Rationale</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] mb-3" style={{ color: 'var(--text-faint)' }}>Synergy Analysis</p>
                 <p className="text-sm italic leading-relaxed" style={{ color: 'var(--text-primary)' }}>{selectedBundle.why || 'This bundle was scored using historical association, demand signals, and model-derived trend/seasonality factors.'}</p>
               </div>
 
               <div className="rounded-3xl p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
                 <p className="text-[10px] font-black uppercase tracking-[0.35em] mb-4" style={{ color: 'var(--text-faint)' }}>Calculation Summary</p>
                 <ul className="space-y-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li className="flex items-start gap-3"><Zap size={16} style={{ color: 'var(--accent)' }} className="mt-1" /><span><strong>Lift</strong> measures the strength of the historical item association. <InfoTooltip term="Lift" size={11} side="right" /></span></li>
-                  <li className="flex items-start gap-3"><TrendingUp size={16} className="mt-1" style={{ color: 'var(--accent-alt)' }} /><span><strong>Confidence</strong> quantifies how often the rule is true in historical transactions. <InfoTooltip term="Confidence" size={11} side="right" /></span></li>
+                  <li className="flex items-start gap-3"><Zap size={16} style={{ color: 'var(--accent)' }} className="mt-1" /><span><strong>Synergy Boost (Lift)</strong> measures the strength of the historical item association. <InfoTooltip term="Lift" size={11} side="right" /></span></li>
+                  <li className="flex items-start gap-3"><TrendingUp size={16} className="mt-1" style={{ color: 'var(--accent-alt)' }} /><span><strong>Co-Purchase Rate (Confidence)</strong> quantifies how often items are bought together in historical transactions. <InfoTooltip term="Confidence" size={11} side="right" /></span></li>
                   <li className="flex items-start gap-3"><Activity size={16} className="mt-1" style={{ color: 'var(--accent)' }} /><span><strong>Forecast alignment</strong> shows how well item demand signals match predicted future volume. <InfoTooltip term="Forecast Alignment" size={11} side="right" /></span></li>
                   <li className="flex items-start gap-3"><ShieldOff size={16} className="mt-1 text-rose-500" /><span><strong>Availability</strong> filters out discontinued or unavailable products from strategic ranking.</span></li>
                 </ul>
@@ -167,9 +178,9 @@ export default function BundlerDetail() {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-black text-sm" style={{ color: 'var(--text-heading)' }}>#{bundle.rank} {bundle.pair}</span>
-                        <span className={`text-[10px] uppercase tracking-[0.35em] ${getBadgeStyle(bundle.badge)}`}>{bundle.badge}</span>
+                        <span className={`text-[10px] uppercase tracking-[0.35em] ${getBadgeStyle(bundle.badge)}`}>{formatBadge(bundle.badge)}</span>
                       </div>
-                      <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>Probability: {bundle.probability}% · Lift: {bundle.lift}</p>
+                      <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>Probability: {bundle.probability}% · Synergy Boost: {bundle.lift}x</p>
                     </button>
                   ))}
                 </div>
