@@ -31,54 +31,61 @@ export const GLOSSARY = [
   // ─── FORECASTING ──────────────────────────────────────────────────────────
 
   {
-    term: 'MAPE',
-    plain: 'Forecast Accuracy',
+    term: 'ERROR PERCENTAGE',
+    plain: 'Relative Accuracy Score',
+    aliases: ['MAPE', 'Error Percentage'],
     category: 'Forecasting',
     definition:
-      'Mean Absolute Percentage Error. Measures on average how far off the forecast is from actual sales, expressed as a percentage. A lower MAPE means the model is more accurate.',
-    example: 'A MAPE of 8% means the forecast is off by about 8 units for every 100 units actually sold.',
+      'Measures on average how far off the forecast is from actual sales, expressed as a percentage. A lower value means our predictions are closer to real sales numbers.',
+    example: 'An Error Percentage of 8% means predictions are off by about 8 items for every 100 items sold.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'MAE',
-    plain: 'Average Error',
+    term: 'AVG. ERROR MAGNITUDE',
+    plain: 'Typical Unit Variance',
+    aliases: ['MAE', 'Avg. Error Magnitude', 'Average Error'],
     category: 'Forecasting',
     definition:
-      'Mean Absolute Error. The average absolute difference between the forecasted value and the actual value, in the same units as the data. It tells you how big the typical error is.',
-    example: 'An MAE of 12 means the forecast is off by about 12 units on a typical day.',
+      'The typical difference in unit quantity between our forecast and actual sales. It tells you how many units a prediction typically deviates on an average day or month.',
+    example: 'An Avg. Error Magnitude of 12 means predictions typically deviate by roughly 12 units.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'RMSE',
-    plain: 'Peak Error Sensitivity',
+    term: 'PEAK ERROR SENSITIVITY',
+    plain: 'Anomaly Detection Metric',
+    aliases: ['RMSE', 'Peak Error Sensitivity'],
     category: 'Forecasting',
     definition:
-      'Root Mean Square Error. Similar to MAE but penalizes large errors more heavily. A high RMSE relative to MAE means the model occasionally makes very large mistakes — usually during spikes or unusual events.',
-    example: 'If RMSE is much higher than MAE, the model struggled during a promotional period.',
+      'A statistical measure that highlights whether a model occasionally makes large prediction errors during demand spikes, promotions, or unexpected supply disruptions.',
+    example: 'If Peak Error Sensitivity is much higher than Avg. Error Magnitude, it means sales experienced sudden unusual spikes.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'STL Decomposition',
-    plain: 'Trend Breakdown',
+    term: 'SALES SIGNAL BREAKDOWN',
+    plain: 'Trend & Seasonality Breakdown',
+    aliases: ['STL Decomposition', 'STL', 'Trend Breakdown', 'Decomposition'],
     category: 'Forecasting',
     definition:
-      'Seasonal-Trend-Loess Decomposition. A technique that separates a sales time series into three components: the overall trend, repeating seasonal patterns, and random noise (remainder). Helps identify what is driving sales changes.',
-    example: 'STL might reveal that a product always spikes in December (seasonal) and has been slowly growing year over year (trend).',
+      'Our analytical engine separates your historical sales data into three core drivers: long-term sales trajectory, recurring seasonal cycles, and unexplained market fluctuations.',
+    example: 'This breakdown might reveal that a product consistently spikes in December (seasonal cycle) while maintaining steady 10% year-over-year growth (long-term trajectory).',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'DeepAR',
-    plain: 'Advanced Forecasting Model',
+    term: 'DEEP LEARNING ENGINE',
+    plain: 'Advanced Pattern Recognition',
+    aliases: ['DeepAR', 'Deep Learning Engine', 'AI Forecaster'],
     category: 'Forecasting',
     definition:
-      'A deep learning forecasting algorithm developed by Amazon. It learns demand patterns across multiple products simultaneously and can handle seasonality, trends, and external influences. Optima uses it as the core prediction engine.',
+      'Our neural network forecasting model that learns demand patterns across your entire catalog simultaneously, predicting how products react to seasons, growth trends, and promotions.',
     usedIn: ['Data & Training'],
   },
   {
-    term: 'Hybrid Model',
+    term: 'HYBRID FORECASTING MODEL',
+    plain: 'Multi-Method Prediction Engine',
+    aliases: ['Hybrid Model', 'Hybrid Forecaster', 'Forecaster', 'Hybrid'],
     category: 'Forecasting',
     definition:
-      'Optima\'s forecasting approach combines DeepAR (deep learning) with STL decomposition and statistical error correction to produce more robust predictions than any single method alone.',
+      'Our prediction engine combines deep neural networks with statistical signal breakdown and automatic error correction to deliver highly reliable 12-month demand predictions.',
     usedIn: ['Data & Training', 'Forecasting'],
   },
   {
@@ -113,26 +120,30 @@ export const GLOSSARY = [
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Stagnant Trend',
-    plain: 'Zombie Product',
+    term: 'STAGNANT TREND',
+    plain: 'Stagnant / Inactive Product',
+    aliases: ['Stagnant Trend', 'Zombie Product', 'Zombie', 'Stagnant'],
     category: 'Forecasting',
     definition:
-      'A product flagged as "stagnant" or "zombie" has flat or near-zero demand — it is neither growing nor declining meaningfully. These products may be candidates for clearance, discontinuation, or bundling to stimulate sales.',
+      'This product shows flat, near-zero, or erratic historical demand without a consistent growth trajectory. We recommend reviewing pricing or creating promotional bundles to reactivate sales.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Model Health',
+    term: 'MODEL HEALTH',
+    plain: 'Demand Predictability Index',
+    aliases: ['Model Health'],
     category: 'Forecasting',
     definition:
-      'An overall classification of how well a product\'s demand is behaving. HEALTHY means the model detected a meaningful trend or seasonal pattern and the forecast is reliable. STAGNANT (also called Zombie) means the product has near-zero or flat demand with no clear direction — forecasts for these items are less reliable and the product may need intervention.',
-    example: 'A product consistently selling 0–2 units per month with no seasonal pattern would be flagged STAGNANT.',
+      'An overall indicator of how reliably future demand can be predicted. Healthy items follow consistent seasonal or growth cycles, while stagnant items exhibit flat or erratic sales.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Healthy Trend',
+    term: 'HEALTHY TREND',
+    plain: 'Reliable Demand Pattern',
+    aliases: ['Healthy Trend', 'Healthy'],
     category: 'Forecasting',
     definition:
-      'A product flagged as "HEALTHY" has a detected meaningful trend or seasonal pattern. Forecasts for these items are generally reliable and the model has successfully identified the demand signal.',
+      'This product exhibits clear, consistent historical sales patterns and reliable seasonal demand cycles. Forecast predictions for this item have high confidence.',
     usedIn: ['Forecasting'],
   },
   {
@@ -161,62 +172,72 @@ export const GLOSSARY = [
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Forecast Alignment',
+    term: 'FORECAST ALIGNMENT',
+    plain: 'Future Demand Prediction Compatibility',
+    aliases: ['Forecast Alignment'],
     category: 'Forecasting',
     definition:
-      'A score that measures how well the predicted future demand for a product matches the direction and magnitude of its historical trend. Higher alignment means the forecast is consistent with observed patterns.',
+      'A statistical score indicating whether predicted future demand for both items is rising or falling in sync. Strong alignment ensures you won\'t run out of stock on one item while overstocking the other.',
     usedIn: ['Bundle Analysis', 'Forecasting'],
   },
   {
-    term: 'Trend Momentum',
+    term: 'TREND MOMENTUM',
+    plain: 'Growth Acceleration Rate',
+    aliases: ['Trend Momentum', 'Trend Slope'],
     category: 'Forecasting',
     definition:
-      'The rate at which a product\'s sales trend is accelerating or decelerating. Positive momentum means demand is growing faster over time; negative momentum means growth is slowing or reversing.',
+      'The speed at which sales growth is accelerating or slowing down over time. Positive momentum means customer demand is building rapidly.',
     usedIn: ['Bundle Analysis', 'Forecasting'],
   },
   {
-    term: 'Seasonal Weight',
+    term: 'SEASONAL INFLUENCE',
+    plain: 'Time-of-Year Sensitivity',
+    aliases: ['Seasonal Weight', 'Seasonal Influence'],
     category: 'Forecasting',
     definition:
-      'A measure of how much of a product\'s demand variability is explained by repeating seasonal patterns (e.g., holidays, back-to-school periods). A high seasonal weight means the product\'s sales are heavily influenced by the time of year.',
+      'A percentage score showing how heavily sales depend on repeating holiday or annual seasonal cycles. A high influence means promotions should be carefully timed to match seasonal peaks.',
     usedIn: ['Bundle Analysis', 'Forecasting'],
   },
 
   // ─── BUNDLE ANALYSIS ──────────────────────────────────────────────────────
 
   {
-    term: 'Synergy Boost (Lift)',
-    plain: 'Synergy Boost',
+    term: 'SYNERGY BOOST',
+    plain: 'Historical Co-Purchase Strength',
+    aliases: ['Lift', 'Synergy Boost (Lift)', 'Synergy Boost'],
     category: 'Bundle Analysis',
     definition:
-      'Measures how much more likely two products are to be purchased together compared to if customers chose randomly. A Lift above 1.0 indicates a real positive relationship between the items.',
-    example: 'A Lift of 2.5x means customers are 2.5 times more likely to buy both items together than if the products were unrelated.',
+      'Measures how much more likely two products are to be purchased together compared to random chance. A value above 1.0x indicates a strong positive relationship between the items.',
+    example: 'A Synergy Boost of 2.5x means customers are 2.5 times more likely to buy both items together than if the products were unrelated.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Co-Purchase Rate (Confidence)',
-    plain: 'Co-Purchase Rate',
+    term: 'CO-PURCHASE RATE',
+    plain: 'Pairing Reliability',
+    aliases: ['Confidence', 'Co-Purchase Rate (Confidence)', 'Co-Purchase Rate'],
     category: 'Bundle Analysis',
     definition:
-      'In the context of bundle analysis: the percentage of transactions containing Product A that also contain Product B. High confidence means the pairing rule is consistently true in the historical data.',
+      'The percentage of transactions containing Product A that also contain Product B. A high rate means customers who buy the first item consistently buy the second.',
     example: 'A Co-Purchase Rate of 72% means that in 72 out of 100 transactions where Product A was purchased, Product B was also purchased.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Purchase Frequency (Support)',
-    plain: 'Purchase Frequency',
+    term: 'PURCHASE FREQUENCY',
+    plain: 'Overall Basket Popularity',
+    aliases: ['Support', 'Purchase Frequency (Support)', 'Purchase Frequency'],
     category: 'Bundle Analysis',
     definition:
-      'The percentage of all transactions that contain both products together. Support tells you how common a pairing is — low support means the pair appears rarely, even if it has high synergy boost.',
+      'The percentage of all recorded transactions that contain both products together. Tells you how common a pairing is across your entire business.',
     example: 'A Purchase Frequency of 3.5% means the pair appears together in 3.5% of all recorded transactions.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Apriori Algorithm',
-    plain: 'Pattern Mining Engine',
+    term: 'PATTERN MINING ENGINE',
+    plain: 'Co-Purchase Discovery',
+    aliases: ['Apriori Algorithm', 'Apriori', 'Pattern Mining Engine'],
     category: 'Bundle Analysis',
     definition:
-      'A classic data mining algorithm used to find frequent item co-occurrences in transaction data. Optima uses Apriori to scan sales history and identify which products are commonly bought together, forming the basis for bundle recommendations.',
+      'Our automated discovery engine that scans your historical sales logs to identify which products are most frequently purchased together.',
     usedIn: ['Bundle Analysis'],
   },
   {
@@ -228,11 +249,12 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Random Forest',
-    plain: 'Advanced Ranking Model',
+    term: 'AI RANKING ENGINE',
+    plain: 'Multi-Factor Scoring',
+    aliases: ['Random Forest', 'AI Ranking Engine'],
     category: 'Bundle Analysis',
     definition:
-      'An advanced machine learning algorithm that analyzes multiple factors (like lift, confidence, and forecast alignment) to score and categorize product bundles into strategic tiers.',
+      'Our advanced scoring model that evaluates synergy boost, co-purchase rate, and future forecast signals to rank and categorize product bundles.',
     usedIn: ['Bundle Analysis'],
   },
   {
@@ -240,7 +262,7 @@ export const GLOSSARY = [
     plain: 'Product Pairing Insights',
     category: 'Navigation',
     definition:
-      'The view in the Product Bundler that displays all recommended product pairings from a saved bundling run. Each entry shows the pair, its statistical scores (Lift, Confidence, Support), and its strategic badge.',
+      'The view in the Product Bundler that displays all recommended product pairings from a saved bundling run. Each entry shows the pair, its statistical scores (Synergy Boost, Co-Purchase Rate, Purchase Frequency), and its category badge.',
     usedIn: ['Bundle Analysis'],
   },
   {
@@ -260,51 +282,48 @@ export const GLOSSARY = [
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'Strategic Badge',
-    plain: 'Bundle Category',
+    term: 'TOP SYNERGY BUNDLE',
+    plain: 'Consistently Strong Performer',
+    aliases: ['STRATEGIC', 'TOP SYNERGY', 'TOP SYNERGY (STRATEGIC)', 'Top Synergy Bundle', 'Strategic Badge', 'Bundle Category'],
     category: 'Bundle Analysis',
     definition:
-      'A label assigned to each product pair by the scoring model, reflecting its overall opportunity type: STRATEGIC (consistently strong performers), EMERGING (growing potential), SEASONAL (time-dependent), or RISK (unlikely to succeed).',
+      'This specific product pair has strong, consistent historical co-purchase patterns and good forecast alignment. These are our highest-confidence recommendations for promotions or joint merchandising.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'TOP SYNERGY (STRATEGIC)',
-    plain: 'Top Synergy Bundle',
+    term: 'RISING TREND BUNDLE',
+    plain: 'Growing Opportunity',
+    aliases: ['EMERGING', 'RISING TREND', 'RISING TREND (EMERGING)', 'Rising Trend Bundle', 'Growing Potential'],
     category: 'Bundle Analysis',
     definition:
-      'A bundle badge indicating the product pair has strong, consistent historical co-purchase patterns and good forecast alignment. These are the highest-confidence recommendations for promotions or shelf placement.',
+      'This product pair shows a rising co-purchase trend. While not yet as established as Top Synergy bundles, customer interest is growing rapidly—making it an ideal candidate for promotional testing.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'RISING TREND (EMERGING)',
-    plain: 'Rising Trend Bundle',
+    term: 'POTENTIAL MATCH',
+    plain: 'Cross-Selling Opportunity',
+    aliases: ['OPPORTUNITY', 'POTENTIAL MATCH (OPPORTUNITY)', 'Potential Match Bundle'],
     category: 'Bundle Analysis',
     definition:
-      'A bundle badge indicating the product pair shows a rising co-purchase trend. Not yet as established as Top Synergy bundles, but gaining momentum and worth watching or promoting.',
+      'This product pair shows solid historical co-purchase association with stable demand. A great candidate for standard bundling or cross-selling.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'POTENTIAL MATCH (OPPORTUNITY)',
-    plain: 'Potential Match Bundle',
+    term: 'TIME-DEPENDENT BUNDLE',
+    plain: 'Seasonal Association',
+    aliases: ['SEASONAL', 'Time-Dependent Bundle', 'Seasonal Opportunity'],
     category: 'Bundle Analysis',
     definition:
-      'A bundle badge indicating solid historical association with stable demand. Good candidates for standard cross-selling and bundling testing.',
+      'This product pair\'s co-purchase frequency is driven by specific seasons or time periods. Promotional campaigns for these items should be timed to match peak seasonal demand.',
     usedIn: ['Bundle Analysis'],
   },
   {
-    term: 'SEASONAL',
-    plain: 'Time-Dependent Bundle',
+    term: 'LOW SYNERGY PAIR',
+    plain: 'Unlikely Opportunity',
+    aliases: ['RISK', 'Low-Confidence Bundle', 'Low Synergy'],
     category: 'Bundle Analysis',
     definition:
-      'A bundle badge indicating the product pair\'s co-purchase frequency is driven by specific seasons or time periods. Effective for promotions timed to those periods, but less reliable year-round.',
-    usedIn: ['Bundle Analysis'],
-  },
-  {
-    term: 'RISK',
-    plain: 'Low-Confidence Bundle',
-    category: 'Bundle Analysis',
-    definition:
-      'A bundle badge indicating the product pair has weak historical support, low confidence, or poor forecast alignment. Promoting this pair may not yield results and should be reviewed carefully before acting.',
+      'This product pair shows weak historical co-purchase reliability or conflicting demand signals. We recommend avoiding joint promotions for these items.',
     usedIn: ['Bundle Analysis'],
   },
   {
@@ -466,33 +485,39 @@ export const GLOSSARY = [
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Seasonality',
+    term: 'RECURRING SEASONAL PATTERNS',
+    plain: 'Cyclical Demand Swings',
+    aliases: ['Seasonality', 'Seasonal Component', 'Seasonal', 'Seasonal Fluctuations', 'Seasonal Weight'],
     category: 'Statistics',
     definition:
-      'Repeating patterns in demand that occur at the same time every year — such as higher sales before holidays or lower sales in off-peak months. The forecasting model captures and accounts for seasonality.',
+      'Repeating demand surges or dips that occur at the same time each year—such as holiday spikes or off-season lulls. Our models separate these cycles so you can prepare inventory in advance.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Trend',
+    term: 'LONG-TERM SALES DIRECTION',
+    plain: 'Underlying Growth or Decline',
+    aliases: ['Trend', 'Trend Component', 'Long-Term Trend', 'Trend Momentum'],
     category: 'Statistics',
     definition:
-      'The long-term direction of demand, independent of seasonal fluctuations. A product can have an upward trend (growing demand over years) even if it has seasonal dips each summer.',
+      'The true trajectory of a product\'s demand over time, independent of seasonal swings or random daily bumps. Tells you whether your product is steadily growing, declining, or holding stable.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Remainder',
-    plain: 'Noise / Unexplained Variation',
+    term: 'UNEXPLAINED FLUCTUATIONS',
+    plain: 'Market Noise & Anomalies',
+    aliases: ['Remainder', 'Residual', 'Remainder Component', 'Noise'],
     category: 'Statistics',
     definition:
-      'In STL decomposition, the remainder (or residual) is the part of a sales signal that cannot be explained by trend or seasonality. Large remainder values may indicate anomalies, one-off events, or data quality issues.',
+      'The random day-to-day variance in sales that cannot be explained by underlying trends or seasonal cycles. Large spikes here usually indicate one-off events, unexpected bulk orders, or stockouts.',
     usedIn: ['Forecasting'],
   },
   {
-    term: 'Observed',
-    plain: 'Raw Sales Data',
+    term: 'ACTUAL RECORDED SALES',
+    plain: 'Raw Historical Transactions',
+    aliases: ['Observed', 'Observed Component', 'Observed Sales'],
     category: 'Statistics',
     definition:
-      'In STL decomposition, the "observed" component is the original, unmodified sales values — before any trend or seasonal effects are removed.',
+      'Your actual historical sales volume exactly as recorded in your transaction logs, before our analytical engine isolates underlying growth trends and seasonal cycles.',
     usedIn: ['Forecasting'],
   },
   {
@@ -736,9 +761,19 @@ export const GLOSSARY = [
 export function lookupTerm(termName) {
   if (!termName) return null;
   const target = termName.toLowerCase().trim();
-  return GLOSSARY.find(
+  
+  // 1. Exact match on term, plain, or aliases
+  const exact = GLOSSARY.find(
     (entry) => entry.term.toLowerCase() === target || 
-               entry.term.toLowerCase().includes(target) || 
-               (entry.plain && entry.plain.toLowerCase().includes(target))
+               (entry.plain && entry.plain.toLowerCase() === target) ||
+               (entry.aliases && entry.aliases.some(a => a.toLowerCase() === target))
+  );
+  if (exact) return exact;
+
+  // 2. Substring / partial match
+  return GLOSSARY.find(
+    (entry) => entry.term.toLowerCase().includes(target) || 
+               (entry.plain && entry.plain.toLowerCase().includes(target)) ||
+               (entry.aliases && entry.aliases.some(a => a.toLowerCase().includes(target)))
   ) || null;
 }

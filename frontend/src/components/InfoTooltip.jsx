@@ -86,7 +86,7 @@ export default function InfoTooltip({ term, text, size = 12, side = 'top' }) {
                 className="text-[10px] font-black uppercase tracking-[0.25em]"
                 style={{ color: 'var(--accent)' }}
               >
-                {term}
+                {entry ? entry.term : term}
               </p>
               {plain && (
                 <p
