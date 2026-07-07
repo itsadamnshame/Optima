@@ -50,9 +50,9 @@
   --chart-grid: rgba(255,255,255,0.04);
   --chart-axis: #71717a;
   --chart-label: #a1a1aa;
-  --chart-line-actual: #34d399;    /* emerald-400 — bright & warm */
-  --chart-line-forecast: #a78bfa;  /* violet-400 — distinct purple */
-  --chart-area-fill: rgba(167,139,250,0.15);
+  --chart-line-actual: #fbbf24;    /* amber-400 — warm gold for recorded data */
+  --chart-line-forecast: #818cf8;  /* indigo-400 — matches app accent */
+  --chart-area-fill: rgba(99,102,241,0.12);
   --chart-tooltip-bg: #18181b;
   --chart-tooltip-border: rgba(255,255,255,0.1);
   --chart-tooltip-text: #f4f4f5;
@@ -167,9 +167,9 @@
   --chart-grid:          rgba(0,0,0,0.06);
   --chart-axis:          #9ca3af;
   --chart-label:         #6b7280;
-  --chart-line-actual:   #059669;   /* emerald-600 — rich green, clearly visible */
-  --chart-line-forecast: #7c3aed;   /* violet-600 — strong purple, clearly distinct */
-  --chart-area-fill:     rgba(124,58,237,0.08);
+  --chart-line-actual:   #d97706;   /* amber-600 — warm, clearly historical */
+  --chart-line-forecast: #6366f1;   /* indigo-600 — the app's own accent */
+  --chart-area-fill:     rgba(99,102,241,0.08);
   --chart-tooltip-bg:    #ffffff;
   --chart-tooltip-border:rgba(0,0,0,0.1);
   --chart-tooltip-text:  #111827;

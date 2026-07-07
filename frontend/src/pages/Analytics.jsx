@@ -95,6 +95,7 @@ export default function Analytics({
   
   const sidebarRef = React.useRef();
   useOnClickOutside(sidebarRef, () => setIsSidebarOpen(false));
+  const [tableYear, setTableYear] = useState('all');
 
   // Get dynamic colors from CSS variables
   const getChartColors = () => {
@@ -529,55 +530,83 @@ export default function Analytics({
             </Card>
 
             {/* FORECAST DATA TABLE */}
-            <Card title="Forecast Data Table" subtitle="Full numeric breakdown — actual vs. predicted units" icon={FileBarChart}>
-              <div className="overflow-x-auto custom-scrollbar">
-                <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
-                  <table className="w-full text-[11px] border-separate" style={{ borderSpacing: 0 }}>
-                    <thead>
-                      <tr className="sticky top-0 z-10" style={{ background: 'var(--table-header-bg)' }}>
-                        <th className="px-4 py-3 text-left font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Month</th>
-                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>Actual Units</th>
-                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>Predicted Units</th>
-                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range Low</th>
-                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range High</th>
-                        <th className="px-4 py-3 text-center font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Type</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {chartData.map((row, idx) => {
-                        const isForecast = row.actual === null || row.actual === undefined;
-                        return (
-                          <tr key={idx}
-                            className="transition-colors"
-                            style={{ background: isForecast ? 'var(--card-accent-bg)' : 'transparent' }}
-                          >
-                            <td className="px-4 py-2.5 font-bold" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>{row.date}</td>
-                            <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: isForecast ? 'var(--text-faint)' : 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>
-                              {isForecast ? '—' : (row.actual?.toLocaleString() ?? '—')}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-black tabular-nums" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>
-                              {row.forecast?.toLocaleString() ?? '—'}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-bold tabular-nums hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>
-                              {row.lower?.toLocaleString() ?? '—'}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-bold tabular-nums hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>
-                              {row.upper?.toLocaleString() ?? '—'}
-                            </td>
-                            <td className="px-4 py-2.5 text-center" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                              {isForecast
-                                ? <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'var(--card-accent-bg)', color: 'var(--chart-line-forecast)', border: '1px solid var(--border-subtle)' }}>Forecast</span>
-                                : <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'rgba(52,211,153,0.1)', color: 'var(--chart-line-actual)', border: '1px solid rgba(52,211,153,0.2)' }}>Actual</span>
-                              }
-                            </td>
+            {(() => {
+              const tableYears = ['all', ...Array.from(new Set(chartData.map(r => r.date?.split(' ')[1]).filter(Boolean))).sort()];
+              const filteredRows = tableYear === 'all' ? chartData : chartData.filter(r => r.date?.split(' ')[1] === tableYear);
+              return (
+                <Card
+                  title="Forecast Data Table"
+                  subtitle="Full numeric breakdown — actual vs. predicted units"
+                  icon={FileBarChart}
+                  action={
+                    <div className="flex items-center gap-1 p-1 rounded-xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
+                      {tableYears.map(yr => (
+                        <button
+                          key={yr}
+                          onClick={() => setTableYear(yr)}
+                          className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                          style={{
+                            background: tableYear === yr ? 'var(--accent)' : 'transparent',
+                            color: tableYear === yr ? '#fff' : 'var(--text-faint)',
+                            boxShadow: tableYear === yr ? '0 4px 12px -2px var(--accent-glow)' : 'none'
+                          }}
+                        >
+                          {yr === 'all' ? 'All' : yr}
+                        </button>
+                      ))}
+                    </div>
+                  }
+                >
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-[11px] border-separate" style={{ borderSpacing: 0 }}>
+                        <thead>
+                          <tr className="sticky top-0 z-10" style={{ background: 'var(--table-header-bg)' }}>
+                            <th className="px-4 py-3 text-left font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Month</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>Actual Units</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>Predicted Units</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range Low</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range High</th>
+                            <th className="px-4 py-3 text-center font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Type</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </Card>
+                        </thead>
+                        <tbody>
+                          {filteredRows.length === 0 ? (
+                            <tr><td colSpan={6} className="px-4 py-10 text-center text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>No data for selected year</td></tr>
+                          ) : filteredRows.map((row, idx) => {
+                            const isForecast = row.actual === null || row.actual === undefined;
+                            return (
+                              <tr key={idx} className="transition-colors hover:brightness-110"
+                                style={{ background: isForecast ? 'var(--card-accent-bg)' : 'transparent' }}>
+                                <td className="px-4 py-2.5 font-bold" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>{row.date}</td>
+                                <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: isForecast ? 'var(--text-faint)' : 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>
+                                  {isForecast ? '—' : (row.actual?.toLocaleString() ?? '—')}
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-black tabular-nums" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>
+                                  {row.forecast?.toLocaleString() ?? '—'}
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-bold tabular-nums hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>
+                                  {row.lower?.toLocaleString() ?? '—'}
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-bold tabular-nums hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>
+                                  {row.upper?.toLocaleString() ?? '—'}
+                                </td>
+                                <td className="px-4 py-2.5 text-center" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                  {isForecast
+                                    ? <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'var(--card-accent-bg)', color: 'var(--chart-line-forecast)', border: '1px solid var(--border-subtle)' }}>Forecast</span>
+                                    : <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'rgba(217,119,6,0.1)', color: 'var(--chart-line-actual)', border: '1px solid rgba(217,119,6,0.25)' }}>Actual</span>
+                                  }
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })()}
 
             {/* STRATEGIC BENCHMARKING */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
