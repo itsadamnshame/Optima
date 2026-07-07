@@ -47,14 +47,14 @@
   --profile-menu-bg: #18181b;
 
   /* Chart Colors */
-  --chart-grid: rgba(255,255,255,0.12); /* stronger grid for dark mode */
-  --chart-axis: #c4c4c4; /* lighter axis */
-  --chart-label: #e0e0e0; /* brighter labels */
-  --chart-line-actual: #5eead4;    /* teal‑300 – fresh and vivid */
-  --chart-line-forecast: #fbbf24;  /* amber‑400 – warm, high‑contrast */
-  --chart-area-fill: rgba(251,191,36,0.12); /* amber translucent */
+  --chart-grid: rgba(255,255,255,0.06);
+  --chart-axis: #71717a;
+  --chart-label: #a1a1aa;
+  --chart-line-actual: #d4d4d8;    /* zinc-300 — neutral, clean */
+  --chart-line-forecast: #818cf8;  /* indigo-400 — matches UI accent */
+  --chart-area-fill: rgba(129,140,248,0.12);
   --chart-tooltip-bg: #18181b;
-  --chart-tooltip-border: rgba(255,255,255,0.2);
+  --chart-tooltip-border: rgba(255,255,255,0.12);
   --chart-tooltip-text: #f4f4f5;
 
   /* Bundle Simulator */
@@ -167,9 +167,9 @@
   --chart-grid:          rgba(0,0,0,0.06);
   --chart-axis:          #9ca3af;
   --chart-label:         #6b7280;
-  --chart-line-actual:   #0d9488;   /* teal-600 – confident, readable */
-  --chart-line-forecast: #0891b2;   /* cyan-600 – crisp, modern */
-  --chart-area-fill:     rgba(8,145,178,0.08); /* cyan-600 translucency */
+  --chart-line-actual:   #6b7280;   /* gray-500 — neutral, understated */
+  --chart-line-forecast: #6366f1;   /* indigo-500 — matches UI accent */
+  --chart-area-fill:     rgba(99,102,241,0.08);
   --chart-tooltip-bg:    #ffffff;
   --chart-tooltip-border:rgba(0,0,0,0.1);
   --chart-tooltip-text:  #111827;
