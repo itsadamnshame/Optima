@@ -520,11 +520,62 @@ export default function Analytics({
                     />
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: chartColors.label }} />
                     <Area type="monotone" dataKey="upper" baseValue="lower" stroke={chartColors.forecast} strokeWidth={0.5} fill={chartColors.area} connectNulls name="Confidence Range" />
-                    <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={false} connectNulls name={`Predicted ${metricLabel}`} />
-                    <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={4} dot={{ r: 5, fill: chartColors.actual }} connectNulls name={`Actual ${metricLabel}`} />
-                    <ReferenceLine x={chartData.find(d => d.actual === null || d.actual === undefined)?.date} stroke={chartColors.forecast} strokeDasharray="3 3" label={{ value: 'FORECAST START', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
+                    <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={3} dot={false} connectNulls name={`Predicted ${metricLabel}`} />
+                    <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={3} dot={{ r: 4, fill: chartColors.actual, strokeWidth: 0 }} connectNulls name={`Actual ${metricLabel}`} />
+                    <ReferenceLine x={chartData.find(d => d.actual === null || d.actual === undefined)?.date} stroke={chartColors.forecast} strokeDasharray="4 4" strokeOpacity={0.7} label={{ value: 'FORECAST START', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* FORECAST DATA TABLE */}
+            <Card title="Forecast Data Table" subtitle="Full numeric breakdown — actual vs. predicted units" icon={FileBarChart}>
+              <div className="overflow-x-auto custom-scrollbar">
+                <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-[11px] border-separate" style={{ borderSpacing: 0 }}>
+                    <thead>
+                      <tr className="sticky top-0 z-10" style={{ background: 'var(--table-header-bg)' }}>
+                        <th className="px-4 py-3 text-left font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Month</th>
+                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>Actual Units</th>
+                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>Predicted Units</th>
+                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range Low</th>
+                        <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range High</th>
+                        <th className="px-4 py-3 text-center font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chartData.map((row, idx) => {
+                        const isForecast = row.actual === null || row.actual === undefined;
+                        return (
+                          <tr key={idx}
+                            className="transition-colors"
+                            style={{ background: isForecast ? 'var(--card-accent-bg)' : 'transparent' }}
+                          >
+                            <td className="px-4 py-2.5 font-bold" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)' }}>{row.date}</td>
+                            <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: isForecast ? 'var(--text-faint)' : 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>
+                              {isForecast ? '—' : (row.actual?.toLocaleString() ?? '—')}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-black tabular-nums" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>
+                              {row.forecast?.toLocaleString() ?? '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-bold tabular-nums hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>
+                              {row.lower?.toLocaleString() ?? '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-bold tabular-nums hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>
+                              {row.upper?.toLocaleString() ?? '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-center" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                              {isForecast
+                                ? <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'var(--card-accent-bg)', color: 'var(--chart-line-forecast)', border: '1px solid var(--border-subtle)' }}>Forecast</span>
+                                : <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'rgba(52,211,153,0.1)', color: 'var(--chart-line-actual)', border: '1px solid rgba(52,211,153,0.2)' }}>Actual</span>
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </Card>
 
