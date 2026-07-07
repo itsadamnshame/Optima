@@ -167,9 +167,9 @@
   --chart-grid:          rgba(0,0,0,0.06);
   --chart-axis:          #9ca3af;
   --chart-label:         #6b7280;
-  --chart-line-actual:   #3f3f46;   /* zinc-700 — strong, confident on white */
-  --chart-line-forecast: #4f46e5;   /* indigo-600 — deep, punchy accent */
-  --chart-area-fill:     rgba(79,70,229,0.1);
+  --chart-line-actual:   #a5b4fc;   /* indigo-300 — soft lavender, fits theme */
+  --chart-line-forecast: #4f46e5;   /* indigo-600 — deep accent */
+  --chart-area-fill:     rgba(79,70,229,0.08);
   --chart-tooltip-bg:    #ffffff;
   --chart-tooltip-border:rgba(0,0,0,0.1);
   --chart-tooltip-text:  #111827;
