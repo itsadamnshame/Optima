@@ -47,14 +47,14 @@
   --profile-menu-bg: #18181b;
 
   /* Chart Colors */
-  --chart-grid: rgba(255,255,255,0.04);
-  --chart-axis: #71717a;
-  --chart-label: #a1a1aa;
-  --chart-line-actual: #5eead4;    /* teal-300 – fresh, soothing */
-  --chart-line-forecast: #22d3ee;  /* cyan-400 – bright, modern */
-  --chart-area-fill: rgba(34,211,238,0.12); /* cyan-400 translucency */
+  --chart-grid: rgba(255,255,255,0.08); /* slightly stronger grid */
+  --chart-axis: #a1a1aa; /* brighter axis */
+  --chart-label: #c4c4c4; /* lighter labels */
+  --chart-line-actual: #99f6e4;    /* teal-200 – bright for dark mode */
+  --chart-line-forecast: #67e8f9;  /* cyan-300 – bright for dark mode */
+  --chart-area-fill: rgba(103,232,249,0.18); /* cyan‑300 translucent */
   --chart-tooltip-bg: #18181b;
-  --chart-tooltip-border: rgba(255,255,255,0.1);
+  --chart-tooltip-border: rgba(255,255,255,0.15);
   --chart-tooltip-text: #f4f4f5;
 
   /* Bundle Simulator */
