@@ -594,7 +594,7 @@ export default function Analytics({
                                 <td className="px-4 py-2.5 text-center" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                                   {isForecast
                                     ? <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'var(--card-accent-bg)', color: 'var(--chart-line-forecast)', border: '1px solid var(--border-subtle)' }}>Forecast</span>
-                                    : <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'rgba(217,119,6,0.1)', color: 'var(--chart-line-actual)', border: '1px solid rgba(217,119,6,0.25)' }}>Actual</span>
+                                    : <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style={{ background: 'rgba(161,161,170,0.1)', color: 'var(--chart-line-actual)', border: '1px solid rgba(161,161,170,0.2)' }}>Actual</span>
                                   }
                                 </td>
                               </tr>
