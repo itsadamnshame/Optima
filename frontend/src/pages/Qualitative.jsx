@@ -272,7 +272,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
         <div className="absolute inset-0 pointer-events-none rounded-[2.5rem]" style={{ background: 'var(--gradient-hero)' }} />
         <div className="relative z-10 space-y-4 max-w-xl">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: 'var(--accent)' }}>
-            <Sparkles size={14} /> Intelligence Strategy Hub
+            <Sparkles size={14} /> Product Bundle Insights
           </p>
           <div className="flex w-fit bg-white/5 p-1.5 rounded-2xl border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
             <button
@@ -292,8 +292,8 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
           </div>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {viewMode === 'discovery'
-              ? <span>Reviewing association patterns identified via <strong>Apriori</strong><InfoTooltip term="Apriori Algorithm" size={11} side="bottom-right" /> and ranked by <strong>Random Forest</strong><InfoTooltip term="Random Forest" size={11} side="bottom-right" /> logic.</span>
-              : <span>Manually test bundling hypotheses.<InfoTooltip term="Choose Two Items" size={11} side="bottom-right" /></span>}
+              ? <span>These are product pairs that are <strong>frequently bought together</strong> by your customers, ranked by how strongly they go together.<InfoTooltip term="Apriori Algorithm" size={11} side="bottom-right" /></span>
+              : <span>Test which products work well as a bundle by selecting any two items from your catalog.<InfoTooltip term="Choose Two Items" size={11} side="bottom-right" /></span>}
           </p>
         </div>
 
@@ -406,11 +406,11 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Co-Purchase Rate <InfoTooltip term="Confidence" size={10} side="bottom" /></p>
+                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center gap-1" style={{ color: 'var(--text-faint)' }}>Co-Purchase Rate <span className="text-[8px] opacity-50">confidence</span> <InfoTooltip term="Confidence" size={10} side="bottom" /></p>
                             <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.confidence || 0) * 100).toFixed(1)}%</p>
                           </div>
                           <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center" style={{ color: 'var(--text-faint)' }}>Purchase Frequency <InfoTooltip term="Support" size={10} side="bottom" /></p>
+                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 flex items-center gap-1" style={{ color: 'var(--text-faint)' }}>Purchase Frequency <span className="text-[8px] opacity-50">support</span> <InfoTooltip term="Support" size={10} side="bottom" /></p>
                             <p className="text-lg font-black" style={{ color: 'var(--text-heading)' }}>{((bundle.support || 0) * 100).toFixed(2)}%</p>
                           </div>
                         </div>
@@ -421,7 +421,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                         className="w-full py-4 rounded-2xl border font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:shadow-lg"
                         style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
                       >
-                        Deep Dive Result <ArrowRight size={14} />
+                        View Full Details <ArrowRight size={14} />
                       </button>
                     </div>
                   ))}
@@ -432,7 +432,7 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                 <div className="p-6 rounded-full" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}>
                   <Loader2 size={40} className="animate-spin" />
                 </div>
-                <p className="font-black uppercase tracking-[0.3em] text-xs" style={{ color: 'var(--text-faint)' }}>Assembling Affinity Matrix...</p>
+                <p className="font-black uppercase tracking-[0.3em] text-xs" style={{ color: 'var(--text-faint)' }}>Loading bundle results...</p>
               </div>
             ) : (
               <div className="col-span-full py-32 flex flex-col items-center justify-center text-center space-y-4">
@@ -465,11 +465,12 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                       <Database size={20} style={{ color: 'var(--accent)' }} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Synergy Scoping</h4>
-                      <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>Select Year Ranges / Models</p>
+                      <h4 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>Select Data to Analyze</h4>
+                      <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>Which sales records to search</p>
                     </div>
                   </div>
                 </div>
+                <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>Select which sales dataset(s) to search when checking if these two products are frequently bought together.</p>
 
                 <div className="space-y-2 overflow-y-auto max-h-[200px] pr-2 custom-scrollbar">
                   {sidebarDatasets.map(ds => (
@@ -624,18 +625,18 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                         {formatBadge(simResult.badge)}
                       </span>
                       <div className="text-right">
-                        <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Model Score</p>
+                        <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Bundle Score <span className="text-[7px] opacity-60">probability</span></p>
                         <p className="text-4xl font-black italic tracking-tighter" style={{ color: 'var(--text-heading)' }}>{simResult.probability}%</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-4 py-4">
                       <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
-                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Synergy Boost</p>
+                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Synergy Boost <span className="text-[7px] opacity-60">Lift</span></p>
                         <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{simResult.lift ? Number(simResult.lift).toFixed(2) + 'x' : 'N/A'}</p>
                       </div>
                       <div className="flex-1 text-center px-4 py-3 rounded-2xl border" style={{ background: 'var(--sim-item-hover-bg)', border: '1px solid var(--sim-border)' }}>
-                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Co-Purchase Rate</p>
+                        <p className="text-[8px] font-bold uppercase mb-1" style={{ color: 'var(--sim-text-muted)' }}>Co-Purchase Rate <span className="text-[7px] opacity-60">Confidence</span></p>
                         <p className="text-sm font-black italic" style={{ color: 'var(--sim-text-heading)' }}>{Math.round(simResult.confidence * 100)}%</p>
                       </div>
                     </div>
@@ -661,9 +662,9 @@ export default function Qualitative({ activeDatasetId, sidebarDatasets = [] }) {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 border" style={{ background: 'var(--card-accent-bg)', borderColor: 'var(--glass-border)' }}>
                     <Sliders size={24} style={{ color: 'var(--text-faint)' }} />
                   </div>
-                  <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-faint)' }}>Hypothesis Required</h3>
+                  <h3 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-faint)' }}>Select Two Products to Begin</h3>
                   <p className="text-[10px] font-bold uppercase tracking-widest mt-2 max-w-[240px]" style={{ color: 'var(--text-faint)' }}>
-                    Select two items from the catalog to begin the predictive simulation.
+                    Choose any two items from the list on the left to see how well they pair together.
                   </p>
                 </div>
               )}

@@ -274,15 +274,15 @@ export default function Analytics({
           </div>
         </div>
         <div className="text-center space-y-4 max-w-md">
-          <h2 className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: 'var(--text-heading)' }}>Synthesizing Models</h2>
+          <h2 className="text-3xl font-black tracking-tighter uppercase italic" style={{ color: 'var(--text-heading)' }}>Generating Your Forecast</h2>
           <div className="w-full h-2 rounded-full overflow-hidden border" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
             <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, background: 'var(--accent)', boxShadow: '0 0 15px var(--accent-glow)' }} />
           </div>
           <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>
-            Processing Active Dataset — {Math.round(progress)}%
+            Please wait while results are being prepared — {Math.round(progress)}%
           </p>
           <p className="text-xs font-medium italic" style={{ color: 'var(--text-secondary)' }}>
-            The hybrid model is currently aligning historical seasonal signals with trend-loess decomposition. This may take a moment.
+            Your sales data is being analyzed to generate predictions. This may take a few minutes.
           </p>
         </div>
       </div>
@@ -345,14 +345,14 @@ export default function Analytics({
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'global' ? 'text-white shadow-lg' : ''}`}
               style={{ background: activeTab === 'global' ? 'var(--accent)' : 'transparent', color: activeTab === 'global' ? '#fff' : 'var(--text-faint)', boxShadow: activeTab === 'global' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              <Layers size={14} className="inline mr-2" /> Global Strategy
+              <Layers size={14} className="inline mr-2" /> Overall Store Trend
             </button>
             <button 
               onClick={() => setActiveTab('product')}
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'product' ? 'text-white shadow-lg' : ''}`}
               style={{ background: activeTab === 'product' ? 'var(--accent)' : 'transparent', color: activeTab === 'product' ? '#fff' : 'var(--text-faint)', boxShadow: activeTab === 'product' ? '0 10px 15px -3px var(--accent-glow)' : 'none' }}
             >
-              <Package size={14} className="inline mr-2" /> Product Analysis
+              <Package size={14} className="inline mr-2" /> Individual Product View
             </button>
           </div>
         </div>
@@ -367,9 +367,9 @@ export default function Analytics({
                 </div>
                 <div>
                   <h3 className="text-2xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>
-                    {activeTab === 'global' ? 'Store-Wide Outlook' : 'Item Strategy Hub'}
+                    {activeTab === 'global' ? 'Overall Sales Outlook' : 'Individual Product View'}
                   </h3>
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>12-Month Forecast Horizon</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Predicted units to be sold over the next 12 months</p>
                 </div>
               </div>
 
@@ -377,19 +377,19 @@ export default function Analytics({
                 {metrics.mape_pct !== undefined && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full xl:w-auto">
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Error Percentage <InfoTooltip term="MAPE" size={10} side="bottom" /></p>
-                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct, 1)}% <span className="text-[10px] text-zinc-500 ml-1">MAPE</span></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Forecast Accuracy <InfoTooltip term="MAPE" size={10} side="bottom" /></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct, 1)}% error <span className="text-[10px] text-zinc-400 ml-1">MAPE</span></p>
                     </div>
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Avg. Error Magnitude <InfoTooltip term="MAE" size={10} side="bottom" /></p>
-                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mae, 2)} <span className="text-[10px] text-zinc-500 ml-1">MAE</span></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Avg. Unit Error <InfoTooltip term="MAE" size={10} side="bottom" /></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mae, 2)} units <span className="text-[10px] text-zinc-400 ml-1">MAE</span></p>
                     </div>
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Peak Error Sensitivity <InfoTooltip term="RMSE" size={10} side="bottom" /></p>
-                      <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} <span className="text-[10px] text-zinc-500 ml-1">RMSE</span></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Worst-Case Error <InfoTooltip term="RMSE" size={10} side="bottom" /></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} units <span className="text-[10px] text-zinc-400 ml-1">RMSE</span></p>
                     </div>
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Model Health <InfoTooltip term={metrics.is_zombie ? "Stagnant Trend" : "Healthy Trend"} size={10} side="bottom" /></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Sales Trend Health <InfoTooltip term={metrics.is_zombie ? "Stagnant Trend" : "Healthy Trend"} size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
                         {metrics.is_zombie ? 'STAGNANT' : 'HEALTHY'}
@@ -407,7 +407,7 @@ export default function Analytics({
                   ))}
                   {metrics.is_zombie && (
                     <span className="px-4 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                      <AlertCircle size={12} /> Stagnant Trend
+                      <AlertCircle size={12} /> No Sales Trend <span className="text-[9px] opacity-60 normal-case">stagnant</span>
                     </span>
                   )}
                 </div>
@@ -473,7 +473,27 @@ export default function Analytics({
             )}
 
             {/* YEARLY VIEW */}
-            <Card title="Yearly Outlook" subtitle="12-Month Forecast Horizon" icon={TrendingUp}>
+            {/* COLOR LEGEND */}
+            <div className="flex flex-wrap items-center gap-4 px-2 py-3 rounded-2xl border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--border-subtle)' }}>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Chart Key:</p>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-1 rounded-full" style={{ background: 'var(--chart-line-actual)' }} />
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Actual Sales <span className="text-[9px] opacity-60">(recorded)</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-1 rounded-full" style={{ background: 'var(--chart-line-forecast)', opacity: 0.9 }} />
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Forecasted Sales <span className="text-[9px] opacity-60">(predicted)</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-3 rounded" style={{ background: 'var(--chart-area-fill)', opacity: 0.6 }} />
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Confidence Range <span className="text-[9px] opacity-60">(possible high/low)</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-[1px] h-4 border-l-2 border-dashed" style={{ borderColor: 'var(--chart-line-forecast)' }} />
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Forecast Begins Here</span>
+              </div>
+            </div>
+            <Card title="Sales Forecast" subtitle="Predicted units to be sold over the next 12 months" icon={TrendingUp}>
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData}>
@@ -502,7 +522,7 @@ export default function Analytics({
                     <Area type="monotone" dataKey="upper" baseValue="lower" stroke={chartColors.forecast} strokeWidth={0.5} fill={chartColors.area} connectNulls name="Confidence Range" />
                     <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={4} dot={false} connectNulls name={`Predicted ${metricLabel}`} />
                     <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={4} dot={{ r: 5, fill: chartColors.actual }} connectNulls name={`Actual ${metricLabel}`} />
-                    <ReferenceLine x={chartData.find(d => d.actual === null || d.actual === undefined)?.date} stroke={chartColors.forecast} strokeDasharray="3 3" label={{ value: 'PREDICTION', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
+                    <ReferenceLine x={chartData.find(d => d.actual === null || d.actual === undefined)?.date} stroke={chartColors.forecast} strokeDasharray="3 3" label={{ value: 'FORECAST START', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -571,7 +591,7 @@ export default function Analytics({
 
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Year-over-Year Growth Rate</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Year-over-Year Volume Change <span className="text-[8px] opacity-50 normal-case">YoY</span></p>
                             <div className="flex items-baseline gap-2">
                               <p className={`text-xl font-black ${yoy.diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {yoy.diff >= 0 ? '+' : ''}{Number(yoy.diff || 0).toFixed(1)}%
@@ -582,9 +602,9 @@ export default function Analytics({
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Analysis</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Summary</p>
                             <p className="text-xs font-bold uppercase italic" style={{ color: 'var(--text-primary)' }}>
-                              {yoy.diff >= 0 ? 'Outperforming Past Sales' : 'Below Historical Average'}
+                              {yoy.diff >= 0 ? 'Higher volume predicted' : 'Lower volume predicted'}
                             </p>
                           </div>
                         </div>
@@ -600,10 +620,10 @@ export default function Analytics({
                 </div>
               </Card>
 
-              <Card title="Trend Forecast" subtitle="What to expect" icon={Layers} className="self-start">
+              <Card title="Sales Trend Summary" subtitle="Expected units sold" icon={Layers} className="self-start">
                 <div className="space-y-4 pt-2">
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Status</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Sales Direction</p>
                     <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
                       <div className={`w-2 h-2 rounded-full ${metrics.trend_status === 'STAGNANT' || metrics.trend_status === 'DECLINE' ? 'bg-rose-500' : metrics.trend_status === 'GROWTH' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
                       {metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : 'UNKNOWN')}
@@ -611,10 +631,16 @@ export default function Analytics({
                     <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
                       {metrics.story || "Forecast insights are unavailable for this run."}
                     </p>
+                    {metrics.is_zombie && (
+                      <div className="mt-3 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5">
+                        <p className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1">What does Stagnant mean?</p>
+                        <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>This product shows no significant upward or downward movement in sales. Its predicted values are held flat and may be less reliable for planning. Consider reviewing demand or promotions for this item.</p>
+                      </div>
+                    )}
                   </div>
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Data History</p>
-                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Sufficient</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Data Availability</p>
+                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Sufficient historical data</p>
                   </div>
                 </div>
               </Card>
@@ -699,13 +725,13 @@ export default function Analytics({
         <div className="relative z-10">
           <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-2" style={{ color: 'var(--accent)' }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block" style={{ background: 'var(--accent)' }} />
-            Run History
+            Forecast History
           </p>
           <h2 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--text-heading)' }}>
             <TrendingUp size={36} style={{ color: 'var(--accent)' }} /> Saved Forecasts
           </h2>
           <p className="text-sm font-medium mt-2 ml-1" style={{ color: 'var(--text-muted)' }}>
-            Persisted 12-month hybrid models and strategic audit trails.
+            Review your completed forecast results. Each entry contains 12 months of predicted sales volumes.
           </p>
         </div>
       </div>
@@ -714,7 +740,7 @@ export default function Analytics({
         {loading ? (
           <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
             <Activity className="animate-spin" size={40} style={{ color: 'var(--accent)' }} />
-            <p className="font-bold uppercase tracking-widest text-xs" style={{ color: 'var(--text-faint)' }}>Accessing Models...</p>
+            <p className="font-bold uppercase tracking-widest text-xs" style={{ color: 'var(--text-faint)' }}>Loading saved forecasts...</p>
           </div>
         ) : runs.length > 0 ? (
           runs.map(run => (

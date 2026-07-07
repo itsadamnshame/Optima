@@ -596,7 +596,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
         <h2 className="text-2xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--text-heading)' }}>
           <Database className="text-indigo-400" size={28} /> Strategic Management Hub
         </h2>
-        <p className="text-sm mt-1 ml-10" style={{ color: 'var(--text-secondary)' }}>Consolidate historical logs, launch predictive models, and manage product bundling rules.</p>
+        <p className="text-sm mt-1 ml-10" style={{ color: 'var(--text-secondary)' }}>Upload your sales data and train your prediction models.</p>
 
         {/* TAB TOGGLE */}
         <div className="flex gap-1 p-1 rounded-2xl border mt-6 w-fit" style={{ background: 'var(--input-bg)', borderColor: 'var(--border-subtle)' }}>
@@ -804,7 +804,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
               {uploading ? (
                 <div className="space-y-4 pt-4">
                   <div className="flex items-center gap-3 font-black text-[10px] uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
-                    <Loader2 size={16} className="animate-spin" /> Ingesting & Aggregating...
+                    <Loader2 size={16} className="animate-spin" /> Processing your file...
                   </div>
                   <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500 animate-pulse" style={{ width: '60%' }} />
@@ -835,7 +835,7 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                 <Brain size={32} />
               </div>
               <h3 className="text-4xl font-black uppercase italic tracking-tight" style={{ color: 'var(--text-heading)' }}>Train Models</h3>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Architecting persistent strategic models across your data landscape.</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Run your forecast and product bundle analysis. In automatic mode, everything is configured for you.</p>
             </div>
 
             {/* CONFIGURATION MODE TOGGLE */}
@@ -1083,9 +1083,9 @@ export default function DataManagement({ onDatasetChange, onActivate }) {
                           </div>
                           <div className="flex flex-col text-left">
                             <span className="text-xs font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#10b981' }}>
-                              Bundler <span className="px-2 py-0.5 rounded text-[8px] bg-emerald-500/20 text-emerald-400 font-bold">AUTO</span>
+                              Product Bundling <span className="px-2 py-0.5 rounded text-[8px] bg-emerald-500/20 text-emerald-400 font-bold">AUTO</span>
                             </span>
-                            <span className="text-[9px] font-bold opacity-60 uppercase" style={{ color: 'var(--text-primary)' }}>Affinity Logic Enabled</span>
+                            <span className="text-[9px] font-bold opacity-60 uppercase" style={{ color: 'var(--text-primary)' }}>Finding Frequently Bought Together Items</span>
                           </div>
                         </div>
                         <div className="w-6 h-6 rounded-full flex items-center justify-center text-white" style={{ background: 'var(--success-border)' }}>
