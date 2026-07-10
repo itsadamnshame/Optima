@@ -17,6 +17,8 @@ import { lookupTerm } from '../data/glossary';
 export default function InfoTooltip({ term, text, size = 12, side = 'top' }) {
   const [visible, setVisible] = useState(false);
   const ref = useRef(null);
+  const tooltipRef = useRef(null);
+  const [styleOffset, setStyleOffset] = useState({ x: 0, y: 0 });
 
   const entry = term ? lookupTerm(term) : null;
   const definition = text || entry?.definition;
@@ -33,6 +35,57 @@ export default function InfoTooltip({ term, text, size = 12, side = 'top' }) {
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [visible]);
+
+  // Adjust tooltip margin offsets to prevent viewport overflow
+  useEffect(() => {
+    if (!visible) {
+      setStyleOffset({ x: 0, y: 0 });
+      return;
+    }
+
+    function checkPosition() {
+      if (!tooltipRef.current) return;
+      const rect = tooltipRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const padding = 12;
+
+      setStyleOffset(prev => {
+        const naturalRight = rect.right - prev.x;
+        const naturalLeft = rect.left - prev.x;
+        const naturalBottom = rect.bottom - prev.y;
+        const naturalTop = rect.top - prev.y;
+
+        let newX = 0;
+        let newY = 0;
+
+        if (naturalRight > viewportWidth - padding) {
+          newX = (viewportWidth - padding) - naturalRight;
+        } else if (naturalLeft < padding) {
+          newX = padding - naturalLeft;
+        }
+
+        if (naturalBottom > viewportHeight - padding) {
+          newY = (viewportHeight - padding) - naturalBottom;
+        } else if (naturalTop < padding) {
+          newY = padding - naturalTop;
+        }
+
+        if (prev.x === newX && prev.y === newY) return prev;
+        return { x: newX, y: newY };
+      });
+    }
+
+    const handle = requestAnimationFrame(checkPosition);
+    window.addEventListener('resize', checkPosition);
+    window.addEventListener('scroll', checkPosition, true);
+
+    return () => {
+      cancelAnimationFrame(handle);
+      window.removeEventListener('resize', checkPosition);
+      window.removeEventListener('scroll', checkPosition, true);
+    };
   }, [visible]);
 
   if (!definition) return null;
@@ -70,8 +123,13 @@ export default function InfoTooltip({ term, text, size = 12, side = 'top' }) {
 
       {visible && (
         <div
+          ref={tooltipRef}
           className={`absolute z-[200] w-64 animate-in fade-in zoom-in-95 duration-150 ${sideClasses[side]}`}
           role="tooltip"
+          style={{
+            marginLeft: styleOffset.x ? `${styleOffset.x}px` : undefined,
+            marginTop: styleOffset.y ? `${styleOffset.y}px` : undefined,
+          }}
         >
           <div
             className="rounded-2xl border p-4 shadow-2xl text-left"
