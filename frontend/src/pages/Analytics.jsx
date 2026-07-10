@@ -406,11 +406,6 @@ export default function Analytics({
                       {tag}
                     </span>
                   ))}
-                  {metrics.is_zombie && (
-                    <span className="px-4 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                      <AlertCircle size={12} /> No Sales Trend <span className="text-[9px] opacity-60 normal-case">stagnant</span>
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
