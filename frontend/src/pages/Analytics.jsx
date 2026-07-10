@@ -646,8 +646,8 @@ export default function Analytics({
                               cursor={{ stroke: 'rgba(99,102,241,0.2)', strokeWidth: 1 }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: chartColors.label }} />
-                            <Line type="monotone" name={`${benchmarkYear} (Actual)`} dataKey="historical" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
-                            <Line type="monotone" name="Current / Forecast" dataKey="current" stroke="var(--accent)" strokeWidth={3} dot={false} connectNulls />
+                            <Line type="monotone" name={`${benchmarkYear} (Actual)`} dataKey="historical" stroke="var(--chart-line-actual)" strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
+                            <Line type="monotone" name="Current / Forecast" dataKey="current" stroke="var(--chart-line-forecast)" strokeWidth={3} dot={false} connectNulls />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -655,14 +655,14 @@ export default function Analytics({
                       <div className="p-4 rounded-2xl flex flex-col gap-3 border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                         <div className="flex items-center justify-between px-2">
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>{yoy.previous.label}</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--chart-line-actual)' }}>{yoy.previous.label}</p>
                             <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{formatMetric(yoy.previous.value)}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>vs</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--accent)' }}>{yoy.current.label}</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--chart-line-forecast)' }}>{yoy.current.label}</p>
                             <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{formatMetric(yoy.current.value)}</p>
                           </div>
                         </div>
