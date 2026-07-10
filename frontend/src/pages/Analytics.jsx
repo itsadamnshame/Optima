@@ -701,10 +701,10 @@ export default function Analytics({
                     <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Sales Direction</p>
                     <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
                       <div className={`w-2 h-2 rounded-full ${metrics.trend_status === 'STAGNANT' || metrics.trend_status === 'DECLINE' ? 'bg-rose-500' : metrics.trend_status === 'GROWTH' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                      {metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : 'UNKNOWN')}
+                      {metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : (!metrics || Object.keys(metrics).length === 0) ? 'NO DATA' : 'UNKNOWN')}
                     </p>
                     <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
-                      {metrics.story || "Forecast insights are unavailable for this run."}
+                      {metrics.story || ((!metrics || Object.keys(metrics).length === 0) ? "The forecasting engine did not generate insights. Ensure your dataset spans at least 12 months and check the backend server terminal for model training errors." : "Forecast insights are unavailable for this run.")}
                     </p>
                     {metrics.is_zombie && (
                       <div className="mt-3 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5">
@@ -715,7 +715,9 @@ export default function Analytics({
                   </div>
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                     <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Data Availability</p>
-                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Sufficient historical data</p>
+                    <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                      {metrics.status === 'too_little_data' ? 'Insufficient history (< 12 months)' : (!metrics || Object.keys(metrics).length === 0) ? 'Unavailable (check data range)' : 'Sufficient historical data'}
+                    </p>
                   </div>
                 </div>
               </Card>
