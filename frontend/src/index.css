@@ -52,7 +52,8 @@
   --chart-label: #a1a1aa;
   --chart-line-actual: #60a5fa;    /* Soft Steel Blue — actual/real sales */
   --chart-line-forecast: #fb923c;  /* Warm Muted Orange — predicted sales */
-  --chart-area-fill: rgba(251,146,60,0.08);
+  --chart-area-fill: rgba(250,204,21,0.15); /* Light Office Yellow — confidence range fill */
+  --chart-area-stroke: rgba(250,204,21,0.5); /* Light Office Yellow — confidence range stroke */
   --chart-tooltip-bg: #18181b;
   --chart-tooltip-border: rgba(255,255,255,0.12);
   --chart-tooltip-text: #f4f4f5;
@@ -169,7 +170,8 @@
   --chart-label:         #6b7280;
   --chart-line-actual:   #2563eb;   /* Professional Blue — actual/real sales */
   --chart-line-forecast: #ea7118;   /* Warm Orange — predicted sales */
-  --chart-area-fill:     rgba(234,113,24,0.06);
+  --chart-area-fill:     rgba(234,179,8,0.15); /* Warm Office Yellow — confidence range fill */
+  --chart-area-stroke:   rgba(234,179,8,0.5); /* Warm Office Yellow — confidence range stroke */
   --chart-tooltip-bg:    #ffffff;
   --chart-tooltip-border:rgba(0,0,0,0.1);
   --chart-tooltip-text:  #111827;

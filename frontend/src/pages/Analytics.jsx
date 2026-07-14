@@ -106,6 +106,7 @@ export default function Analytics({
       actual: 'var(--chart-line-actual)',
       forecast: 'var(--chart-line-forecast)',
       area: 'var(--chart-area-fill)',
+      areaStroke: 'var(--chart-area-stroke)',
       tooltip: {
         bg: 'var(--chart-tooltip-bg)',
         border: 'var(--chart-tooltip-border)',
@@ -515,7 +516,7 @@ export default function Analytics({
                       labelStyle={{ color: chartColors.label, marginBottom: '4px' }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: chartColors.label }} />
-                    <Area type="monotone" dataKey="upper" baseValue="lower" stroke={chartColors.forecast} strokeWidth={0.5} fill={chartColors.area} connectNulls name="Confidence Range" />
+                    <Area type="monotone" dataKey="upper" baseValue="lower" stroke={chartColors.areaStroke} strokeWidth={0.5} fill={chartColors.area} connectNulls name="Confidence Range" />
                     <Line type="monotone" dataKey="forecast" stroke={chartColors.forecast} strokeWidth={3} dot={false} connectNulls name={`Predicted ${metricLabel}`} />
                     <Line type="monotone" dataKey="actual" stroke={chartColors.actual} strokeWidth={3} dot={{ r: 4, fill: chartColors.actual, strokeWidth: 0 }} connectNulls name={`Actual ${metricLabel}`} />
                     <ReferenceLine x={chartData.find(d => d.actual === null || d.actual === undefined)?.date} stroke={chartColors.forecast} strokeDasharray="4 4" strokeOpacity={0.7} label={{ value: 'FORECAST START', position: 'insideTopRight', fill: chartColors.forecast, fontSize: 8, fontWeight: 900 }} />
