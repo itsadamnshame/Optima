@@ -697,11 +697,100 @@ export default function Analytics({
 
               <Card title="Sales Trend Summary" subtitle="Expected units sold" icon={Layers} className="self-start">
                 <div className="space-y-4 pt-2">
-                  {/* Status Badge */}
+                  {/* Status + Story */}
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                     <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-faint)' }}>Sales Direction</p>
                     {(() => {
-                      const trendStatus = metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : (!metrics || Object.keys(metrics).length === 0) ? 'NO DATA' : 'NO DATA');
+                      /* ── Client-side story engine ──────────────────────────────
+                         Computes a full business narrative from chartData so that
+                         every run — old or new — always shows meaningful insight.
+                      ──────────────────────────────────────────────────────────── */
+                      const computeClientStory = (data, isGlobal) => {
+                        const historical = data.filter(d => d.actual !== null && d.actual !== undefined);
+                        const future     = data.filter(d => (d.actual === null || d.actual === undefined) && d.forecast !== null && d.forecast !== undefined);
+
+                        if (historical.length === 0 && future.length === 0) return null;
+
+                        const histAvg  = historical.length ? historical.reduce((s, d) => s + d.actual, 0) / historical.length : 0;
+                        const futAvg   = future.length     ? future.reduce((s, d) => s + d.forecast, 0) / future.length       : 0;
+                        const futTotal = future.length     ? future.reduce((s, d) => s + d.forecast, 0)                       : 0;
+                        const histMonths = historical.length;
+                        const futMonths  = future.length;
+
+                        const growth = histAvg > 0 ? ((futAvg - histAvg) / histAvg) * 100 : 0;
+                        const label  = isGlobal ? 'your store' : 'this product';
+                        const Label  = isGlobal ? 'Your store'  : 'This product';
+
+                        let status, narrative, action;
+
+                        if (future.length === 0) {
+                          // No forecast data available at all
+                          return {
+                            status: 'NO DATA',
+                            narrative: 'No forecast data was found for this item. Ensure the dataset spans at least 12 months and try re-running the forecast.',
+                            action: null,
+                          };
+                        }
+
+                        if (metrics.is_zombie) {
+                          status    = 'STAGNANT';
+                          narrative = histAvg > 0
+                            ? `${Label} averaged ${Math.round(histAvg)} units/month over the last ${histMonths} months, but sales have come to a complete stop in recent periods — a clear sign of fading demand or a stock availability issue. The model has capped the forecast at zero because there is no upward trend to project.`
+                            : `${Label} shows no recorded sales. There is no demand signal for the model to learn from, so the forecast is held at zero. This typically happens when a product is newly listed, out of stock, or discontinued.`;
+                          action    = histAvg > 0
+                            ? `Review whether ${label} is still actively stocked and promoted. Run a clearance campaign or investigate if a supply disruption is causing the drop.`
+                            : `Verify the product data is correct and that it has been actively available to customers for at least 3–6 months, then re-run the forecast.`;
+                        } else if (growth > 15) {
+                          status    = 'GROWTH';
+                          narrative = `${Label} is on a strong upward trajectory. Over the last ${histMonths} months, average monthly sales were ${Math.round(histAvg)} units. The forecast projects this rising to ${Math.round(futAvg)} units/month — a ${growth.toFixed(1)}% increase over the next ${futMonths} months (projected total: ${Math.round(futTotal)} units). Rising demand at this pace means your current stock levels may fall short.`;
+                          action    = `Increase your reorder quantities by at least ${Math.min(Math.round(growth), 50)}% before the next restocking cycle. Notify your supplier now to secure priority fulfillment and avoid stockouts during peak demand.`;
+                        } else if (growth > 5) {
+                          status    = 'GROWTH';
+                          narrative = `${Label} is showing steady, healthy growth. Historical average was ${Math.round(histAvg)} units/month across ${histMonths} months. The forecast predicts ${Math.round(futAvg)} units/month going forward — a ${growth.toFixed(1)}% improvement over the next ${futMonths} months (projected total: ${Math.round(futTotal)} units). This is a reliable, positive signal.`;
+                          action    = `Plan a ${Math.round(growth)}% uplift in your reorder quantities to meet the projected increase without over-stocking. This is also a good time to negotiate better supplier terms given the growing volume.`;
+                        } else if (growth < -15) {
+                          status    = 'DECLINE';
+                          narrative = `${Label} is experiencing a significant drop in demand. Monthly sales averaged ${Math.round(histAvg)} units historically, but the forecast projects only ${Math.round(futAvg)} units/month — a ${Math.abs(growth).toFixed(1)}% decline over the next ${futMonths} months (projected total: ${Math.round(futTotal)} units). This signals a shrinking customer base or a market shift that needs attention.`;
+                          action    = `Run targeted promotions or bundle deals immediately to stimulate demand. Reduce incoming stock orders to avoid excess inventory, and consider liquidating current overstock to free up cash.`;
+                        } else if (growth < -5) {
+                          status    = 'DECLINE';
+                          narrative = `${Label} is trending slightly downward. Historical average was ${Math.round(histAvg)} units/month, while the forecast predicts ${Math.round(futAvg)} units/month — a ${Math.abs(growth).toFixed(1)}% dip over the next ${futMonths} months (projected total: ${Math.round(futTotal)} units). This is an early warning sign that is still manageable.`;
+                          action    = `Launch a promotional push or bundle this item with faster-moving products to slow the decline. Monitor closely over the next 60 days before making any major inventory changes.`;
+                        } else {
+                          status    = 'STABLE';
+                          narrative = `${Label} is holding steady. Historical average was ${Math.round(histAvg)} units/month across ${histMonths} months, and the forecast projects ${Math.round(futAvg)} units/month — only a ${growth > 0 ? '+' : ''}${growth.toFixed(1)}% change over ${futMonths} months (projected total: ${Math.round(futTotal)} units). Predictable demand like this is a strong foundation for efficient operations.`;
+                          action    = `Maintain current stock levels and reorder cadence. Use this stable, predictable volume to negotiate better pricing or lead times with your supplier — consistent orders are a valuable bargaining chip.`;
+                        }
+
+                        return { status, narrative, action };
+                      };
+
+                      const isGlobal = activeTab === 'global';
+
+                      // Prefer backend-generated story; fall back to client-computed one
+                      let trendStatus = metrics.trend_status;
+                      let narrativePart, actionPart;
+
+                      if (metrics.story) {
+                        // Backend story exists — parse it
+                        const actionIdx = metrics.story.indexOf('Action:');
+                        narrativePart = actionIdx > -1 ? metrics.story.slice(0, actionIdx).trim() : metrics.story;
+                        actionPart    = actionIdx > -1 ? metrics.story.slice(actionIdx).replace(/^Action:\s*/, '').trim() : null;
+                        if (!trendStatus) trendStatus = metrics.is_zombie ? 'STAGNANT' : 'STABLE';
+                      } else {
+                        // Compute from chart data so old runs always show insights
+                        const computed = computeClientStory(chartData, isGlobal);
+                        if (computed) {
+                          trendStatus   = computed.status;
+                          narrativePart = computed.narrative;
+                          actionPart    = computed.action;
+                        } else {
+                          trendStatus   = 'NO DATA';
+                          narrativePart = 'No forecast data available. Ensure the dataset spans at least 12 months and re-run the forecast.';
+                          actionPart    = null;
+                        }
+                      }
+
                       const statusColors = {
                         GROWTH:   { dot: '#3b82f6', text: '#3b82f6', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.2)'  },
                         STABLE:   { dot: '#6366f1', text: '#6366f1', bg: 'rgba(99,102,241,0.08)',  border: 'rgba(99,102,241,0.2)'  },
@@ -710,14 +799,6 @@ export default function Analytics({
                         'NO DATA':{ dot: '#71717a', text: '#71717a', bg: 'rgba(113,113,122,0.06)', border: 'rgba(113,113,122,0.15)' },
                       };
                       const sc = statusColors[trendStatus] || statusColors['NO DATA'];
-
-                      // Split story at 'Action:' for distinct display
-                      const rawStory = metrics.story || ((!metrics || Object.keys(metrics).length === 0)
-                        ? "The forecasting engine did not generate insights. Ensure your dataset spans at least 12 months and check the backend server terminal for model training errors."
-                        : "Forecast insights are currently unavailable. Please re-run the forecast to generate updated insights.");
-                      const actionIdx = rawStory.indexOf('Action:');
-                      const narrativePart = actionIdx > -1 ? rawStory.slice(0, actionIdx).trim() : rawStory;
-                      const actionPart    = actionIdx > -1 ? rawStory.slice(actionIdx).trim() : null;
 
                       return (
                         <>
@@ -732,7 +813,7 @@ export default function Analytics({
                             <div className="p-3 rounded-xl" style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.15)' }}>
                               <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Recommended Action</p>
                               <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                                {actionPart.replace(/^Action:\s*/, '')}
+                                {actionPart}
                               </p>
                             </div>
                           )}
