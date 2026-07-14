@@ -79,45 +79,164 @@ def detect_zombies(monthly_series):
     return False
 
 def generate_insight_story(df, is_zombie, item_name):
-    # Calculate historical vs forecast
+    """
+    Generates a rich, business-friendly narrative for each trend state.
+    Returns (trend_status, story_text).
+    """
+    # Calculate historical vs forecast averages
     historical = df[df['type'] == 'historical']['actual_value']
-    future = df[df['type'] == 'future']['predicted_value']
-    
+    future     = df[df['type'] == 'future']['predicted_value']
+
     hist_avg = historical.mean() if not historical.empty else 0
-    fut_avg = future.mean() if not future.empty else 0
-    
+    fut_avg  = future.mean()     if not future.empty     else 0
+    hist_total = historical.sum() if not historical.empty else 0
+    fut_total  = future.sum()     if not future.empty     else 0
+
+    # Magnitude of change
     if hist_avg > 0:
         growth = ((fut_avg - hist_avg) / hist_avg) * 100
     else:
         growth = 0
-        
+
+    # How many forecast months do we have?
+    forecast_months = len(future)
     is_global = (item_name == "GLOBAL_STORE_TOTAL")
-    
+
+    # ── STAGNANT (zombie) ─────────────────────────────────────────────────────
     if is_zombie:
         status = "STAGNANT"
         if is_global:
-            story = "Overall store sales have been flat or at zero. We recommend checking your data to see if there are any errors."
+            story = (
+                "Your store's overall sales have shown little to no activity in recent months — "
+                "the data points to a flat or inactive sales pattern across your entire catalog. "
+                "This typically happens when most products have stopped moving, possibly due to "
+                "low customer traffic, outdated inventory, or missing transaction records. "
+                "We recommend reviewing your product lineup, running a store-wide promotion, "
+                "or checking that your sales data is complete and up to date before making major decisions."
+            )
         else:
-            story = f"Sales for '{item_name}' have completely stopped. Consider removing it from your active catalog or putting it on clearance."
+            story = (
+                f"This product has had little to no sales activity recently, which means the system "
+                f"cannot reliably predict its future demand — the forecast is held flat as a result. "
+                f"This could mean the product is no longer in demand, has been discontinued, or was "
+                f"simply not recorded in recent transactions. "
+                f"We recommend either running a targeted promotion to test if there is remaining interest, "
+                f"or considering phasing it out of your active catalog to free up shelf space for better-performing items."
+            )
+
+    # ── STRONG GROWTH ─────────────────────────────────────────────────────────
+    elif growth > 15:
+        status = "GROWTH"
+        if is_global:
+            story = (
+                f"Strong news — your store is on a clear upward trajectory. "
+                f"Over the next {forecast_months} months, total sales are expected to grow by "
+                f"{growth:.1f}% compared to recent historical averages, reaching an estimated "
+                f"{fut_total:,.0f} units sold. "
+                f"This level of growth is significant: make sure your suppliers can handle the "
+                f"increased demand and consider stocking up ahead of your busiest expected months. "
+                f"It's also a good time to review staffing and ensure your operations can keep pace."
+            )
+        else:
+            story = (
+                f"This product is showing strong growth momentum. "
+                f"Sales are expected to increase by {growth:.1f}% over the next {forecast_months} months, "
+                f"reaching an estimated {fut_total:,.0f} units sold. "
+                f"To avoid running out of stock during peak demand, we recommend placing reorder "
+                f"requests sooner than usual and increasing your safety stock buffer. "
+                f"This product appears to be gaining traction — consider giving it more shelf visibility "
+                f"or featuring it in promotions to maximize the opportunity."
+            )
+
+    # ── MODERATE GROWTH ───────────────────────────────────────────────────────
     elif growth > 5:
         status = "GROWTH"
         if is_global:
-            story = f"We expect total store sales to grow by {growth:.1f}%. Make sure you have enough stock across the board to handle the extra demand!"
+            story = (
+                f"Your store's overall sales are expected to grow steadily over the next {forecast_months} months, "
+                f"with a projected increase of {growth:.1f}% compared to historical averages "
+                f"(approximately {fut_total:,.0f} total units). "
+                f"This is a positive signal — demand is moving in the right direction. "
+                f"We recommend maintaining your current stock levels with a modest buffer increase "
+                f"to comfortably cover the expected rise in orders without over-investing in inventory."
+            )
         else:
-            story = f"We expect sales for '{item_name}' to grow by {growth:.1f}%. Make sure to order more stock soon so you don't run out."
+            story = (
+                f"This product is trending upward with a projected sales increase of {growth:.1f}% "
+                f"over the next {forecast_months} months (approximately {fut_total:,.0f} units). "
+                f"Demand is healthy and growing steadily. "
+                f"We recommend reviewing your reorder schedule and slightly increasing your stock order "
+                f"to keep up with this positive trend without risking a stockout."
+            )
+
+    # ── SHARP DECLINE ─────────────────────────────────────────────────────────
+    elif growth < -15:
+        status = "DECLINE"
+        if is_global:
+            story = (
+                f"Caution: total store sales are expected to drop sharply — by {abs(growth):.1f}% — "
+                f"over the next {forecast_months} months, projecting around {fut_total:,.0f} units. "
+                f"This level of decline warrants immediate attention. "
+                f"We recommend running a store-wide promotion or discount campaign to stimulate customer "
+                f"traffic, reviewing your pricing strategy, and temporarily reducing new stock orders "
+                f"to avoid being left with excess unsold inventory."
+            )
+        else:
+            story = (
+                f"This product is experiencing a significant sales decline — demand is expected to drop "
+                f"by {abs(growth):.1f}% over the next {forecast_months} months "
+                f"(approximately {fut_total:,.0f} units). "
+                f"To minimize losses, consider running a clearance promotion or bundling it with a "
+                f"stronger-performing product. Avoid restocking at previous levels — order conservatively "
+                f"until demand shows signs of recovery."
+            )
+
+    # ── MODERATE DECLINE ──────────────────────────────────────────────────────
     elif growth < -5:
         status = "DECLINE"
         if is_global:
-            story = f"We expect total store sales to drop by {abs(growth):.1f}%. You might want to run a store-wide promotion to bring more customers in."
+            story = (
+                f"Store-wide sales show a moderate downward trend, with a projected decline of "
+                f"{abs(growth):.1f}% over the next {forecast_months} months "
+                f"(estimated {fut_total:,.0f} units). "
+                f"While not alarming, this is a signal to be watchful. "
+                f"Consider exploring promotions for slower-moving products and reviewing which items "
+                f"are underperforming to make targeted improvements before the decline steepens."
+            )
         else:
-            story = f"We expect sales for '{item_name}' to drop by {abs(growth):.1f}%. Try putting it on discount to help clear out the inventory."
+            story = (
+                f"Sales for this product are gradually declining — a drop of {abs(growth):.1f}% "
+                f"is expected over the next {forecast_months} months "
+                f"(approximately {fut_total:,.0f} units). "
+                f"This is manageable if addressed early. "
+                f"A targeted discount or a paired bundle with a higher-demand product could help "
+                f"slow the decline. Adjust your next stock order downward to match the expected demand."
+            )
+
+    # ── STABLE ────────────────────────────────────────────────────────────────
     else:
         status = "STABLE"
         if is_global:
-            story = f"Total store sales look very stable (only a {growth:.1f}% change). You can keep running things exactly as you are."
+            story = (
+                f"Your store's overall sales are holding steady — total demand is expected to remain "
+                f"consistent over the next {forecast_months} months, with only a {growth:+.1f}% change "
+                f"(approximately {fut_total:,.0f} units). "
+                f"This is a reliable baseline to plan from. "
+                f"No major adjustments are needed right now — you can confidently maintain your "
+                f"current stock levels and ordering schedule. It's a good time to review whether "
+                f"any individual products can be promoted to push overall sales higher."
+            )
         else:
-            story = f"Sales for '{item_name}' look very stable (only a {growth:.1f}% change). No urgent changes are needed right now."
-            
+            story = (
+                f"This product is performing consistently — sales are expected to stay roughly the "
+                f"same over the next {forecast_months} months, with only a {growth:+.1f}% change "
+                f"(approximately {fut_total:,.0f} units). "
+                f"Stable demand makes this a reliable product for inventory planning. "
+                f"You can safely maintain your current reorder schedule. "
+                f"If you want to boost performance, consider a light promotion or pairing it with "
+                f"a complementary item to attract additional interest."
+            )
+
     return status, story
 
 

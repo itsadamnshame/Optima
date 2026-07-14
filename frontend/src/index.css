@@ -50,9 +50,9 @@
   --chart-grid: rgba(255,255,255,0.06);
   --chart-axis: #71717a;
   --chart-label: #a1a1aa;
-  --chart-line-actual: #10b981;    /* Emerald Green — actual/real sales */
-  --chart-line-forecast: #ef4444;  /* Red — predicted sales */
-  --chart-area-fill: rgba(239,68,68,0.08);
+  --chart-line-actual: #3b82f6;    /* Soft Navy Blue — actual/real sales */
+  --chart-line-forecast: #f59e0b;  /* Warm Amber — predicted sales */
+  --chart-area-fill: rgba(245,158,11,0.08);
   --chart-tooltip-bg: #18181b;
   --chart-tooltip-border: rgba(255,255,255,0.12);
   --chart-tooltip-text: #f4f4f5;
@@ -167,9 +167,9 @@
   --chart-grid:          rgba(0,0,0,0.06);
   --chart-axis:          #9ca3af;
   --chart-label:         #6b7280;
-  --chart-line-actual:   #059669;   /* Emerald Green — actual/real sales */
-  --chart-line-forecast: #dc2626;   /* Red — predicted sales */
-  --chart-area-fill:     rgba(220,38,38,0.06);
+  --chart-line-actual:   #2563eb;   /* Soft Navy Blue — actual/real sales */
+  --chart-line-forecast: #d97706;   /* Warm Amber — predicted sales */
+  --chart-area-fill:     rgba(217,119,6,0.06);
   --chart-tooltip-bg:    #ffffff;
   --chart-tooltip-border:rgba(0,0,0,0.1);
   --chart-tooltip-text:  #111827;

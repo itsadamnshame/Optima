@@ -43,7 +43,7 @@ const Metric = ({ label, value, sub, trend }) => (
     <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>{label}</p>
     <div className="flex items-baseline gap-2">
       <span className="text-2xl font-black tracking-tighter" style={{ color: 'var(--text-heading)' }}>{value}</span>
-      {trend && <span className={`text-[10px] font-black ${trend > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+      {trend && <span className={`text-[10px] font-black ${trend > 0 ? 'text-blue-400' : 'text-amber-400'}`}>
         {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
       </span>}
     </div>
@@ -378,22 +378,22 @@ export default function Analytics({
                 {metrics.mape_pct !== undefined && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full xl:w-auto">
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Forecast Accuracy <InfoTooltip term="MAPE" size={10} side="bottom" /></p>
-                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct, 1)}% error <span className="text-[10px] text-zinc-400 ml-1">MAPE</span></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Prediction Accuracy <InfoTooltip term="ERROR PERCENTAGE" size={10} side="bottom" /></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mape_pct, 1)}% avg. error <span className="text-[10px] text-zinc-400 ml-1">rate</span></p>
                     </div>
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Avg. Unit Error <InfoTooltip term="MAE" size={10} side="bottom" /></p>
-                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mae, 2)} units <span className="text-[10px] text-zinc-400 ml-1">MAE</span></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Typical Estimation Gap <InfoTooltip term="AVG. ERROR MAGNITUDE" size={10} side="bottom" /></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.mae, 2)} units <span className="text-[10px] text-zinc-400 ml-1">off avg.</span></p>
                     </div>
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Worst-Case Error <InfoTooltip term="RMSE" size={10} side="bottom" /></p>
-                      <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} units <span className="text-[10px] text-zinc-400 ml-1">RMSE</span></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Largest Estimation Gap <InfoTooltip term="PEAK ERROR SENSITIVITY" size={10} side="bottom" /></p>
+                      <p className="text-sm font-bold text-white">{formatMetric(metrics.rmse, 2)} units <span className="text-[10px] text-zinc-400 ml-1">worst case</span></p>
                     </div>
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
-                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Sales Trend Health <InfoTooltip term={metrics.is_zombie ? "Stagnant Trend" : "Healthy Trend"} size={10} side="bottom" /></p>
+                      <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Demand Predictability <InfoTooltip term={metrics.is_zombie ? "STAGNANT TREND" : "HEALTHY TREND"} size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                        {metrics.is_zombie ? 'STAGNANT' : 'HEALTHY'}
+                        <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                        {metrics.is_zombie ? 'INACTIVE' : 'RELIABLE'}
                       </p>
                     </div>
                   </div>
@@ -474,22 +474,22 @@ export default function Analytics({
               <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Chart Key:</p>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-1 rounded-full" style={{ background: 'var(--chart-line-actual)' }} />
-                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Actual Sales <span className="text-[9px] opacity-60">(recorded)</span></span>
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Actual Sales <span className="text-[9px] opacity-60">(recorded history)</span></span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-1 rounded-full" style={{ background: 'var(--chart-line-forecast)', opacity: 0.9 }} />
-                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Forecasted Sales <span className="text-[9px] opacity-60">(predicted)</span></span>
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Predicted Sales <span className="text-[9px] opacity-60">(forecast)</span></span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-3 rounded" style={{ background: 'var(--chart-area-fill)', opacity: 0.6 }} />
-                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Confidence Range <span className="text-[9px] opacity-60">(possible high/low)</span></span>
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Expected Range <span className="text-[9px] opacity-60">(best/worst case)</span></span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-[1px] h-4 border-l-2 border-dashed" style={{ borderColor: 'var(--chart-line-forecast)' }} />
-                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Forecast Begins Here</span>
+                <span className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Prediction Starts Here</span>
               </div>
             </div>
-            <Card title="Sales Forecast" subtitle="Predicted units to be sold over the next 12 months" icon={TrendingUp}>
+            <Card title="12-Month Sales Prediction" subtitle="Predicted units to be sold over the next 12 months" icon={TrendingUp}>
               <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData}>
@@ -558,11 +558,11 @@ export default function Analytics({
                         <thead>
                           <tr className="sticky top-0 z-10" style={{ background: 'var(--table-header-bg)' }}>
                             <th className="px-4 py-3 text-left font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Month</th>
-                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>Actual Units</th>
-                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>Predicted Units</th>
-                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range Low</th>
-                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Range High</th>
-                            <th className="px-4 py-3 text-center font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Type</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-actual)', borderBottom: '1px solid var(--border-subtle)' }}>Actual Sales (Units)</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest" style={{ color: 'var(--chart-line-forecast)', borderBottom: '1px solid var(--border-subtle)' }}>Predicted Sales (Units)</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Lowest Estimate</th>
+                            <th className="px-4 py-3 text-right font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Highest Estimate</th>
+                            <th className="px-4 py-3 text-center font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)', borderBottom: '1px solid var(--border-subtle)' }}>Data Type</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -606,10 +606,10 @@ export default function Analytics({
             {/* STRATEGIC BENCHMARKING */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <Card 
-                title="Strategic Benchmarking" 
-                subtitle="Historical YoY Performance" 
-                className="md:col-span-2" 
-                icon={TrendingUp}
+                  title="Past vs. Predicted Comparison"
+                 subtitle="How does this period compare to previous years?"
+                 className="md:col-span-2" 
+                 icon={TrendingUp}
                 action={
                   <div className="flex bg-[var(--input-bg)] rounded-xl p-1 border border-[var(--border-subtle)] overflow-x-auto max-w-[200px] sm:max-w-none no-scrollbar">
                     {historicalYears.map(yr => (
@@ -641,8 +641,8 @@ export default function Analytics({
                               cursor={{ stroke: 'rgba(99,102,241,0.2)', strokeWidth: 1 }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: chartColors.label }} />
-                            <Line type="monotone" name={`${benchmarkYear} (Actual)`} dataKey="historical" stroke="var(--chart-line-actual)" strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
-                            <Line type="monotone" name="Current / Forecast" dataKey="current" stroke="var(--chart-line-forecast)" strokeWidth={3} dot={false} connectNulls />
+                            <Line type="monotone" name={`${benchmarkYear} (Past Sales)`} dataKey="historical" stroke="var(--chart-line-actual)" strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
+                            <Line type="monotone" name="Current Forecast" dataKey="current" stroke="var(--chart-line-forecast)" strokeWidth={3} dot={false} connectNulls />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -666,9 +666,9 @@ export default function Analytics({
 
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Year-over-Year Volume Change <span className="text-[8px] opacity-50 normal-case">YoY</span></p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Annual Sales Change <span className="text-[8px] opacity-50 normal-case">vs. prior year</span></p>
                             <div className="flex items-baseline gap-2">
-                              <p className={`text-xl font-black ${yoy.diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                              <p className={`text-xl font-black ${yoy.diff >= 0 ? 'text-blue-500' : 'text-amber-500'}`}>
                                 {yoy.diff >= 0 ? '+' : ''}{Number(yoy.diff || 0).toFixed(1)}%
                               </p>
                               <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>
@@ -677,9 +677,9 @@ export default function Analytics({
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Summary</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Outlook</p>
                             <p className="text-xs font-bold uppercase italic" style={{ color: 'var(--text-primary)' }}>
-                              {yoy.diff >= 0 ? 'Higher volume predicted' : 'Lower volume predicted'}
+                              {yoy.diff >= 0 ? 'Higher volume expected' : 'Lower volume expected'}
                             </p>
                           </div>
                         </div>
@@ -688,35 +688,59 @@ export default function Analytics({
                   ) : (
                     <div className="text-center space-y-3 opacity-50">
                       <AlertCircle size={32} className="mx-auto text-[var(--text-faint)]" />
-                      <p className="text-xs font-bold uppercase tracking-widest">Insufficient Historical Depth</p>
-                      <p className="text-[10px] max-w-[200px]">We need at least {benchmarkYearOffset} years of prior data to generate this benchmark.</p>
+                      <p className="text-xs font-bold uppercase tracking-widest">Not Enough Past Sales Data</p>
+                      <p className="text-[10px] max-w-[200px]">We need at least {benchmarkYearOffset} year(s) of prior sales history to generate this comparison.</p>
                     </div>
                   )}
                 </div>
               </Card>
 
-              <Card title="Sales Trend Summary" subtitle="Expected units sold" icon={Layers} className="self-start">
+              <Card title="Sales Direction Summary" subtitle="What the prediction means for your business" icon={Layers} className="self-start">
                 <div className="space-y-4 pt-2">
+                  {/* Sales direction badge */}
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Sales Direction</p>
-                    <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
-                      <div className={`w-2 h-2 rounded-full ${metrics.trend_status === 'STAGNANT' || metrics.trend_status === 'DECLINE' ? 'bg-rose-500' : metrics.trend_status === 'GROWTH' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                      {metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : (!metrics || Object.keys(metrics).length === 0) ? 'NO DATA' : 'UNKNOWN')}
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-faint)' }}>Sales Direction</p>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                        metrics.trend_status === 'STAGNANT' ? 'bg-slate-400' :
+                        metrics.trend_status === 'DECLINE' ? 'bg-amber-500' :
+                        metrics.trend_status === 'GROWTH' ? 'bg-blue-500' :
+                        'bg-blue-400'
+                      }`} />
+                      <p className="text-sm font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>
+                        {metrics.trend_status === 'STAGNANT' ? 'No Movement (Inactive)' :
+                         metrics.trend_status === 'DECLINE' ? 'Sales Declining' :
+                         metrics.trend_status === 'GROWTH' ? 'Sales Growing' :
+                         metrics.trend_status === 'STABLE' ? 'Sales Stable' :
+                         metrics.is_zombie ? 'No Movement (Inactive)' : 'Calculating...'}
+                      </p>
+                    </div>
+                    {/* Story text */}
+                    <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      {metrics.story || ((!metrics || Object.keys(metrics).length === 0)
+                        ? "No prediction insights were generated. Make sure your data covers at least 12 months of sales history."
+                        : "Prediction insights are not available for this result.")}
                     </p>
-                    <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
-                      {metrics.story || ((!metrics || Object.keys(metrics).length === 0) ? "The forecasting engine did not generate insights. Ensure your dataset spans at least 12 months and check the backend server terminal for model training errors." : "Forecast insights are unavailable for this run.")}
-                    </p>
+                    {/* Stagnant explanation */}
                     {metrics.is_zombie && (
-                      <div className="mt-3 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5">
-                        <p className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1">What does Stagnant mean?</p>
-                        <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>This product shows no significant upward or downward movement in sales. Its predicted values are held flat and may be less reliable for planning. Consider reviewing demand or promotions for this item.</p>
+                      <div className="mt-4 p-3 rounded-xl border border-slate-500/20 bg-slate-500/5">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Why is this showing as inactive?</p>
+                        <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                          When a product has no consistent sales activity in recent months, our system cannot generate a meaningful growth or decline prediction. Instead, the forecast is held flat to avoid misleading estimates. This is not an error — it simply means the product needs attention before it can be reliably forecasted.
+                        </p>
                       </div>
                     )}
                   </div>
+
+                  {/* Data coverage */}
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Data Availability</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Sales History Coverage</p>
                     <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                      {metrics.status === 'too_little_data' ? 'Insufficient history (< 12 months)' : (!metrics || Object.keys(metrics).length === 0) ? 'Unavailable (check data range)' : 'Sufficient historical data'}
+                      {metrics.status === 'too_little_data'
+                        ? 'Not enough history (less than 12 months of data available)'
+                        : (!metrics || Object.keys(metrics).length === 0)
+                        ? 'Unavailable — check your data date range'
+                        : 'Sufficient sales history available for forecasting'}
                     </p>
                   </div>
                 </div>
@@ -729,8 +753,8 @@ export default function Analytics({
                 <div className="flex items-center gap-3 px-4">
                   <div className="p-2 rounded-xl" style={{ background: 'var(--card-accent-bg)', color: 'var(--accent)' }}><Layers size={20} /></div>
                   <div>
-                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Sales Driver Analysis</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Breaking down what drives your sales (Trend, Seasonality, & Anomalies)</p>
+                    <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text-heading)' }}>Sales Pattern Breakdown</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>What is driving your sales — long-term growth, seasonal cycles, and unexpected events</p>
                   </div>
                 </div>
 
@@ -740,10 +764,10 @@ export default function Analytics({
                       <div key={component} className="relative group">
                         <div className="absolute left-4 top-3 z-20 flex flex-col bg-[var(--glass-bg)] px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] backdrop-blur-md shadow-sm">
                           <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-heading)' }}>
-                            {component === 'observed' ? 'Actual Historical Sales' : component === 'trend' ? 'Long-Term Trajectory (Trend)' : component === 'seasonal' ? 'Recurring Peak Cycles (Seasonality)' : 'Random Market Noise (Anomalies)'}
+                            {component === 'observed' ? 'Recorded Sales History' : component === 'trend' ? 'Long-Term Growth Direction' : component === 'seasonal' ? 'Peak & Slow Season Cycles' : 'Unexpected Sales Events'}
                           </span>
                           <span className="text-[8px] font-bold text-[var(--text-faint)]">
-                            {component === 'observed' ? 'Raw recorded sales volume' : component === 'trend' ? 'Underlying upward/downward business growth' : component === 'seasonal' ? 'Repeating monthly or seasonal fluctuations' : 'Unexpected one-off spikes or drops'}
+                            {component === 'observed' ? 'Raw recorded sales volume' : component === 'trend' ? 'Is your business growing, declining, or holding steady?' : component === 'seasonal' ? 'Which months tend to be busiest or slowest?' : 'One-off spikes or drops not explained by trends or seasons'}
                           </span>
                         </div>
                         <div className="h-32 w-full bg-white/[0.02] rounded-xl relative">
