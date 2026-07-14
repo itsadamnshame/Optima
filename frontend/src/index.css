@@ -50,9 +50,9 @@
   --chart-grid: rgba(255,255,255,0.06);
   --chart-axis: #71717a;
   --chart-label: #a1a1aa;
-  --chart-line-actual: #10b981;    /* Emerald Green — actual/real sales */
-  --chart-line-forecast: #ef4444;  /* Red — predicted sales */
-  --chart-area-fill: rgba(239,68,68,0.08);
+  --chart-line-actual: #60a5fa;    /* Soft Steel Blue — actual/real sales */
+  --chart-line-forecast: #fb923c;  /* Warm Muted Orange — predicted sales */
+  --chart-area-fill: rgba(251,146,60,0.08);
   --chart-tooltip-bg: #18181b;
   --chart-tooltip-border: rgba(255,255,255,0.12);
   --chart-tooltip-text: #f4f4f5;
@@ -163,13 +163,13 @@
   --option-bg:       #ffffff;
   --profile-menu-bg: #ffffff;
 
-  /* ── Chart Colors ─────────────────────────── */
+  /* ── Chart Colors ────────────────────────────────────── */
   --chart-grid:          rgba(0,0,0,0.06);
   --chart-axis:          #9ca3af;
   --chart-label:         #6b7280;
-  --chart-line-actual:   #059669;   /* Emerald Green — actual/real sales */
-  --chart-line-forecast: #dc2626;   /* Red — predicted sales */
-  --chart-area-fill:     rgba(220,38,38,0.06);
+  --chart-line-actual:   #2563eb;   /* Professional Blue — actual/real sales */
+  --chart-line-forecast: #ea7118;   /* Warm Orange — predicted sales */
+  --chart-area-fill:     rgba(234,113,24,0.06);
   --chart-tooltip-bg:    #ffffff;
   --chart-tooltip-border:rgba(0,0,0,0.1);
   --chart-tooltip-text:  #111827;

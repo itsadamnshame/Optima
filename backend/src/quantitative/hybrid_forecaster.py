@@ -79,45 +79,124 @@ def detect_zombies(monthly_series):
     return False
 
 def generate_insight_story(df, is_zombie, item_name):
-    # Calculate historical vs forecast
-    historical = df[df['type'] == 'historical']['actual_value']
-    future = df[df['type'] == 'future']['predicted_value']
-    
-    hist_avg = historical.mean() if not historical.empty else 0
-    fut_avg = future.mean() if not future.empty else 0
-    
+    """
+    Generates a rich, data-driven business narrative for the Sales Trend Summary card.
+    Always returns a meaningful story — never 'unknown'.
+    """
+    # Calculate historical vs forecast volumes
+    historical = df[df['type'] == 'historical']['actual_value'].dropna()
+    future = df[df['type'] == 'future']['predicted_value'].dropna()
+
+    hist_avg = float(historical.mean()) if not historical.empty else 0.0
+    fut_avg  = float(future.mean())  if not future.empty  else 0.0
+    hist_total = float(historical.sum()) if not historical.empty else 0.0
+    fut_total  = float(future.sum())  if not future.empty  else 0.0
+
     if hist_avg > 0:
         growth = ((fut_avg - hist_avg) / hist_avg) * 100
     else:
-        growth = 0
-        
-    is_global = (item_name == "GLOBAL_STORE_TOTAL")
-    
+        growth = 0.0
+
+    # Month count for context
+    hist_months = len(historical)
+    fut_months  = len(future)
+
+    # Display-friendly name
+    display_name = "your store" if item_name == "GLOBAL_STORE_TOTAL" else f"'{item_name}'"
+    is_global    = (item_name == "GLOBAL_STORE_TOTAL")
+
     if is_zombie:
         status = "STAGNANT"
-        if is_global:
-            story = "Overall store sales have been flat or at zero. We recommend checking your data to see if there are any errors."
+        if hist_avg > 0:
+            # Product had sales before but has stopped
+            story = (
+                f"{display_name.capitalize()} averaged {hist_avg:.0f} units/month historically, "
+                f"but sales have come to a complete stop in recent months — a clear sign of "
+                f"declining demand or stock issues. "
+                f"The model has capped the forecast at zero because there is no meaningful upward "
+                f"trend to project. "
+                f"Action: Review whether this {'store' if is_global else 'product'} is still "
+                f"actively stocked and promoted. Consider a clearance campaign or "
+                f"investigate if a supply disruption is causing the drop."
+            )
         else:
-            story = f"Sales for '{item_name}' have completely stopped. Consider removing it from your active catalog or putting it on clearance."
+            # Never really had sales
+            story = (
+                f"{display_name.capitalize()} shows no recorded sales activity. "
+                f"There is no historical demand signal for the model to learn from, "
+                f"so the forecast is held at zero. "
+                f"This typically happens when a product is newly listed, out of stock, "
+                f"or has been discontinued. "
+                f"Action: Verify the product data is correct and that it has been "
+                f"actively available to customers for at least 3–6 months before re-running the forecast."
+            )
+    elif growth > 15:
+        status = "GROWTH"
+        story = (
+            f"{display_name.capitalize()} is on a strong upward trajectory. "
+            f"Over the last {hist_months} months, average monthly sales were {hist_avg:.0f} units. "
+            f"The forecast projects this rising to {fut_avg:.0f} units/month — "
+            f"a {growth:.1f}% increase over the next {fut_months} months "
+            f"(total forecast: {fut_total:.0f} units). "
+            f"This level of growth signals rising customer demand and warrants "
+            f"proactive stock increases. "
+            f"Action: Increase reorder quantities by at least {min(growth, 50):.0f}% and "
+            f"negotiate with suppliers for priority fulfillment to avoid stockouts during "
+            f"peak demand periods."
+        )
     elif growth > 5:
         status = "GROWTH"
-        if is_global:
-            story = f"We expect total store sales to grow by {growth:.1f}%. Make sure you have enough stock across the board to handle the extra demand!"
-        else:
-            story = f"We expect sales for '{item_name}' to grow by {growth:.1f}%. Make sure to order more stock soon so you don't run out."
+        story = (
+            f"{display_name.capitalize()} is showing steady, healthy growth. "
+            f"Historical average: {hist_avg:.0f} units/month. "
+            f"The forecast predicts {fut_avg:.0f} units/month going forward — "
+            f"a {growth:.1f}% improvement over the coming {fut_months} months "
+            f"(projected total: {fut_total:.0f} units). "
+            f"This consistent upward trend indicates reliable demand. "
+            f"Action: Ensure stock levels are sufficient to cover the projected increase. "
+            f"A modest {growth:.0f}% uplift in your reorder plan should be enough to "
+            f"meet demand without over-ordering."
+        )
+    elif growth < -15:
+        status = "DECLINE"
+        story = (
+            f"{display_name.capitalize()} is experiencing a significant drop in demand. "
+            f"Monthly sales averaged {hist_avg:.0f} units historically, "
+            f"but the forecast projects only {fut_avg:.0f} units/month — "
+            f"a {abs(growth):.1f}% decline over the next {fut_months} months "
+            f"(projected total: {fut_total:.0f} units). "
+            f"This level of decline signals a shrinking customer base or a market shift. "
+            f"Action: Run targeted promotions or bundle deals to stimulate demand. "
+            f"Reduce incoming stock orders and consider liquidating excess inventory "
+            f"to minimise holding costs."
+        )
     elif growth < -5:
         status = "DECLINE"
-        if is_global:
-            story = f"We expect total store sales to drop by {abs(growth):.1f}%. You might want to run a store-wide promotion to bring more customers in."
-        else:
-            story = f"We expect sales for '{item_name}' to drop by {abs(growth):.1f}%. Try putting it on discount to help clear out the inventory."
+        story = (
+            f"{display_name.capitalize()} is trending slightly downward. "
+            f"Historical average was {hist_avg:.0f} units/month, "
+            f"while the forecast predicts {fut_avg:.0f} units/month — "
+            f"a {abs(growth):.1f}% dip over the next {fut_months} months "
+            f"(projected total: {fut_total:.0f} units). "
+            f"This is an early warning sign worth monitoring. "
+            f"Action: Launch a promotional push or bundle this item with faster-moving "
+            f"products to arrest the slowdown before it becomes a sustained trend."
+        )
     else:
         status = "STABLE"
-        if is_global:
-            story = f"Total store sales look very stable (only a {growth:.1f}% change). You can keep running things exactly as you are."
-        else:
-            story = f"Sales for '{item_name}' look very stable (only a {growth:.1f}% change). No urgent changes are needed right now."
-            
+        story = (
+            f"{display_name.capitalize()} is holding steady. "
+            f"Historical average was {hist_avg:.0f} units/month, "
+            f"and the forecast projects {fut_avg:.0f} units/month — "
+            f"only a {growth:+.1f}% change over {fut_months} months "
+            f"(projected total: {fut_total:.0f} units). "
+            f"This stability reflects predictable, recurring demand — ideal for "
+            f"lean inventory management. "
+            f"Action: Maintain current stock levels and reorder cadence. "
+            f"Use this predictability to negotiate better supplier terms "
+            f"by committing to consistent order volumes."
+        )
+
     return status, story
 
 

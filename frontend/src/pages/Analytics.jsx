@@ -43,7 +43,7 @@ const Metric = ({ label, value, sub, trend }) => (
     <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>{label}</p>
     <div className="flex items-baseline gap-2">
       <span className="text-2xl font-black tracking-tighter" style={{ color: 'var(--text-heading)' }}>{value}</span>
-      {trend && <span className={`text-[10px] font-black ${trend > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+      {trend && <span className={`text-[10px] font-black`} style={{ color: trend > 0 ? '#3b82f6' : '#f97316' }}>
         {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
       </span>}
     </div>
@@ -392,7 +392,7 @@ export default function Analytics({
                     <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center">
                       <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">Sales Trend Health <InfoTooltip term={metrics.is_zombie ? "Stagnant Trend" : "Healthy Trend"} size={10} side="bottom" /></p>
                       <p className="text-sm font-bold text-white flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${metrics.is_zombie ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                        <div className="w-2 h-2 rounded-full" style={{ background: metrics.is_zombie ? '#f97316' : '#3b82f6' }} />
                         {metrics.is_zombie ? 'STAGNANT' : 'HEALTHY'}
                       </p>
                     </div>
@@ -668,7 +668,7 @@ export default function Analytics({
                           <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Year-over-Year Volume Change <span className="text-[8px] opacity-50 normal-case">YoY</span></p>
                             <div className="flex items-baseline gap-2">
-                              <p className={`text-xl font-black ${yoy.diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                              <p className="text-xl font-black" style={{ color: yoy.diff >= 0 ? '#3b82f6' : '#f97316' }}>
                                 {yoy.diff >= 0 ? '+' : ''}{Number(yoy.diff || 0).toFixed(1)}%
                               </p>
                               <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-faint)' }}>
@@ -697,22 +697,51 @@ export default function Analytics({
 
               <Card title="Sales Trend Summary" subtitle="Expected units sold" icon={Layers} className="self-start">
                 <div className="space-y-4 pt-2">
+                  {/* Status Badge */}
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Sales Direction</p>
-                    <p className="text-xs font-bold uppercase tracking-tight flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
-                      <div className={`w-2 h-2 rounded-full ${metrics.trend_status === 'STAGNANT' || metrics.trend_status === 'DECLINE' ? 'bg-rose-500' : metrics.trend_status === 'GROWTH' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                      {metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : (!metrics || Object.keys(metrics).length === 0) ? 'NO DATA' : 'UNKNOWN')}
-                    </p>
-                    <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--text-muted)' }}>
-                      {metrics.story || ((!metrics || Object.keys(metrics).length === 0) ? "The forecasting engine did not generate insights. Ensure your dataset spans at least 12 months and check the backend server terminal for model training errors." : "Forecast insights are unavailable for this run.")}
-                    </p>
-                    {metrics.is_zombie && (
-                      <div className="mt-3 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5">
-                        <p className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1">What does Stagnant mean?</p>
-                        <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>This product shows no significant upward or downward movement in sales. Its predicted values are held flat and may be less reliable for planning. Consider reviewing demand or promotions for this item.</p>
-                      </div>
-                    )}
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-faint)' }}>Sales Direction</p>
+                    {(() => {
+                      const trendStatus = metrics.trend_status || (metrics.is_zombie ? 'STAGNANT' : (!metrics || Object.keys(metrics).length === 0) ? 'NO DATA' : 'NO DATA');
+                      const statusColors = {
+                        GROWTH:   { dot: '#3b82f6', text: '#3b82f6', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.2)'  },
+                        STABLE:   { dot: '#6366f1', text: '#6366f1', bg: 'rgba(99,102,241,0.08)',  border: 'rgba(99,102,241,0.2)'  },
+                        DECLINE:  { dot: '#f97316', text: '#f97316', bg: 'rgba(249,115,22,0.08)',   border: 'rgba(249,115,22,0.2)'  },
+                        STAGNANT: { dot: '#f97316', text: '#f97316', bg: 'rgba(249,115,22,0.08)',   border: 'rgba(249,115,22,0.2)'  },
+                        'NO DATA':{ dot: '#71717a', text: '#71717a', bg: 'rgba(113,113,122,0.06)', border: 'rgba(113,113,122,0.15)' },
+                      };
+                      const sc = statusColors[trendStatus] || statusColors['NO DATA'];
+
+                      // Split story at 'Action:' for distinct display
+                      const rawStory = metrics.story || ((!metrics || Object.keys(metrics).length === 0)
+                        ? "The forecasting engine did not generate insights. Ensure your dataset spans at least 12 months and check the backend server terminal for model training errors."
+                        : "Forecast insights are currently unavailable. Please re-run the forecast to generate updated insights.");
+                      const actionIdx = rawStory.indexOf('Action:');
+                      const narrativePart = actionIdx > -1 ? rawStory.slice(0, actionIdx).trim() : rawStory;
+                      const actionPart    = actionIdx > -1 ? rawStory.slice(actionIdx).trim() : null;
+
+                      return (
+                        <>
+                          <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl" style={{ background: sc.bg, border: `1px solid ${sc.border}` }}>
+                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: sc.dot }} />
+                            <span className="text-xs font-black uppercase tracking-widest" style={{ color: sc.text }}>{trendStatus}</span>
+                          </div>
+                          <p className="text-[10px] leading-relaxed font-medium mb-3" style={{ color: 'var(--text-muted)' }}>
+                            {narrativePart}
+                          </p>
+                          {actionPart && (
+                            <div className="p-3 rounded-xl" style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                              <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Recommended Action</p>
+                              <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                                {actionPart.replace(/^Action:\s*/, '')}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
+
+                  {/* Data Availability */}
                   <div className="p-4 rounded-2xl border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                     <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-faint)' }}>Data Availability</p>
                     <p className="text-xs font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
